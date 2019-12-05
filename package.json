@@ -1,0 +1,68 @@
+{
+  "name": "@kentico/kontent-cli",
+  "version": "0.0.1",
+  "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
+  "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "tslint --project tsconfig.json --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\""
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.ts": [
+      "tslint --fix --project tsconfig.json",
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "bin": {
+    "kontent": "./lib/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kentico/kontent-migrations-boilerplate.git"
+  },
+  "author": "Kentico",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Kentico/kontent-migrations-boilerplate/issues"
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 4
+  },
+  "homepage": "https://github.com/Kentico/kontent-migrations-boilerplate#readme",
+  "dependencies": {
+    "@kentico/kontent-management": "0.2.7",
+    "chalk": "^2.4.2",
+    "yargs": "^14.2.0"
+  },
+  "peerDependencies": {
+    "rxjs": "^6.5.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.4",
+    "@babel/preset-env": "^7.7.4",
+    "@babel/preset-typescript": "^7.7.4",
+    "@types/jest": "^24.0.23",
+    "@types/node": "^12.11.5",
+    "@types/yargs": "^13.0.3",
+    "babel-jest": "^24.9.0",
+    "husky": "^3.1.0",
+    "jest": "^24.9.0",
+    "lint-staged": "^9.5.0",
+    "prettier": "^1.19.1",
+    "ts-jest": "^24.2.0",
+    "tslint": "^5.20.1",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-config-standard": "^9.0.0",
+    "typescript": "^3.7.2"
+  }
+}

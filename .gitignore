@@ -1,0 +1,7 @@
+/.idea/
+/node_modules/
+/lib/
+/Migrations/*.js
+Migrations/.environments.json
+Migrations/status.json
+/package-lock.json

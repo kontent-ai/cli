@@ -1,0 +1,6 @@
+*
+!lib/**
+!.npmignore
+!package.json
+!README.md
+!LICENSE

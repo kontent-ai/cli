@@ -1,0 +1,26 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Migration generation Creates new javascript migration with name 1`] = `
+"
+const migration = {
+    order: 1,
+    run: async (apiClient) => {
+    },
+};
+
+module.exports = migration;
+"
+`;
+
+exports[`Migration generation Creates new typescript migration with name 1`] = `
+"import {MigrationModule} from \\"@kentico/kontent-cli\\";
+
+const migration: MigrationModule = {
+    order: 1,
+    run: async (apiClient) => {
+    },
+};
+
+export default migration;
+"
+`;
