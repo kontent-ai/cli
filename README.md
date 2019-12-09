@@ -49,10 +49,10 @@ cd ./kontent-migrations-boilerplate
 npm install
 
 # Registers an environment (a pair of two keys, a project ID and API key used to manage the project) for migrations.
-kontent environment add DEV --api-key <Api key> --project-id <Project ID> (Use the copy of your production project from the first step)
+kontent environment add --name DEV --api-key <Api key> --project-id <Project ID> (Use the copy of your production project from the first step)
 
 # Runs a specific migration.
-kontent migration run 01_sample_init_createBlogType
+npm run migrate 01_sample_init_createBlogType
 ```
 
 That's it! You've run your first Kontent migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
