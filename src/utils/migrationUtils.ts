@@ -6,6 +6,7 @@ import { listFiles } from './fileUtils';
 import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
+import { markAsCompleted, wasExecuted } from './statusManager';
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -60,7 +61,9 @@ export const runMigration = async (
     let isSuccess = true;
 
     try {
-        await migration.module.run(client);
+        await migration.module.run(client).then(() => {
+            markAsCompleted(projectId, migration.name, migration.module.order);
+        });
     } catch (e) {
         console.error(
             chalk.redBright('An error occurred while running migration:'),
@@ -206,5 +209,21 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
         migrations.push({ name: file.name, module: migrationModule });
     }
 
-    return migrations;
+    return migrations.filter(String);
+};
+
+export const getExecutedMigrations = (
+    migrations: IMigration[],
+    projectId: string
+): IMigration[] => {
+    const alreadyExecutedMigrations: IMigration[] = [];
+
+    // filter by execution status
+    for (const migration of migrations) {
+        if (wasExecuted(migration.name, projectId)) {
+            alreadyExecutedMigrations.push(migration);
+        }
+    }
+
+    return alreadyExecutedMigrations.filter(String);
 };

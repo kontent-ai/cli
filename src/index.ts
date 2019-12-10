@@ -16,7 +16,7 @@ const createMigrationTool = (): number => {
             'kontent',
             'environment add --name DEV --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>'
         )
-        .example('kontent', 'migration add 02_my_migration')
+        .example('kontent', 'migration add --name 02_my_migration')
 
         .example(
             'kontent',

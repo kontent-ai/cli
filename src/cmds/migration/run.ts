@@ -2,17 +2,23 @@ import yargs from 'yargs';
 import chalk from 'chalk';
 import {
     getDuplicates,
+    getExecutedMigrations,
     getMigrationFilepath,
     loadMigrationFiles,
     loadModule,
     runMigration
 } from '../../utils/migrationUtils';
-import { fileExists } from '../../utils/fileUtils';
+import {
+    fileExists,
+    getFileWithExtension,
+    isAllowedExtension
+} from '../../utils/fileUtils';
 import {
     environmentConfigExists,
     getEnvironmentsConfig
 } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
+import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
@@ -47,6 +53,12 @@ const runMigrationCommand: yargs.CommandModule = {
                         'Run all migration scripts in the specified order',
                     type: 'boolean'
                 },
+                force: {
+                    alias: 'f',
+                    describe: 'Enforces run of already executed scripts.',
+                    type: 'boolean',
+                    default: false
+                },
                 'continue-on-error': {
                     alias: 'c',
                     describe:
@@ -75,10 +87,14 @@ const runMigrationCommand: yargs.CommandModule = {
 
                 if (!args.all) {
                     if (args.name) {
-                        const fileName = args.name
-                            .split('.js')
-                            .slice(0, -1)
-                            .join('.js');
+                        if (!isAllowedExtension(args.name)) {
+                            throw new Error(
+                                chalk.red(
+                                    `File ${args.name} has not supported extension.`
+                                )
+                            );
+                        }
+                        const fileName = getFileWithExtension(args.name);
                         const migrationFilePath = getMigrationFilepath(
                             fileName
                         );
@@ -121,13 +137,14 @@ const runMigrationCommand: yargs.CommandModule = {
                 return true;
             }),
     handler: async (argv: any): Promise<void> => {
-        let { projectId } = argv;
-        let { apiKey } = argv;
+        let projectId = argv.projectId;
+        let apiKey = argv.apiKey;
         const migrationName = argv.name;
         const runAll = argv.all;
         const debugMode = argv.debug;
-        const { continueOnError } = argv;
+        const continueOnError = argv.continueOnError;
         let migrationsResults: number = 0;
+        const runForce = argv.force;
 
         if (argv.environment) {
             const environments = getEnvironmentsConfig();
@@ -143,6 +160,8 @@ const runMigrationCommand: yargs.CommandModule = {
             debugMode
         });
 
+        loadMigrationsExecutionStatus();
+
         if (runAll) {
             const migrations = await loadMigrationFiles();
             const sortedMigrations = migrations.sort(
@@ -154,6 +173,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 sortedMigrations,
                 t => t.module.order
             );
+
             if (duplicateMigrationsOrder.length > 0) {
                 console.log('Duplicate migrations found:');
                 duplicateMigrationsOrder.map(t => {
@@ -167,14 +187,36 @@ const runMigrationCommand: yargs.CommandModule = {
                 process.exit(1);
             }
 
-            const filteredMigrations = migrations.filter(String);
+            let migrationsToRun = sortedMigrations;
+            if (runForce) {
+                console.log('Skipping to check already executed migrations');
+            } else {
+                const executedMigrations = getExecutedMigrations(
+                    sortedMigrations,
+                    projectId
+                );
+                for (const migration of migrationsToRun) {
+                    const executedMigration = executedMigrations.find(
+                        executed => executed.name === migration.name
+                    );
+                    if (executedMigration !== undefined) {
+                        console.log(
+                            `Skipping already executed migration ${migration.name}`
+                        );
+                        migrationsToRun = migrationsToRun.filter(
+                            migration =>
+                                migration.name !== executedMigration.name
+                        );
+                    }
+                }
+            }
 
-            if (filteredMigrations.length === 0) {
-                console.log('No migrations found.');
+            if (migrationsToRun.length === 0) {
+                console.log('No migrations to run.');
             }
 
             let executedMigrationsCount = 0;
-            for (const migration of filteredMigrations) {
+            for (const migration of migrationsToRun) {
                 const migrationResult = await runMigration(
                     migration,
                     apiClient,
@@ -191,7 +233,7 @@ const runMigrationCommand: yargs.CommandModule = {
                         );
                         console.error(
                             chalk.red(
-                                `${executedMigrationsCount} of ${filteredMigrations.length} executed`
+                                `${executedMigrationsCount} of ${sortedMigrations.length} executed`
                             )
                         );
                         process.exit(1);
@@ -202,9 +244,10 @@ const runMigrationCommand: yargs.CommandModule = {
                 executedMigrationsCount++;
             }
         } else {
-            const migrationModule = await loadModule(`${migrationName}.js`);
+            const fileName = getFileWithExtension(migrationName);
+            const migrationModule = await loadModule(fileName);
             const migration = {
-                name: migrationName,
+                name: fileName,
                 module: migrationModule
             };
             migrationsResults = await runMigration(

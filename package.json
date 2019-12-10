@@ -1,6 +1,6 @@
 {
   "name": "@kentico/kontent-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
@@ -58,6 +58,7 @@
     "@types/node": "^12.11.5",
     "@types/yargs": "^13.0.3",
     "babel-jest": "^24.9.0",
+    "dotenv": "^8.2.0",
     "husky": "^3.1.0",
     "jest": "^24.9.0",
     "lint-staged": "^9.5.0",
