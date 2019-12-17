@@ -6,7 +6,7 @@ The Kontent CLI helps you when you need to change content models within your [Ke
 
 - [Kentico Kontent CLI](#kentico-kontent-cli)
   - [Installation](#installation)
-  - [🌟 Migration example](#%f0%9f%8c%9f-migration-example)
+  - [🌟 Migration example](#-migration-example)
     - [1. Prepare a testing environment](#1-prepare-a-testing-environment)
     - [2. Prepare Kontent CLI boilerplate](#2-prepare-kontent-cli-boilerplate)
     - [3. Run a migration](#3-run-a-migration)
