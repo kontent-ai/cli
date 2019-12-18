@@ -1,6 +1,8 @@
 # Kentico Kontent CLI
 
 The Kontent CLI helps you when you need to change content models within your [Kentico Kontent](https://kontent.ai/) projects and migrate existing content to match the changes. The CLI provides you with guidance on how to write and run migration scripts.
+[![npm](https://img.shields.io/npm/v/@kentico/kontent-cli.svg)](https://www.npmjs.com/package/@kentico/kontent-cli)
+[![Build Status](https://travis-ci.com/Kentico/kontent-cli.svg?branch=master)](https://travis-ci.com/Kentico/kontent-cli)
 
 **_NOTE:_** The Kontent CLI tool supports only Javascript files, so if you write your migrations in Typescript or any other language you have to transpile your code before running.
 
