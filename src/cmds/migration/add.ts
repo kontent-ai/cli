@@ -17,8 +17,7 @@ const addMigrationCommand: yargs.CommandModule = {
                 },
                 'template-type': {
                     alias: 't',
-                    describe:
-                        'Determines whether the template script is in TypeScript or plain JavaScript',
+                    describe: 'Determines whether the template script is in TypeScript or plain JavaScript',
                     type: 'string',
                     default: 'javascript'
                 }
@@ -27,17 +26,12 @@ const addMigrationCommand: yargs.CommandModule = {
     handler: (argv: any) => {
         if (!['javascript', 'typescript'].includes(argv.templateType)) {
             console.error(
-                chalk.redBright(
-                    `Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`
-                )
+                chalk.redBright(`Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`)
             );
             process.exit(1);
         }
 
-        const templateType =
-            argv.templateType === 'javascript'
-                ? TemplateType.Javascript
-                : TemplateType.TypeScript;
+        const templateType = argv.templateType === 'javascript' ? TemplateType.Javascript : TemplateType.TypeScript;
         createMigration(argv.name, templateType);
     }
 };

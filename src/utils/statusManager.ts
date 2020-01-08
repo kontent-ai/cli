@@ -10,10 +10,7 @@ export const init = () => {
     status = {};
 };
 
-const updateMigrationStatus = (
-    projectId: string,
-    migrationStatus: IMigrationStatus
-) => {
+const updateMigrationStatus = (projectId: string, migrationStatus: IMigrationStatus) => {
     let projectMigrationsStatus = status[projectId];
 
     if (projectMigrationsStatus === undefined) {
@@ -33,11 +30,7 @@ const updateMigrationStatus = (
     saveStatusFile();
 };
 
-export const markAsCompleted = (
-    projectId: string,
-    name: string,
-    order: number
-) => {
+export const markAsCompleted = (projectId: string, name: string, order: number) => {
     const migrationStatus = {
         name,
         order,
@@ -54,24 +47,16 @@ const saveStatusFile = () => {
     saveStatusToFile(statusJSON);
 };
 
-const getMigrationStatus = (
-    migrationName: string,
-    projectId: string
-): IMigrationStatus | undefined => {
+const getMigrationStatus = (migrationName: string, projectId: string): IMigrationStatus | undefined => {
     const projectStatus = status[projectId];
     if (projectStatus == null) {
         return undefined;
     }
 
-    return projectStatus.find(
-        migrationStatus => migrationStatus.name === migrationName
-    );
+    return projectStatus.find(migrationStatus => migrationStatus.name === migrationName);
 };
 
-export const wasExecuted = (
-    migrationName: string,
-    projectId: string
-): boolean => {
+export const wasExecuted = (migrationName: string, projectId: string): boolean => {
     return getMigrationStatus(migrationName, projectId) !== undefined;
 };
 
@@ -87,15 +72,11 @@ export const loadMigrationsExecutionStatus = () => {
     }
 
     try {
-        const projectsMigrationStatuses = readFileSync(
-            statusFilepath
-        ).toString();
+        const projectsMigrationStatuses = readFileSync(statusFilepath).toString();
 
         status = JSON.parse(projectsMigrationStatuses);
     } catch (error) {
-        console.warn(
-            `Status JSON file is invalid because of ${error.message}. Continuing with empty status.`
-        );
+        console.warn(`Status JSON file is invalid because of ${error.message}. Continuing with empty status.`);
         status = {};
     }
 };

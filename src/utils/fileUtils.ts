@@ -18,10 +18,7 @@ export const isAllowedExtension = (filename: string): boolean => {
     return ['.js', ''].includes(extension);
 };
 
-export const getFileWithExtension = (
-    filename: string,
-    defaultExtension: string = '.js'
-): string => {
+export const getFileWithExtension = (filename: string, defaultExtension: string = '.js'): string => {
     const hasFileExtension = path.extname(filename);
 
     if (hasFileExtension) {

@@ -1,7 +1,4 @@
-import {
-    generatePlainMigration,
-    generateTypedMigration
-} from '../utils/migrationUtils';
+import { generatePlainMigration, generateTypedMigration } from '../utils/migrationUtils';
 
 describe('Migration generation', () => {
     it('Creates new typescript migration with name', () => {

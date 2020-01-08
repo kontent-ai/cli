@@ -24,25 +24,14 @@ const ensureMigrationsDirectoryExists = () => {
     }
 };
 
-export const saveMigrationFile = (
-    migrationName: string,
-    migrationData: string,
-    templateType: TemplateType
-): string => {
+export const saveMigrationFile = (migrationName: string, migrationData: string, templateType: TemplateType): string => {
     ensureMigrationsDirectoryExists();
-    const fileExtension =
-        templateType === TemplateType.TypeScript ? '.ts' : '.js';
-    const migrationFilepath = getMigrationFilepath(
-        migrationName + fileExtension
-    );
+    const fileExtension = templateType === TemplateType.TypeScript ? '.ts' : '.js';
+    const migrationFilepath = getMigrationFilepath(migrationName + fileExtension);
 
     try {
         fs.writeFileSync(migrationFilepath, migrationData);
-        console.log(
-            chalk.green(
-                `Migration template ${migrationName} (${migrationFilepath}) was generated.`
-            )
-        );
+        console.log(chalk.green(`Migration template ${migrationName} (${migrationFilepath}) was generated.`));
     } catch (e) {
         console.error(`Couldn't save the migration.`, e.message);
     }
@@ -75,10 +64,7 @@ export const runMigration = async (
             console.group('Error details');
             console.error(chalk.redBright('Message:'), e.message);
             console.error(chalk.redBright('Code:'), e.errorCode);
-            console.error(
-                chalk.redBright('Validation Errors:'),
-                e.validationErrors
-            );
+            console.error(chalk.redBright('Validation Errors:'), e.validationErrors);
             console.groupEnd();
 
             if (debugMode) {
@@ -93,10 +79,7 @@ export const runMigration = async (
                 console.groupEnd();
                 console.log();
                 console.group('Response details:');
-                console.error(
-                    chalk.yellow('Message:'),
-                    e.originalError.message
-                );
+                console.error(chalk.yellow('Message:'), e.originalError.message);
                 console.groupEnd();
             }
         } else {
@@ -111,9 +94,7 @@ export const runMigration = async (
     }
 
     console.log(
-        chalk.green(
-            `The \"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`
-        )
+        chalk.green(`The \"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`)
     );
     return 0;
 };
@@ -143,15 +124,10 @@ module.exports = migration;
 `;
 };
 
-export const createMigration = (
-    migrationName: string,
-    templateType: TemplateType
-): string => {
+export const createMigration = (migrationName: string, templateType: TemplateType): string => {
     ensureMigrationsDirectoryExists();
     const generatedMigration =
-        templateType === TemplateType.TypeScript
-            ? generateTypedMigration()
-            : generatePlainMigration();
+        templateType === TemplateType.TypeScript ? generateTypedMigration() : generatePlainMigration();
 
     return saveMigrationFile(migrationName, generatedMigration, templateType);
 };
@@ -179,9 +155,7 @@ export const getDuplicates = <T extends any, K extends keyof T>(
     return duplicates;
 };
 
-export const loadModule = async (
-    migrationFile: string
-): Promise<MigrationModule> => {
+export const loadModule = async (migrationFile: string): Promise<MigrationModule> => {
     const migrationPath = getMigrationFilepath(migrationFile);
 
     return await import(migrationPath)
@@ -212,10 +186,7 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getExecutedMigrations = (
-    migrations: IMigration[],
-    projectId: string
-): IMigration[] => {
+export const getExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status

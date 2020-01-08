@@ -8,15 +8,8 @@ import {
     loadModule,
     runMigration
 } from '../../utils/migrationUtils';
-import {
-    fileExists,
-    getFileWithExtension,
-    isAllowedExtension
-} from '../../utils/fileUtils';
-import {
-    environmentConfigExists,
-    getEnvironmentsConfig
-} from '../../utils/environmentUtils';
+import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
+import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
 import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
@@ -50,8 +43,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 },
                 all: {
                     alias: 'a',
-                    describe:
-                        'Run all migration scripts in the specified order',
+                    describe: 'Run all migration scripts in the specified order',
                     type: 'boolean'
                 },
                 force: {
@@ -62,8 +54,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 },
                 'continue-on-error': {
                     alias: 'c',
-                    describe:
-                        'Continue executing migration scripts even if a migration script fails.',
+                    describe: 'Continue executing migration scripts even if a migration script fails.',
                     default: false,
                     type: 'boolean'
                 },
@@ -79,31 +70,19 @@ const runMigrationCommand: yargs.CommandModule = {
             .conflicts('environment', 'project-id')
             .check((args: any) => {
                 if (!args.environment && !(args.projectId && args.apiKey)) {
-                    throw new Error(
-                        chalk.red(
-                            'Specify an environment or a project ID with its Management API key.'
-                        )
-                    );
+                    throw new Error(chalk.red('Specify an environment or a project ID with its Management API key.'));
                 }
 
                 if (!args.all) {
                     if (args.name) {
                         if (!isAllowedExtension(args.name)) {
-                            throw new Error(
-                                chalk.red(
-                                    `File ${args.name} has not supported extension.`
-                                )
-                            );
+                            throw new Error(chalk.red(`File ${args.name} has not supported extension.`));
                         }
                         const fileName = getFileWithExtension(args.name);
-                        const migrationFilePath = getMigrationFilepath(
-                            fileName
-                        );
+                        const migrationFilePath = getMigrationFilepath(fileName);
                         if (!fileExists(migrationFilePath)) {
                             throw new Error(
-                                chalk.red(
-                                    `Cannot find the specified migration script: ${migrationFilePath}.`
-                                )
+                                chalk.red(`Cannot find the specified migration script: ${migrationFilePath}.`)
                             );
                         }
                     } else {
@@ -127,11 +106,7 @@ const runMigrationCommand: yargs.CommandModule = {
                     const environments = getEnvironmentsConfig();
 
                     if (!environments[args.environment]) {
-                        throw new Error(
-                            chalk.red(
-                                `Cannot find the \"${args.environment}\" environment.`
-                            )
-                        );
+                        throw new Error(chalk.red(`Cannot find the \"${args.environment}\" environment.`));
                     }
                 }
 
@@ -150,8 +125,7 @@ const runMigrationCommand: yargs.CommandModule = {
         if (argv.environment) {
             const environments = getEnvironmentsConfig();
 
-            projectId =
-                environments[argv.environment].projectId || argv.projectId;
+            projectId = environments[argv.environment].projectId || argv.projectId;
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
@@ -165,8 +139,7 @@ const runMigrationCommand: yargs.CommandModule = {
 
         if (runAll) {
             let migrationsToRun = (await loadMigrationFiles()).sort(
-                (migrationPrev, migrationNext) =>
-                    migrationPrev.module.order - migrationNext.module.order
+                (migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order
             );
 
             checkForDuplicates(migrationsToRun);
@@ -174,10 +147,7 @@ const runMigrationCommand: yargs.CommandModule = {
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
             } else {
-                migrationsToRun = skipExecutedMigrations(
-                    migrationsToRun,
-                    projectId
-                );
+                migrationsToRun = skipExecutedMigrations(migrationsToRun, projectId);
             }
 
             if (migrationsToRun.length === 0) {
@@ -186,12 +156,7 @@ const runMigrationCommand: yargs.CommandModule = {
 
             let executedMigrationsCount = 0;
             for (const migration of migrationsToRun) {
-                const migrationResult = await runMigration(
-                    migration,
-                    apiClient,
-                    projectId,
-                    debugMode
-                );
+                const migrationResult = await runMigration(migration, apiClient, projectId, debugMode);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -200,11 +165,7 @@ const runMigrationCommand: yargs.CommandModule = {
                                 `Execution of the \"${migration.name}\" migration was not successful, stopping...`
                             )
                         );
-                        console.error(
-                            chalk.red(
-                                `${executedMigrationsCount} of ${migrationsToRun.length} executed`
-                            )
-                        );
+                        console.error(chalk.red(`${executedMigrationsCount} of ${migrationsToRun.length} executed`));
                         process.exit(1);
                     }
                     migrationsResults = 1;
@@ -220,12 +181,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule
             };
 
-            migrationsResults = await runMigration(
-                migration,
-                apiClient,
-                projectId,
-                debugMode
-            );
+            migrationsResults = await runMigration(migration, apiClient, projectId, debugMode);
         }
 
         process.exit(migrationsResults);
@@ -233,35 +189,23 @@ const runMigrationCommand: yargs.CommandModule = {
 };
 
 const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
-    const duplicateMigrationsOrder = getDuplicates(
-        migrationsToRun,
-        t => t.module.order
-    );
+    const duplicateMigrationsOrder = getDuplicates(migrationsToRun, t => t.module.order);
 
     if (duplicateMigrationsOrder.length > 0) {
         console.log('Duplicate migrations found:');
-        duplicateMigrationsOrder.map(t =>
-            console.error(
-                chalk.red(`Migration: ${t.name} order: ${t.module.order}`)
-            )
-        );
+        duplicateMigrationsOrder.map(t => console.error(chalk.red(`Migration: ${t.name} order: ${t.module.order}`)));
 
         process.exit(1);
     }
 };
 
-const skipExecutedMigrations = (
-    migrations: IMigration[],
-    projectId: string
-): IMigration[] => {
+const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
     const executedMigrations = getExecutedMigrations(migrations, projectId);
     const result: IMigration[] = [];
 
     for (const migration of migrations) {
         if (executedMigrations.some(em => em.name === migration.name)) {
-            console.log(
-                `Skipping already executed migration ${migration.name}`
-            );
+            console.log(`Skipping already executed migration ${migration.name}`);
         } else {
             result.push(migration);
         }

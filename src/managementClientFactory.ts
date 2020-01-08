@@ -12,19 +12,13 @@ interface ICreateManagementClientParams {
 
 dotEnv.config();
 
-export const createManagementClient = (
-    params: ICreateManagementClientParams
-): ManagementClient => {
+export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
     const httpService = new HttpService({
         requestInterceptor: config => {
-            config.headers[
-                'X-KC-SOURCE'
-            ] = `${packageInfo.name};${packageInfo.version}`;
+            config.headers['X-KC-SOURCE'] = `${packageInfo.name};${packageInfo.version}`;
 
             if (params.debugMode) {
-                console.group(
-                    chalk.bgCyan(chalk.yellowBright('Request details:'))
-                );
+                console.group(chalk.bgCyan(chalk.yellowBright('Request details:')));
                 console.log(chalk.yellow('URL:'), config.url);
                 console.log(chalk.yellow('Method:'), config.method);
                 console.log(chalk.yellow('Body:'), config.data);
@@ -34,9 +28,7 @@ export const createManagementClient = (
         },
         responseInterceptor: config => {
             if (params.debugMode) {
-                console.group(
-                    chalk.bgCyan(chalk.yellowBright('Response details:'))
-                );
+                console.group(chalk.bgCyan(chalk.yellowBright('Response details:')));
                 console.error(chalk.yellow('Body:'), config.data);
                 console.groupEnd();
             }
