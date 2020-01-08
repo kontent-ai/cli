@@ -5,8 +5,7 @@ import { TemplateType } from '../../models/templateType';
 
 const addMigrationCommand: yargs.CommandModule = {
     command: 'add',
-    describe:
-        'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kentico Kontent project.',
+    describe: 'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kentico Kontent project.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -25,9 +24,7 @@ const addMigrationCommand: yargs.CommandModule = {
             .demandOption(['name', 'template-type']),
     handler: (argv: any) => {
         if (!['javascript', 'typescript'].includes(argv.templateType)) {
-            console.error(
-                chalk.redBright(`Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`)
-            );
+            console.error(chalk.redBright(`Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`));
             process.exit(1);
         }
 

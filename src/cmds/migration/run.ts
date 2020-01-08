@@ -1,13 +1,6 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
-import {
-    getDuplicates,
-    getExecutedMigrations,
-    getMigrationFilepath,
-    loadMigrationFiles,
-    loadModule,
-    runMigration
-} from '../../utils/migrationUtils';
+import { getDuplicates, getExecutedMigrations, getMigrationFilepath, loadMigrationFiles, loadModule, runMigration } from '../../utils/migrationUtils';
 import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
 import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
@@ -16,8 +9,7 @@ import { IMigration } from '../../models/migration';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
-    describe:
-        'Runs a migration script specified by its name, or runs multiple migration scripts in the specified order.',
+    describe: 'Runs a migration script specified by its name, or runs multiple migration scripts in the specified order.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -81,26 +73,16 @@ const runMigrationCommand: yargs.CommandModule = {
                         const fileName = getFileWithExtension(args.name);
                         const migrationFilePath = getMigrationFilepath(fileName);
                         if (!fileExists(migrationFilePath)) {
-                            throw new Error(
-                                chalk.red(`Cannot find the specified migration script: ${migrationFilePath}.`)
-                            );
+                            throw new Error(chalk.red(`Cannot find the specified migration script: ${migrationFilePath}.`));
                         }
                     } else {
-                        throw new Error(
-                            chalk.red(
-                                'Either the migration script name or all migration options needs to be specified.'
-                            )
-                        );
+                        throw new Error(chalk.red('Either the migration script name or all migration options needs to be specified.'));
                     }
                 }
 
                 if (args.environment) {
                     if (!environmentConfigExists()) {
-                        throw new Error(
-                            chalk.red(
-                                `Cannot find the environment configuration file. Add an environment named \"${args.environment}\" first.`
-                            )
-                        );
+                        throw new Error(chalk.red(`Cannot find the environment configuration file. Add an environment named \"${args.environment}\" first.`));
                     }
 
                     const environments = getEnvironmentsConfig();
@@ -138,9 +120,7 @@ const runMigrationCommand: yargs.CommandModule = {
         loadMigrationsExecutionStatus();
 
         if (runAll) {
-            let migrationsToRun = (await loadMigrationFiles()).sort(
-                (migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order
-            );
+            let migrationsToRun = await loadMigrationFiles();
 
             checkForDuplicates(migrationsToRun);
 
@@ -154,17 +134,14 @@ const runMigrationCommand: yargs.CommandModule = {
                 console.log('No migrations to run.');
             }
 
+            const sortedMigrationsToRun = migrationsToRun.sort((migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order);
             let executedMigrationsCount = 0;
-            for (const migration of migrationsToRun) {
+            for (const migration of sortedMigrationsToRun) {
                 const migrationResult = await runMigration(migration, apiClient, projectId, debugMode);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
-                        console.error(
-                            chalk.red(
-                                `Execution of the \"${migration.name}\" migration was not successful, stopping...`
-                            )
-                        );
+                        console.error(chalk.red(`Execution of the \"${migration.name}\" migration was not successful, stopping...`));
                         console.error(chalk.red(`${executedMigrationsCount} of ${migrationsToRun.length} executed`));
                         process.exit(1);
                     }

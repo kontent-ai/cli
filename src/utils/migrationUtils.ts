@@ -39,12 +39,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (
-    migration: IMigration,
-    client: IManagementClient,
-    projectId: string,
-    debugMode: boolean = false
-): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: IManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;
@@ -54,11 +49,7 @@ export const runMigration = async (
             markAsCompleted(projectId, migration.name, migration.module.order);
         });
     } catch (e) {
-        console.error(
-            chalk.redBright('An error occurred while running migration:'),
-            chalk.yellowBright(migration.name),
-            chalk.redBright('see the output from running the script.')
-        );
+        console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
 
         if (e.originalError !== undefined) {
             console.group('Error details');
@@ -93,9 +84,7 @@ export const runMigration = async (
         return 1;
     }
 
-    console.log(
-        chalk.green(`The \"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`)
-    );
+    console.log(chalk.green(`The \"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`));
     return 0;
 };
 
@@ -126,16 +115,12 @@ module.exports = migration;
 
 export const createMigration = (migrationName: string, templateType: TemplateType): string => {
     ensureMigrationsDirectoryExists();
-    const generatedMigration =
-        templateType === TemplateType.TypeScript ? generateTypedMigration() : generatePlainMigration();
+    const generatedMigration = templateType === TemplateType.TypeScript ? generateTypedMigration() : generatePlainMigration();
 
     return saveMigrationFile(migrationName, generatedMigration, templateType);
 };
 
-export const getDuplicates = <T extends any, K extends keyof T>(
-    array: T[],
-    key: K | ((obj: T) => string | number)
-): T[] => {
+export const getDuplicates = <T extends any, K extends keyof T>(array: T[], key: K | ((obj: T) => string | number)): T[] => {
     const keyFn = key instanceof Function ? key : (obj: T) => obj[key];
     const allEntries = new Map<number, T[]>();
     let duplicates: T[] = [];
@@ -164,11 +149,7 @@ export const loadModule = async (migrationFile: string): Promise<MigrationModule
             return importedModule;
         })
         .catch(error => {
-            throw new Error(
-                chalk.red(
-                    `Couldn't import the migration script from \"${migrationPath}"\ due to an error: \"${error.message}\".`
-                )
-            );
+            throw new Error(chalk.red(`Couldn't import the migration script from \"${migrationPath}"\ due to an error: \"${error.message}\".`));
         });
 };
 

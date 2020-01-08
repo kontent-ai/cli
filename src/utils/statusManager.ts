@@ -16,9 +16,7 @@ const updateMigrationStatus = (projectId: string, migrationStatus: IMigrationSta
     if (projectMigrationsStatus === undefined) {
         projectMigrationsStatus = status[projectId] = [];
     } else {
-        const previousMigrationStatus = projectMigrationsStatus.findIndex(
-            migrationStatus => migrationStatus.name === migrationStatus.name
-        );
+        const previousMigrationStatus = projectMigrationsStatus.findIndex(migrationStatus => migrationStatus.name === migrationStatus.name);
 
         if (previousMigrationStatus > -1) {
             projectMigrationsStatus.splice(previousMigrationStatus, 1);
