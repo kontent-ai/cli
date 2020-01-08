@@ -42,6 +42,15 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
         projectId: params.projectId,
         apiKey: params.apiKey,
         isDeveloperMode: false,
-        baseUrl: process.env.BASE_URL
+        baseUrl: process.env.BASE_URL,
+        retryStrategy: {
+            addJitter: true,
+            deltaBackoffMs: 1000,
+            maxCumulativeWaitTimeMs: 60000,
+            maxAttempts: 10,
+            canRetryError: (error: any) => {
+                return true;
+            }
+        }
     });
 };
