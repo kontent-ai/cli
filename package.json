@@ -43,7 +43,7 @@
   },
   "homepage": "https://github.com/Kentico/kontent-migrations-boilerplate#readme",
   "dependencies": {
-    "@kentico/kontent-management": "0.2.7",
+    "@kentico/kontent-management": "0.3.6",
     "chalk": "^2.4.2",
     "yargs": "^14.2.0"
   },
