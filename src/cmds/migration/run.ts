@@ -19,6 +19,7 @@ import {
 } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
 import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
+import { IMigration } from '../../models/migration';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
@@ -163,52 +164,20 @@ const runMigrationCommand: yargs.CommandModule = {
         loadMigrationsExecutionStatus();
 
         if (runAll) {
-            const migrations = await loadMigrationFiles();
-            const sortedMigrations = migrations.sort(
+            let migrationsToRun = (await loadMigrationFiles()).sort(
                 (migrationPrev, migrationNext) =>
                     migrationPrev.module.order - migrationNext.module.order
             );
 
-            const duplicateMigrationsOrder = getDuplicates(
-                sortedMigrations,
-                t => t.module.order
-            );
+            checkForDuplicates(migrationsToRun);
 
-            if (duplicateMigrationsOrder.length > 0) {
-                console.log('Duplicate migrations found:');
-                duplicateMigrationsOrder.map(t => {
-                    console.error(
-                        chalk.red(
-                            `Migration: ${t.name} order: ${t.module.order}`
-                        )
-                    );
-                });
-
-                process.exit(1);
-            }
-
-            let migrationsToRun = sortedMigrations;
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
             } else {
-                const executedMigrations = getExecutedMigrations(
-                    sortedMigrations,
+                migrationsToRun = skipExecutedMigrations(
+                    migrationsToRun,
                     projectId
                 );
-                for (const migration of migrationsToRun) {
-                    const executedMigration = executedMigrations.find(
-                        executed => executed.name === migration.name
-                    );
-                    if (executedMigration !== undefined) {
-                        console.log(
-                            `Skipping already executed migration ${migration.name}`
-                        );
-                        migrationsToRun = migrationsToRun.filter(
-                            migration =>
-                                migration.name !== executedMigration.name
-                        );
-                    }
-                }
             }
 
             if (migrationsToRun.length === 0) {
@@ -233,14 +202,14 @@ const runMigrationCommand: yargs.CommandModule = {
                         );
                         console.error(
                             chalk.red(
-                                `${executedMigrationsCount} of ${sortedMigrations.length} executed`
+                                `${executedMigrationsCount} of ${migrationsToRun.length} executed`
                             )
                         );
                         process.exit(1);
                     }
-
                     migrationsResults = 1;
                 }
+
                 executedMigrationsCount++;
             }
         } else {
@@ -250,6 +219,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 name: fileName,
                 module: migrationModule
             };
+
             migrationsResults = await runMigration(
                 migration,
                 apiClient,
@@ -260,6 +230,44 @@ const runMigrationCommand: yargs.CommandModule = {
 
         process.exit(migrationsResults);
     }
+};
+
+const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
+    const duplicateMigrationsOrder = getDuplicates(
+        migrationsToRun,
+        t => t.module.order
+    );
+
+    if (duplicateMigrationsOrder.length > 0) {
+        console.log('Duplicate migrations found:');
+        duplicateMigrationsOrder.map(t =>
+            console.error(
+                chalk.red(`Migration: ${t.name} order: ${t.module.order}`)
+            )
+        );
+
+        process.exit(1);
+    }
+};
+
+const skipExecutedMigrations = (
+    migrations: IMigration[],
+    projectId: string
+): IMigration[] => {
+    const executedMigrations = getExecutedMigrations(migrations, projectId);
+    const result: IMigration[] = [];
+
+    for (const migration of migrations) {
+        if (executedMigrations.some(em => em.name === migration.name)) {
+            console.log(
+                `Skipping already executed migration ${migration.name}`
+            );
+        } else {
+            result.push(migration);
+        }
+    }
+
+    return result;
 };
 
 // yargs needs exported command in exports object
