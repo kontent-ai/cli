@@ -6,18 +6,10 @@ import { fileExists } from './fileUtils';
 
 const environmentsConfigName = '.environments.json';
 
-export const saveEnvironmentConfig = (
-    name: string,
-    projectId: string,
-    apiKey: string
-) => {
+export const saveEnvironmentConfig = (name: string, projectId: string, apiKey: string) => {
     const environments = getEnvironmentsConfig();
     if (environments[name]) {
-        console.log(
-            chalk.yellow(
-                `The \"${name}\" environment already exists and will be overwritten.`
-            )
-        );
+        console.log(chalk.yellow(`The \"${name}\" environment already exists and will be overwritten.`));
     }
 
     environments[name] = { projectId, apiKey };
@@ -33,17 +25,12 @@ const saveEnvironmentData = (data: string, name: string): void => {
         if (error) {
             console.error(chalk.red(error.stack || error.message));
         } else {
-            console.log(
-                chalk.green(
-                    `The environment ${name} (\"${configsFilepath}\") was updated.`
-                )
-            );
+            console.log(chalk.green(`The environment ${name} (\"${configsFilepath}\") was updated.`));
         }
     });
 };
 
-const getEnvironmentConfigFilepath = (): string =>
-    path.join(process.cwd(), environmentsConfigName);
+const getEnvironmentConfigFilepath = (): string => path.join(process.cwd(), environmentsConfigName);
 
 export const getEnvironmentsConfig = (): IEnvironmentsConfig => {
     const environmentConfigFilepath = getEnvironmentConfigFilepath();

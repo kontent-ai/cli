@@ -5,8 +5,7 @@ import { TemplateType } from '../../models/templateType';
 
 const addMigrationCommand: yargs.CommandModule = {
     command: 'add',
-    describe:
-        'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kentico Kontent project.',
+    describe: 'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kentico Kontent project.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -17,8 +16,7 @@ const addMigrationCommand: yargs.CommandModule = {
                 },
                 'template-type': {
                     alias: 't',
-                    describe:
-                        'Determines whether the template script is in TypeScript or plain JavaScript',
+                    describe: 'Determines whether the template script is in TypeScript or plain JavaScript',
                     type: 'string',
                     default: 'javascript'
                 }
@@ -26,18 +24,11 @@ const addMigrationCommand: yargs.CommandModule = {
             .demandOption(['name', 'template-type']),
     handler: (argv: any) => {
         if (!['javascript', 'typescript'].includes(argv.templateType)) {
-            console.error(
-                chalk.redBright(
-                    `Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`
-                )
-            );
+            console.error(chalk.redBright(`Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`));
             process.exit(1);
         }
 
-        const templateType =
-            argv.templateType === 'javascript'
-                ? TemplateType.Javascript
-                : TemplateType.TypeScript;
+        const templateType = argv.templateType === 'javascript' ? TemplateType.Javascript : TemplateType.TypeScript;
         createMigration(argv.name, templateType);
     }
 };

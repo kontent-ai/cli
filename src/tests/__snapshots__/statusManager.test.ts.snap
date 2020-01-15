@@ -1,0 +1,10 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Status manager Project has success status in status manager file 1`] = `
+Object {
+  "name": "migration1",
+  "order": 1,
+  "success": true,
+  "time": "2019-12-10T01:01:00.000Z",
+}
+`;

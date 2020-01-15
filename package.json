@@ -1,6 +1,6 @@
 {
   "name": "@kentico/kontent-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
@@ -39,11 +39,12 @@
   "prettier": {
     "semi": true,
     "singleQuote": true,
-    "tabWidth": 4
+    "tabWidth": 4,
+    "printWidth": 250
   },
   "homepage": "https://github.com/Kentico/kontent-migrations-boilerplate#readme",
   "dependencies": {
-    "@kentico/kontent-management": "0.2.7",
+    "@kentico/kontent-management": "0.3.13",
     "chalk": "^2.4.2",
     "yargs": "^14.2.0"
   },
@@ -58,6 +59,7 @@
     "@types/node": "^12.11.5",
     "@types/yargs": "^13.0.3",
     "babel-jest": "^24.9.0",
+    "dotenv": "^8.2.0",
     "husky": "^3.1.0",
     "jest": "^24.9.0",
     "lint-staged": "^9.5.0",
