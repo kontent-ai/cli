@@ -44,14 +44,15 @@
   },
   "homepage": "https://github.com/Kentico/kontent-migrations-boilerplate#readme",
   "dependencies": {
-    "@kentico/kontent-management": "0.3.13",
     "chalk": "^2.4.2",
     "yargs": "^14.2.0"
   },
   "peerDependencies": {
+    "@kentico/kontent-management": "^0.3.17",
     "rxjs": "^6.5.3"
   },
   "devDependencies": {
+    "@kentico/kontent-management": "0.3.17",
     "@babel/core": "^7.7.4",
     "@babel/preset-env": "^7.7.4",
     "@babel/preset-typescript": "^7.7.4",
