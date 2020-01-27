@@ -10,6 +10,8 @@ interface ICreateManagementClientParams {
     readonly debugMode: boolean;
 }
 
+const retryAbleCodes = [429, 503];
+
 dotEnv.config();
 
 export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
@@ -49,7 +51,7 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             maxCumulativeWaitTimeMs: 60000,
             maxAttempts: 10,
             canRetryError: (error: any) => {
-                return true;
+                return retryAbleCodes.includes(error.response.status);
             }
         }
     });
