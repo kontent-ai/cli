@@ -57,6 +57,9 @@ kontent environment add --name DEV --api-key <Api key> --project-id <Project ID>
 npm run migrate 01_sample_init_createBlogType
 ```
 
+Kontent CLI supports only running JavaScript migration files so in case you want to write in TypesSript, CoffeScript or in any other language you have to transpile your code before running.
+In the case of TypeScript, you may use this example from [Kontent CLI boilerplate](https://github.com/Kentico/kontent-migrations-boilerplate/blob/master/package.json#L7)
+
 That's it! You've run your first Kontent migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
 
 The boilerplate is configured to transpile TypeScript migrations into plain JavaScript so that the Kontent CLI can execute the migrations. Note that if you don't want to use TypeScript for your migrations, it's fine to write the migrations directly in JavaScript.

@@ -51,7 +51,8 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             maxCumulativeWaitTimeMs: 60000,
             maxAttempts: 10,
             canRetryError: (error: any) => {
-                return retryAbleCodes.includes(error.response.status);
+                const timeout = error.errno === 'ETIMEDOUT';
+                return timeout || (error.response && retryAbleCodes.includes(error.response.status));
             }
         }
     });
