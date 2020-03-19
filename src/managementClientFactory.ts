@@ -17,6 +17,7 @@ dotEnv.config();
 export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
     const httpService = new HttpService({
         requestInterceptor: config => {
+            config.maxContentLength = 104857600;
             config.headers['X-KC-SOURCE'] = `${packageInfo.name};${packageInfo.version}`;
 
             if (params.debugMode) {
