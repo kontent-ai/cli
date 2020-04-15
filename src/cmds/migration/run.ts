@@ -1,6 +1,6 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
-import { getDuplicates, getExecutedSuccessMigrations, getMigrationFilepath, loadMigrationFiles, loadModule, runMigration } from '../../utils/migrationUtils';
+import { getDuplicates, getSuccessfullyExecutedMigrations, getMigrationFilepath, loadMigrationFiles, loadModule, runMigration } from '../../utils/migrationUtils';
 import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
 import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
@@ -177,7 +177,7 @@ const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
 };
 
 const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
-    const executedMigrations = getExecutedSuccessMigrations(migrations, projectId);
+    const executedMigrations = getSuccessfullyExecutedMigrations(migrations, projectId);
     const result: IMigration[] = [];
 
     for (const migration of migrations) {

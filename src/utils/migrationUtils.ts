@@ -167,7 +167,7 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getExecutedSuccessMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
+export const getSuccessfullyExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status
