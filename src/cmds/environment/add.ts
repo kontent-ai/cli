@@ -10,23 +10,23 @@ const addEnvironmentCommand: yargs.CommandModule = {
                 name: {
                     alias: 'n',
                     describe: 'Environment name',
-                    type: 'string'
+                    type: 'string',
                 },
                 'project-id': {
                     alias: 'p',
                     describe: 'Project ID to run the migration script on',
-                    type: 'string'
+                    type: 'string',
                 },
                 'api-key': {
                     alias: 'k',
                     describe: 'Management API key',
-                    type: 'string'
-                }
+                    type: 'string',
+                },
             })
             .demandOption(['project-id', 'api-key', 'name']),
     handler: (argv: any) => {
         saveEnvironmentConfig(argv.name, argv.projectId, argv.apiKey);
-    }
+    },
 };
 
 // yargs needs exported command in exports object

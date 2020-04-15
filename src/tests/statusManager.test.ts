@@ -1,4 +1,4 @@
-import { init, markAsCompleted, wasExecuted } from '../utils/statusManager';
+import { markAsCompleted, wasSuccessfullyExecuted } from '../utils/statusManager';
 import { readFileSync } from 'fs';
 import * as path from 'path';
 import { IStatus } from '../models/status';
@@ -12,7 +12,6 @@ const readStatusFile = (): IStatus => {
 
 describe('Status manager', () => {
     beforeEach(() => {
-        init();
         jest.spyOn(Date, 'now').mockImplementation(() => 1575939660000);
     });
 
@@ -33,7 +32,7 @@ describe('Status manager', () => {
         const migration1Name = 'migration1';
         markAsCompleted(project1Id, migration1Name, 1);
 
-        const projectMigrationStatus = wasExecuted(migration1Name, project2Id);
+        const projectMigrationStatus = wasSuccessfullyExecuted(migration1Name, project2Id);
 
         expect(projectMigrationStatus).toBe(false);
     });
@@ -43,7 +42,7 @@ describe('Status manager', () => {
         const migration2Name = 'migration2';
         markAsCompleted(project2Id, migration2Name, 1);
 
-        const projectMigrationStatus = wasExecuted(project2Id, migration2Name);
+        const projectMigrationStatus = wasSuccessfullyExecuted(project2Id, migration2Name);
 
         expect(projectMigrationStatus).toBe(false);
     });

@@ -6,7 +6,7 @@ import { listFiles } from './fileUtils';
 import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
-import { markAsCompleted, wasExecuted } from './statusManager';
+import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -144,11 +144,11 @@ export const loadModule = async (migrationFile: string): Promise<MigrationModule
     const migrationPath = getMigrationFilepath(migrationFile);
 
     return await import(migrationPath)
-        .then(async module => {
+        .then(async (module) => {
             const importedModule: MigrationModule = module.default;
             return importedModule;
         })
-        .catch(error => {
+        .catch((error) => {
             throw new Error(chalk.red(`Couldn't import the migration script from \"${migrationPath}"\ due to an error: \"${error.message}\".`));
         });
 };
@@ -167,12 +167,12 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
+export const getExecutedSuccessMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status
     for (const migration of migrations) {
-        if (wasExecuted(migration.name, projectId)) {
+        if (wasSuccessfullyExecuted(migration.name, projectId)) {
             alreadyExecutedMigrations.push(migration);
         }
     }
