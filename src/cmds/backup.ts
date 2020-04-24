@@ -16,7 +16,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                 },
                 name: {
                     alias: 'n',
-                    describe: 'Zip file name',
+                    describe: 'Name of zip file',
                     type: 'string',
                 },
                 log: {
@@ -24,12 +24,6 @@ const kontentBackupCommand: yargs.CommandModule = {
                     describe: 'Enable logging',
                     type: 'boolean',
                     default: false,
-                },
-                force: {
-                    alias: 'f',
-                    describe: 'Project will we exported / restored even if there are data inconsistencies',
-                    type: 'boolean',
-                    default: true,
                 },
                 'project-id': {
                     alias: 'p',
@@ -91,8 +85,9 @@ const kontentBackupCommand: yargs.CommandModule = {
                     apiKey: apiKey,
                     projectId: projectId,
                     onExport: (item) => {
-                        // called when any content is exported
-                        console.log(`Exported: ${item.title} | ${item.type}`);
+                        if (argv.log) {
+                            console.log(`Exported: ${item.title} | ${item.type}`);
+                        }
                     },
                 });
                 const exportedData = await exportService.exportAllAsync();
@@ -103,14 +98,15 @@ const kontentBackupCommand: yargs.CommandModule = {
                 const zipData = await zipService.extractZipAsync();
                 const importService = new ImportService({
                     onImport: (item) => {
-                        // called when any content is imported
-                        console.log(`Imported: ${item.title} | ${item.type}`);
+                        if (argv.log) {
+                            console.log(`Imported: ${item.title} | ${item.type}`);
+                        }
                     },
                     projectId: projectId,
                     apiKey: apiKey,
                     enableLog: argv.log,
                     fixLanguages: true,
-                    workflowIdForImportedItems: '00000000-0000-0000-0000-000000000000', // id that items are assigned
+                    workflowIdForImportedItems: '00000000-0000-0000-0000-000000000000',
                 });
                 await importService.importFromSourceAsync(zipData);
                 break;
@@ -118,8 +114,9 @@ const kontentBackupCommand: yargs.CommandModule = {
             case 'clean':
                 const cleanService = new CleanService({
                     onDelete: (item) => {
-                        // called when any content is deleted
-                        console.log(`Deleted: ${item.title} | ${item.type}`);
+                        if (argv.log) {
+                            console.log(`Deleted: ${item.title} | ${item.type}`);
+                        }
                     },
                     projectId: projectId,
                     apiKey: apiKey,
@@ -132,6 +129,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                 throw new Error('Unknown action type');
         }
 
+        console.log('Completed');
         process.exit(0);
     },
 };
