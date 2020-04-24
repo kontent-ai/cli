@@ -16,6 +16,11 @@ const createMigrationTool = (): number => {
         .example('kontent', 'migration run --name migration01 --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .example('kontent', 'migration run --name migration01 --environment DEV --debug true')
         .example('kontent', 'migration run --all --environment DEV')
+
+        .example('kontent', 'backup --action backup --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
+        .example('kontent', 'backup --action backup --environment <YOUR_ENVIRONMENT>')
+        .example('kontent', 'backup --action restore --name backup_file --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
+        .example('kontent', 'backup --action clean --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .strict().argv;
 
     return 0;
