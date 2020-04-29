@@ -48,7 +48,7 @@
     "chalk": "^4.0.0",
     "yargs": "^15.3.1",
     "@kentico/kontent-management": "~0.3.19",
-    "@kentico/kontent-backup-manager": "~1.2.0",
+    "@kentico/kontent-backup-manager": "~1.2.2",
     "dotenv": "^8.2.0"
   },
   "peerDependencies": {

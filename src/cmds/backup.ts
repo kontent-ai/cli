@@ -1,7 +1,7 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
-import { CleanService, ExportService, ImportService, ZipService } from '@kentico/kontent-backup-manager/_commonjs/src';
+import { CleanService, ExportService, ImportService, ZipService } from '@kentico/kontent-backup-manager';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
@@ -21,9 +21,9 @@ const kontentBackupCommand: yargs.CommandModule = {
                 },
                 log: {
                     alias: 'l',
-                    describe: 'Enable logging',
+                    describe: 'Enables/Disables logging (default: enabled)',
                     type: 'boolean',
-                    default: false,
+                    default: true,
                 },
                 'project-id': {
                     alias: 'p',
