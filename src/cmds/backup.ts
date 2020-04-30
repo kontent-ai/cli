@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
 import { CleanService, ExportService, ImportService, ZipService } from '@kentico/kontent-backup-manager';
 import { getFileBackupName } from '../utils/fileUtils';
-import { IProcessedItem } from '@kentico/kontent-backup-manager/_commonjs/src';
+import { IProcessedItem } from '@kentico/kontent-backup-manager';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
