@@ -117,6 +117,9 @@ The supported commands are divided into groups according to their target, at thi
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
   * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to run in the debug mode (option `--debug`) and get additional information for certain issues logged into the console.
 
+* `backup --action [backup|restore|clean]` - This command enables you to use [Kontent backup manager](https://github.com/Kentico/kontent-backup-manager-js)
+  * The purpose of this tool is to backup & restore [Kentico Kontent projects](https://kontent.ai/). This project uses CM API to both get & restore data.
+
 ### Debugging
 
 If you come across an error and you're not sure how to fix it, execute your migration script as follows and setup your debugger to the specified port.

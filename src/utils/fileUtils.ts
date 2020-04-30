@@ -5,8 +5,8 @@ import * as path from 'path';
 export const listFiles = (fileExtension: string): Dirent[] => {
     return fs
         .readdirSync(getMigrationDirectory(), { withFileTypes: true })
-        .filter(f => f.isFile())
-        .filter(f => f.name.endsWith(fileExtension));
+        .filter((f) => f.isFile())
+        .filter((f) => f.name.endsWith(fileExtension));
 };
 
 export const fileExists = (filePath: PathLike): boolean => {
@@ -22,12 +22,15 @@ export const getFileWithExtension = (filename: string, defaultExtension: string 
     const hasFileExtension = path.extname(filename);
 
     if (hasFileExtension) {
-        const normalized = filename
-            .split(defaultExtension)
-            .slice(0, -1)
-            .join(defaultExtension);
+        const normalized = filename.split(defaultExtension).slice(0, -1).join(defaultExtension);
         return normalized + defaultExtension;
     } else {
         return filename + defaultExtension;
     }
+};
+
+export const getFileBackupName = () => {
+    const currentDate = new Date();
+    const formatted = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}-${currentDate.getTime()}`;
+    return `backup-${formatted}`;
 };
