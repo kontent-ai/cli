@@ -2,6 +2,8 @@ import yargs from 'yargs';
 import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
 import { CleanService, ExportService, ImportService, ZipService } from '@kentico/kontent-backup-manager';
+import { getFileBackupName } from '../utils/fileUtils';
+import { IProcessedItem } from '@kentico/kontent-backup-manager/_commonjs/src';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
@@ -21,7 +23,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                 },
                 log: {
                     alias: 'l',
-                    describe: 'Enables/Disables logging (default: enabled)',
+                    describe: 'Enables/Disables logging',
                     type: 'boolean',
                     default: true,
                 },
@@ -72,8 +74,9 @@ const kontentBackupCommand: yargs.CommandModule = {
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
+        const defaultBackupName = getFileBackupName();
         const zipService = new ZipService({
-            filename: argv.name,
+            filename: argv.name || defaultBackupName,
             enableLog: argv.log,
         });
 
@@ -84,7 +87,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                 const exportService = new ExportService({
                     apiKey: apiKey,
                     projectId: projectId,
-                    onExport: (item) => {
+                    onExport: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Exported: ${item.title} | ${item.type}`);
                         }
@@ -97,7 +100,7 @@ const kontentBackupCommand: yargs.CommandModule = {
             case 'restore':
                 const zipData = await zipService.extractZipAsync();
                 const importService = new ImportService({
-                    onImport: (item) => {
+                    onImport: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Imported: ${item.title} | ${item.type}`);
                         }
@@ -113,7 +116,7 @@ const kontentBackupCommand: yargs.CommandModule = {
 
             case 'clean':
                 const cleanService = new CleanService({
-                    onDelete: (item) => {
+                    onDelete: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Deleted: ${item.title} | ${item.type}`);
                         }
