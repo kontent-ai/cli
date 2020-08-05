@@ -132,8 +132,6 @@ node --inspect .\node_modules\@kentico\kontent-cli\lib\index.js migration run -n
 
 * Writing migration scripts can involve a lot of repetitive work, especially when it requires getting different object types and iterating through them. That's why we've decided to continue improving the developer experience and focus on that in upcoming releases. We plan to reduce the code that you need to write to the bare minimum by providing you with a "command builder". This builder will allow you to write migrations using queries and callbacks that should be applied to every object selected by that query. For example, select content types, all items based on the types, and all variants of the items, and execute your callback function on them.
 
-* The second improvement we plan is state management. This will be useful in scenarios with multiple environments where every environment can be in a different state. For example, you've tested the changes on a development environment and applied your migrations without breaking changes to production, adjusted your web app to the new model and then run the last migration to delete unused elements.
-
 * The tool isn't reserved only for migrations. A valid use case could also be Kontent project data export and import, which could together with the possibility to clone/create/archive projects via the management API be a great way to e.g. run integration tests on the test environment that would be archived after the successful tests run.
 
 ## Feedback & Contribution
