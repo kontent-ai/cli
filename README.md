@@ -89,7 +89,7 @@ kontent migration add --help
 
 The supported commands are divided into groups according to their target, at this first version there are just to spaces "migration" and "environment" containing following commands:
 
-* `environment add` – Creates an environment to run the migrations on.
+* `environment add` –  Store information about the environment locally.
   * The environment is defined as a named pair of values. For example, "DEV" environment can be defined as a pair of a specific project ID and Management API key. This named pair of values is stored within your local repository in a configuration file named `.environments.json`. 
   * You can specify a named pair of project ID and Management API key using these options: `--project-id <your project ID> --api-key <management api key> --name <name of the environment>`.
 
