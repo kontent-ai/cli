@@ -1,4 +1,4 @@
-import { IManagementClient } from '@kentico/kontent-management';
+import { ManagementClient } from '@kentico/kontent-management';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
@@ -39,7 +39,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: IManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;

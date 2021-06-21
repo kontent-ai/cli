@@ -46,7 +46,7 @@
   },
   "homepage": "https://github.com/Kentico/kontent-cli#readme",
   "dependencies": {
-    "@kentico/kontent-backup-manager": "~1.2.2",
+    "@kentico/kontent-backup-manager": "2.0.0-next.1",
     "chalk": "^4.0.0",
     "dotenv": "^8.2.0",
     "yargs": "^15.3.1"
