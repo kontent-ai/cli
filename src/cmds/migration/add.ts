@@ -12,14 +12,14 @@ const addMigrationCommand: yargs.CommandModule = {
                 name: {
                     alias: 'n',
                     describe: 'Migration name',
-                    type: 'string'
+                    type: 'string',
                 },
                 'template-type': {
                     alias: 't',
                     describe: 'Determines whether the template script is in TypeScript or plain JavaScript',
                     type: 'string',
-                    default: 'javascript'
-                }
+                    default: 'javascript',
+                },
             })
             .demandOption(['name', 'template-type']),
     handler: (argv: any) => {
@@ -30,7 +30,7 @@ const addMigrationCommand: yargs.CommandModule = {
 
         const templateType = argv.templateType === 'javascript' ? TemplateType.Javascript : TemplateType.TypeScript;
         createMigration(argv.name, templateType);
-    }
+    },
 };
 
 // yargs needs exported command in exports object

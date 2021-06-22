@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "lint": "tslint --project tsconfig.json \"src/**/*.ts\" && prettier \"src/**/*.ts\"",
-    "lint-fix": "tslint --project tsconfig.json --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\"",
+    "lint:fix": "tslint --project tsconfig.json --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\"",
     "debug": "node --inspect ./lib/index.js migration run --all -e DEV"
   },
   "publishConfig": {

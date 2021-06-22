@@ -1,4 +1,4 @@
 export enum TemplateType {
     TypeScript,
-    Javascript
+    Javascript,
 }

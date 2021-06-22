@@ -6,24 +6,24 @@ describe('Detection of duplicate orders', () => {
             {
                 module: {
                     order: 1,
-                    name: 'test'
-                }
+                    name: 'test',
+                },
             },
             {
                 module: {
                     order: 2,
-                    name: 'test'
-                }
+                    name: 'test',
+                },
             },
             {
                 module: {
                     order: 1,
-                    name: 'test'
-                }
-            }
+                    name: 'test',
+                },
+            },
         ];
 
-        const result = getDuplicates(migrations, opt => opt.module.order);
+        const result = getDuplicates(migrations, (opt) => opt.module.order);
 
         expect(result.length).toBe(2);
     });
@@ -33,24 +33,24 @@ describe('Detection of duplicate orders', () => {
             {
                 module: {
                     order: 1,
-                    name: 'test'
-                }
+                    name: 'test',
+                },
             },
             {
                 module: {
                     order: 2,
-                    name: 'test'
-                }
+                    name: 'test',
+                },
             },
             {
                 module: {
                     order: 3,
-                    name: 'test'
-                }
-            }
+                    name: 'test',
+                },
+            },
         ];
 
-        const result = getDuplicates(migrations, opt => opt.module.order);
+        const result = getDuplicates(migrations, (opt) => opt.module.order);
 
         expect(result.length).toBe(0);
     });

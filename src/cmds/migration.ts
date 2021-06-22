@@ -6,7 +6,7 @@ const migrationCommand: yargs.CommandModule = {
     builder: (yargs: any) => {
         return yargs.commandDir('migration').demandCommand(2, 'Please specify a migration arguments');
     },
-    handler: (argv: any) => {}
+    handler: (argv: any) => {},
 };
 
 // yargs needs exported command in exports object

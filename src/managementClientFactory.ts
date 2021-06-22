@@ -16,7 +16,7 @@ dotEnv.config();
 
 export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
     const httpService = new HttpService({
-        requestInterceptor: config => {
+        requestInterceptor: (config) => {
             config.maxContentLength = 104857600;
             config.headers['X-KC-SOURCE'] = `${packageInfo.name};${packageInfo.version}`;
 
@@ -29,7 +29,7 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             }
             return config;
         },
-        responseInterceptor: config => {
+        responseInterceptor: (config) => {
             if (params.debugMode) {
                 console.group(chalk.bgCyan(chalk.yellowBright('Response details:')));
                 console.error(chalk.yellow('Body:'), config.data);
@@ -37,7 +37,7 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             }
 
             return config;
-        }
+        },
     });
 
     return new ManagementClient({
@@ -54,7 +54,7 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             canRetryError: (error: any) => {
                 const timeout = error.errno === 'ETIMEDOUT';
                 return timeout || (error.response && retryAbleCodes.includes(error.response.status));
-            }
-        }
+            },
+        },
     });
 };

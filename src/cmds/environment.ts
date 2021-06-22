@@ -6,7 +6,7 @@ const environmentCommand: yargs.CommandModule = {
     builder: (yargs: any) => {
         return yargs.commandDir('environment').demandCommand(2, 'Please specify a environment arguments');
     },
-    handler: (argv: any) => {}
+    handler: (argv: any) => {},
 };
 
 // yargs needs exported command in exports object
