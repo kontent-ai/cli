@@ -21,22 +21,6 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
             headers: {
                 'X-KC-SOURCE': `${packageInfo.name};${packageInfo.version}`,
             },
-            transformRequest: (data: any, headers?: any) => {
-                if (params.debugMode) {
-                    console.group(chalk.bgCyan(chalk.yellowBright('Request details:')));
-                    console.log(chalk.yellow('Headers:'), headers);
-                    console.log(chalk.yellow('Body:'), data);
-                    console.groupEnd();
-                }
-                return data;
-            },
-            transformResponse: (data: any, headers?: any) => {
-                console.group(chalk.bgCyan(chalk.yellowBright('Response details:')));
-                console.log(chalk.yellow('Headers:'), headers);
-                console.log(chalk.yellow('Body:'), data);
-                console.groupEnd();
-                return data;
-            },
         },
     });
 
