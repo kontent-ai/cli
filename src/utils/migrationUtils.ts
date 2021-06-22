@@ -120,13 +120,12 @@ export const createMigration = (migrationName: string, templateType: TemplateTyp
     return saveMigrationFile(migrationName, generatedMigration, templateType);
 };
 
-export const getDuplicates = <T extends any, K extends keyof T>(array: T[], key: K | ((obj: T) => string | number)): T[] => {
-    const keyFn = key instanceof Function ? key : (obj: T) => obj[key];
+export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number): T[] => {
     const allEntries = new Map<number, T[]>();
     let duplicates: T[] = [];
 
     for (const item of array) {
-        const itemKey = keyFn(item);
+        const itemKey = key(item);
         const prevItem = allEntries.get(itemKey) || [];
         allEntries.set(itemKey, prevItem.concat(item));
     }
