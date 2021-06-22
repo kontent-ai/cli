@@ -1,6 +1,6 @@
 {
   "name": "@kentico/kontent-cli",
-  "version": "0.1.0-next.2",
+  "version": "0.1.0-next.3",
   "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
@@ -8,7 +8,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "lint": "tslint --project tsconfig.json \"src/**/*.ts\" && prettier \"src/**/*.ts\"",
+    "lint": "tslint --project tsconfig.json \"src/**/*.ts\" && prettier --check \"src/**/*.ts\"",
     "lint:fix": "tslint --project tsconfig.json --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\"",
     "debug": "node --inspect ./lib/index.js migration run --all -e DEV"
   },
