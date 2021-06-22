@@ -1,6 +1,5 @@
 import { ManagementClient } from '@kentico/kontent-management';
 import { HttpService } from '@kentico/kontent-core';
-import chalk from 'chalk';
 const packageInfo = require('../package.json');
 import * as dotEnv from 'dotenv';
 
