@@ -43,6 +43,11 @@ const kontentBackupCommand: yargs.CommandModule = {
                     describe: 'Environment name',
                     type: 'string',
                 },
+                'enable-publish': {
+                    alias: 'ep',
+                    describe: 'Indicates if language variants published on the source project are also published on target',
+                    type: 'boolean',
+                },
             })
             .conflicts('environment', 'api-key')
             .conflicts('environment', 'project-id')
@@ -112,8 +117,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                             console.log(`Imported: ${item.title} | ${item.type}`);
                         }
                     },
-                    // Decide whether to make it configurable or not (consult with OndrejCh and RichardS)
-                    enablePublish: false,
+                    enablePublish: argv.enablePublish,
                     projectId: projectId,
                     apiKey: apiKey,
                     enableLog: argv.log,

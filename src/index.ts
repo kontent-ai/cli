@@ -19,7 +19,7 @@ const createMigrationTool = (): number => {
 
         .example('kontent', 'backup --action backup --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .example('kontent', 'backup --action backup --environment <YOUR_ENVIRONMENT>')
-        .example('kontent', 'backup --action restore --name backup_file --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
+        .example('kontent', 'backup --action restore --name backup_file --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY> --enable-publish')
         .example('kontent', 'backup --action clean --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .strict().argv;
 

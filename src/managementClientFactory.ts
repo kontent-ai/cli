@@ -14,7 +14,6 @@ const retryAbleCodes = [429, 503];
 dotEnv.config();
 
 export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
-    // TODO - verify whether to use custom implementation to be able to register axios interceptor just for logging
     const httpService = new HttpService({
         axiosRequestConfig: {
             headers: {
