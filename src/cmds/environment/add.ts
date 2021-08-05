@@ -3,7 +3,7 @@ import { saveEnvironmentConfig } from '../../utils/environmentUtils';
 
 const addEnvironmentCommand: yargs.CommandModule = {
     command: 'add',
-    describe: "Store information about the environment locally. The environment is defined as a named pair of values. For example, a 'DEV' environment can be defined as a pair of specific project ID and Management API key.",
+    describe: 'Store information about the environment locally. The environment is defined as a named pair of values. For example, a "DEV" environment can be defined as a pair of specific project ID and Management API key.',
     builder: (yargs: any) =>
         yargs
             .options({

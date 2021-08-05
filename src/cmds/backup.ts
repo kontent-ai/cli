@@ -1,9 +1,9 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
-import { CleanService, ExportService, ImportService, ZipService } from '@kentico/kontent-backup-manager';
+import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kentico/kontent-backup-manager';
 import { getFileBackupName } from '../utils/fileUtils';
-import { IProcessedItem } from '@kentico/kontent-backup-manager/_commonjs/src';
+import { FileService } from '@kentico/kontent-backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
@@ -42,6 +42,12 @@ const kontentBackupCommand: yargs.CommandModule = {
                     describe: 'Environment name',
                     type: 'string',
                 },
+                'enable-publish': {
+                    alias: 'ep',
+                    describe: 'Indicates if language variants published on the source project are also published on target. Enabled by default',
+                    type: 'boolean',
+                    default: true,
+                },
             })
             .conflicts('environment', 'api-key')
             .conflicts('environment', 'project-id')
@@ -76,11 +82,15 @@ const kontentBackupCommand: yargs.CommandModule = {
 
         const defaultBackupName = getFileBackupName();
         const zipService = new ZipService({
-            filename: argv.name || defaultBackupName,
+            context: 'node.js',
             enableLog: argv.log,
         });
 
         console.log('Starting backup tool');
+
+        const fileService = new FileService({
+            enableLog: argv.log,
+        });
 
         switch (argv.action) {
             case 'backup':
@@ -95,21 +105,23 @@ const kontentBackupCommand: yargs.CommandModule = {
                 });
                 const exportedData = await exportService.exportAllAsync();
                 await zipService.createZipAsync(exportedData);
+                const backupZipData = await zipService.createZipAsync(exportedData);
+                await fileService.writeFileAsync(argv.name || defaultBackupName, backupZipData);
                 break;
 
             case 'restore':
-                const zipData = await zipService.extractZipAsync();
+                const zipData = await zipService.extractZipAsync(await fileService.loadFileAsync(argv.name || defaultBackupName));
                 const importService = new ImportService({
                     onImport: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Imported: ${item.title} | ${item.type}`);
                         }
                     },
+                    enablePublish: argv.enablePublish,
                     projectId: projectId,
                     apiKey: apiKey,
                     enableLog: argv.log,
                     fixLanguages: true,
-                    workflowIdForImportedItems: '00000000-0000-0000-0000-000000000000',
                 });
                 await importService.importFromSourceAsync(zipData);
                 break;

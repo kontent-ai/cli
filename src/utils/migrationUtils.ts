@@ -1,4 +1,4 @@
-import { IManagementClient } from '@kentico/kontent-management';
+import { ManagementClient } from '@kentico/kontent-management';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
@@ -39,7 +39,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: IManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;
@@ -120,13 +120,12 @@ export const createMigration = (migrationName: string, templateType: TemplateTyp
     return saveMigrationFile(migrationName, generatedMigration, templateType);
 };
 
-export const getDuplicates = <T extends any, K extends keyof T>(array: T[], key: K | ((obj: T) => string | number)): T[] => {
-    const keyFn = key instanceof Function ? key : (obj: T) => obj[key];
+export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number): T[] => {
     const allEntries = new Map<number, T[]>();
     let duplicates: T[] = [];
 
     for (const item of array) {
-        const itemKey = keyFn(item);
+        const itemKey = key(item);
         const prevItem = allEntries.get(itemKey) || [];
         allEntries.set(itemKey, prevItem.concat(item));
     }

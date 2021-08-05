@@ -21,7 +21,7 @@ export const saveEnvironmentConfig = (name: string, projectId: string, apiKey: s
 const saveEnvironmentData = (data: string, name: string): void => {
     const configsFilepath = getEnvironmentConfigFilepath();
 
-    fs.writeFile(configsFilepath, data, { flag: 'w' }, error => {
+    fs.writeFile(configsFilepath, data, { flag: 'w' }, (error) => {
         if (error) {
             console.error(chalk.red(error.stack || error.message));
         } else {
