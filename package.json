@@ -1,6 +1,6 @@
 {
   "name": "@kentico/kontent-cli",
-  "version": "0.1.0-next.7",
+  "version": "0.1.0-next.8",
   "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
@@ -47,13 +47,13 @@
   },
   "homepage": "https://github.com/Kentico/kontent-cli#readme",
   "dependencies": {
-    "@kentico/kontent-backup-manager": "2.0.0-next.1",
+    "@kentico/kontent-backup-manager": "3.0.1",
     "chalk": "^4.0.0",
     "dotenv": "^8.2.0",
     "yargs": "^15.3.1"
   },
   "peerDependencies": {
-    "@kentico/kontent-management": "^1.0.0-next.5"
+    "@kentico/kontent-management": "^1.2.0"
   },
   "devDependencies": {
     "@babel/core": "~7.9.0",

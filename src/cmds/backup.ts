@@ -45,8 +45,9 @@ const kontentBackupCommand: yargs.CommandModule = {
                 },
                 'enable-publish': {
                     alias: 'ep',
-                    describe: 'Indicates if language variants published on the source project are also published on target',
+                    describe: 'Indicates if language variants published on the source project are also published on target. Enabled by default',
                     type: 'boolean',
+                    default: true,
                 },
             })
             .conflicts('environment', 'api-key')
@@ -122,7 +123,6 @@ const kontentBackupCommand: yargs.CommandModule = {
                     apiKey: apiKey,
                     enableLog: argv.log,
                     fixLanguages: true,
-                    workflowIdForImportedItems: '00000000-0000-0000-0000-000000000000',
                 });
                 await importService.importFromSourceAsync(zipData);
                 break;
