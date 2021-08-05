@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
 import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kentico/kontent-backup-manager';
 import { getFileBackupName } from '../utils/fileUtils';
-// TODO - decide whether to use thi implementation or i.e. fs module or any other standard
 import { FileService } from '@kentico/kontent-backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
