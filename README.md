@@ -22,10 +22,9 @@ The Kontent CLI helps you when you need to change content models within your [Ke
 
 ## Installation
 
-The Kontent CLI requires Node 10+ and npm 6+, and uses the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) to manipulate content in your projects. The SDK has a peer dependency on `rxjs`, which you need to install as well.
+The Kontent CLI requires Node 10+ and npm 6+, and uses the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) to manipulate content in your projects.
 
 ```sh
-npm install rxjs --save
 npm install -g @kentico/kontent-cli
 ```
 
