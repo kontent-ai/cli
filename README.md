@@ -34,7 +34,7 @@ The current version of the CLI is useful for creating and running migration temp
 
 ### 1. Prepare a testing environment
 
-When you need to add new features to your project and app, it's better to verify the changes in a separate non-production environment. In Kentico Kontent, [clone your project](https://docs.kontent.ai/tutorials/set-up-projects/manage-projects/cloning-existing-projects#a-cloning-an-entire-project) from the list of your projects.
+When you need to add new features to your project and app, it's better to verify the changes in a separate non-production environment. In Kentico Kontent, [clone your project](https://kontent.ai/learn/tutorials/manage-kontent/projects/clone-projects) from the list of your projects.
 
 ### 2. Prepare Kontent CLI boilerplate
 
