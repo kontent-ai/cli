@@ -53,7 +53,7 @@
     "yargs": "^15.3.1"
   },
   "peerDependencies": {
-    "@kentico/kontent-management": "^1.2.0"
+    "@kentico/kontent-management": "^2.0.0"
   },
   "devDependencies": {
     "@babel/core": "~7.9.0",
