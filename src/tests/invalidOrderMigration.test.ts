@@ -53,7 +53,13 @@ describe('Detection of invalid orders', () => {
             },
             {
                 module: {
-                    order: 3,
+                    order: 6,
+                    name: 'test',
+                },
+            },
+            {
+                module: {
+                    order: 7,
                     name: 'test',
                 },
             },

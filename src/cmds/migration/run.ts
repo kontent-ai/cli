@@ -6,6 +6,7 @@ import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/envi
 import { createManagementClient } from '../../managementClientFactory';
 import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
+import { IRange } from '../../models/range';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
@@ -182,7 +183,7 @@ const runMigrationCommand: yargs.CommandModule = {
     },
 };
 
-export const getRange = (range: string): [number, number] | null => {
+export const getRange = (range: string): IRange | null => {
     const match = range.match(/^([0-9]+):([0-9]+)$/);
     if (!match) {
         return null;
@@ -190,7 +191,12 @@ export const getRange = (range: string): [number, number] | null => {
     const from = Number(match[1]);
     const to = Number(match[2]);
 
-    return from <= to ? [from, to] : null;
+    return from <= to
+        ? {
+              from,
+              to,
+          }
+        : null;
 };
 
 const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
@@ -204,11 +210,11 @@ const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
     }
 };
 
-const getMigrationsByRange = (migrationsToRun: IMigration[], range: [number, number]): IMigration[] => {
+const getMigrationsByRange = (migrationsToRun: IMigration[], range: IRange): IMigration[] => {
     const migrations: IMigration[] = [];
 
     for (const migration of migrationsToRun) {
-        if (migration.module.order >= range[0] && migration.module.order <= range[1]) {
+        if (migration.module.order >= range.from && migration.module.order <= range.to) {
             migrations.push(migration);
         }
     }

@@ -96,7 +96,7 @@ The supported commands are divided into groups according to their target, at thi
   * The file is stored in the `Migrations` directory within the root of your repository. 
   * Add your migration script in the body of the `run` function using the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) that was injected via the `apiClient` parameter.
   * To choose between JavaScript and TypeScript when generating the script file, use the `--template-type` option, such as `--template-type "javascript"`.
-  * The migration template contains an `order` property that is used to run a batch of migrations in the specified order.
+  * The migration template contains an `order` property that is used to run a batch of migrations (range or all) in the specified order. The `order` must be a unique, positive integer or zero. There may be gaps between migrations, for example, the following sequence is perfectly fine 0,3,4,5,10
 
     ```typescript
     // Example migration template 
