@@ -139,6 +139,18 @@ export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number
     return duplicates;
 };
 
+export const getMigrationsWithInvalidOrder = <T extends any>(array: T[]): T[] => {
+    const migrationsWithInvalidOrder: T[] = [];
+
+    for (const migration of array) {
+        if (!Number.isInteger(migration.module.order) || Number(migration.module.order) < 0) {
+            migrationsWithInvalidOrder.push(migration);
+        }
+    }
+
+    return migrationsWithInvalidOrder;
+};
+
 export const loadModule = async (migrationFile: string): Promise<MigrationModule> => {
     const migrationPath = getMigrationFilepath(migrationFile);
 
@@ -158,9 +170,7 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     const files = listFiles('.js');
 
     for (const file of files) {
-        const migrationModule = await loadModule(file.name);
-
-        migrations.push({ name: file.name, module: migrationModule });
+        migrations.push({ name: file.name, module: await loadModule(file.name) });
     }
 
     return migrations.filter(String);

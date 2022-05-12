@@ -1,11 +1,12 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
-import { getDuplicates, getSuccessfullyExecutedMigrations, getMigrationFilepath, loadMigrationFiles, loadModule, runMigration } from '../../utils/migrationUtils';
+import { getDuplicates, getSuccessfullyExecutedMigrations, getMigrationFilepath, loadMigrationFiles, loadModule, runMigration, getMigrationsWithInvalidOrder } from '../../utils/migrationUtils';
 import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
 import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
 import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
+import { IRange } from '../../models/range';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
@@ -38,6 +39,11 @@ const runMigrationCommand: yargs.CommandModule = {
                     describe: 'Run all migration scripts in the specified order',
                     type: 'boolean',
                 },
+                range: {
+                    alias: 'r',
+                    describe: 'Run all migration scripts in the specified range, eg.: 3:5 will run migrations with the "order" property set to 3, 4 and 5',
+                    type: 'string',
+                },
                 force: {
                     alias: 'f',
                     describe: 'Enforces run of already executed scripts.',
@@ -58,6 +64,8 @@ const runMigrationCommand: yargs.CommandModule = {
                 },
             })
             .conflicts('all', 'name')
+            .conflicts('range', 'name')
+            .conflicts('all', 'range')
             .conflicts('environment', 'api-key')
             .conflicts('environment', 'project-id')
             .check((args: any) => {
@@ -66,7 +74,11 @@ const runMigrationCommand: yargs.CommandModule = {
                 }
 
                 if (!args.all) {
-                    if (args.name) {
+                    if (args.range) {
+                        if (!getRange(args.range)) {
+                            throw new Error(chalk.red(`The range has to be a string of a format "number:number" where the first number is less or equal to the second, eg.: "2:5".`));
+                        }
+                    } else if (args.name) {
                         if (!isAllowedExtension(args.name)) {
                             throw new Error(chalk.red(`File ${args.name} has not supported extension.`));
                         }
@@ -76,7 +88,7 @@ const runMigrationCommand: yargs.CommandModule = {
                             throw new Error(chalk.red(`Cannot find the specified migration script: ${migrationFilePath}.`));
                         }
                     } else {
-                        throw new Error(chalk.red('Either the migration script name or all migration options needs to be specified.'));
+                        throw new Error(chalk.red('Either the migration script name, range or all migration options needs to be specified.'));
                     }
                 }
 
@@ -99,6 +111,7 @@ const runMigrationCommand: yargs.CommandModule = {
         let apiKey = argv.apiKey;
         const migrationName = argv.name;
         const runAll = argv.all;
+        const runRange = getRange(argv.range);
         const debugMode = argv.debug;
         const continueOnError = argv.continueOnError;
         let migrationsResults: number = 0;
@@ -119,10 +132,15 @@ const runMigrationCommand: yargs.CommandModule = {
 
         loadMigrationsExecutionStatus();
 
-        if (runAll) {
+        if (runAll || runRange) {
             let migrationsToRun = await loadMigrationFiles();
 
             checkForDuplicates(migrationsToRun);
+            checkForInvalidOrder(migrationsToRun);
+
+            if (runRange) {
+                migrationsToRun = getMigrationsByRange(migrationsToRun, runRange);
+            }
 
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
@@ -165,12 +183,51 @@ const runMigrationCommand: yargs.CommandModule = {
     },
 };
 
+export const getRange = (range: string): IRange | null => {
+    const match = range.match(/^([0-9]+):([0-9]+)$/);
+    if (!match) {
+        return null;
+    }
+    const from = Number(match[1]);
+    const to = Number(match[2]);
+
+    return from <= to
+        ? {
+              from,
+              to,
+          }
+        : null;
+};
+
 const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
     const duplicateMigrationsOrder = getDuplicates(migrationsToRun, (migration) => migration.module.order);
 
     if (duplicateMigrationsOrder.length > 0) {
         console.log('Duplicate migrations found:');
         duplicateMigrationsOrder.map((migration) => console.error(chalk.red(`Migration: ${migration.name} order: ${migration.module.order}`)));
+
+        process.exit(1);
+    }
+};
+
+const getMigrationsByRange = (migrationsToRun: IMigration[], range: IRange): IMigration[] => {
+    const migrations: IMigration[] = [];
+
+    for (const migration of migrationsToRun) {
+        if (migration.module.order >= range.from && migration.module.order <= range.to) {
+            migrations.push(migration);
+        }
+    }
+
+    return migrations.filter(String);
+};
+
+const checkForInvalidOrder = (migrationsToRun: IMigration[]): void => {
+    const migrationsWithInvalidOrder: IMigration[] = getMigrationsWithInvalidOrder(migrationsToRun);
+
+    if (migrationsWithInvalidOrder.length > 0) {
+        console.log('Migration order has to be positive integer or zero:');
+        migrationsWithInvalidOrder.map((migration) => console.error(chalk.red(`Migration: ${migration.name} order: ${migration.module.order}`)));
 
         process.exit(1);
     }

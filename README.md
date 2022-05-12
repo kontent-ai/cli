@@ -96,7 +96,7 @@ The supported commands are divided into groups according to their target, at thi
   * The file is stored in the `Migrations` directory within the root of your repository. 
   * Add your migration script in the body of the `run` function using the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) that was injected via the `apiClient` parameter.
   * To choose between JavaScript and TypeScript when generating the script file, use the `--template-type` option, such as `--template-type "javascript"`.
-  * The migration template contains an `order` property that is used to run a batch of migrations in the specified order.
+  * The migration template contains an `order` property that is used to run a batch of migrations (range or all) in the specified order. The `order` must be a unique, positive integer or zero. There may be gaps between migrations, for example, the following sequence is perfectly fine 0,3,4,5,10
 
     ```typescript
     // Example migration template 
@@ -112,7 +112,7 @@ The supported commands are divided into groups according to their target, at thi
     export default migration;
     ```
 
-* `migration run` - Runs a migration script specified by file name (option `--name <file name>`), or runs multiple migration scripts in the order specified in the migration files (option `--all`).
+* `migration run` - Runs a migration script specified by file name (option `--name <file name>`), or runs multiple migration scripts in the order specified in the migration files (options `--all` or `--range`).
   * You can execute a migration against a specific project (options `--project <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>`) or environment stored in the local configuration file (option `--environment <YOUR_ENVIRONMENT_NAME>`).
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
   * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to run in the debug mode (option `--debug`) and get additional information for certain issues logged into the console.
