@@ -1,4 +1,4 @@
-import { ManagementClient } from '@kentico/kontent-management';
+import { ManagementClient } from '@kontent-ai/management-sdk';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
@@ -93,7 +93,7 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
 };
 
 export const generateTypedMigration = (): string => {
-    return `import {MigrationModule} from "@kentico/kontent-cli";
+    return `import {MigrationModule} from "@kontent-ai/cli";
 
 const migration: MigrationModule = {
     order: 1,

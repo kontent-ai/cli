@@ -1,5 +1,5 @@
-import { ManagementClient } from '@kentico/kontent-management';
-import { HttpService } from '@kentico/kontent-core';
+import { ManagementClient } from '@kontent-ai/management-sdk';
+import { HttpService } from '@kontent-ai/core-sdk';
 const packageInfo = require('../package.json');
 import * as dotEnv from 'dotenv';
 

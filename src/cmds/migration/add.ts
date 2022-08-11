@@ -5,7 +5,7 @@ import { TemplateType } from '../../models/templateType';
 
 const addMigrationCommand: yargs.CommandModule = {
     command: 'add',
-    describe: 'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kentico Kontent project.',
+    describe: 'Generates a template script (in JavaScript or TypeScript) for running a migration on a Kontent.ai project.',
     builder: (yargs: any) =>
         yargs
             .options({

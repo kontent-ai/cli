@@ -1,13 +1,13 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
-import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kentico/kontent-backup-manager';
+import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kontent-ai/backup-manager';
 import { getFileBackupName } from '../utils/fileUtils';
-import { FileService } from '@kentico/kontent-backup-manager/dist/cjs/lib/node';
+import { FileService } from '@kontent-ai/backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
-    describe: 'Kontent backup tool to backup & restore Kentico Kontent projects through Management API.',
+    describe: 'Kontent backup tool to backup & restore Kontent.ai projects through Management API.',
     builder: (yargs: any) =>
         yargs
             .options({

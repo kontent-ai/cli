@@ -1,4 +1,4 @@
-import { ManagementClient } from '@kentico/kontent-management';
+import { ManagementClient } from '@kontent-ai/management-sdk';
 
 export declare interface MigrationModule {
     readonly order: number;

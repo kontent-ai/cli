@@ -13,7 +13,7 @@ module.exports = migration;
 `;
 
 exports[`Migration generation Creates new typescript migration with name 1`] = `
-"import {MigrationModule} from \\"@kentico/kontent-cli\\";
+"import {MigrationModule} from \\"@kontent-ai/cli\\";
 
 const migration: MigrationModule = {
     order: 1,

@@ -1,7 +1,7 @@
 {
-  "name": "@kentico/kontent-cli",
+  "name": "@kontent-ai/cli",
   "version": "0.6.0",
-  "description": "Command line interface tool that can be used for generating and running Kontent migration scripts",
+  "description": "Command line interface tool that can be used for generating and runningKontent.ai migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
   "scripts": {
@@ -32,12 +32,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Kentico/kontent-cli.git"
+    "url": "git+https://github.com/kontent-ai/cli.git"
   },
-  "author": "Kentico",
+  "author": "Kontent s.r.o.",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Kentico/kontent-cli/issues"
+    "url": "https://github.com/kontent-ai/cli/issues"
   },
   "prettier": {
     "semi": true,
@@ -45,15 +45,15 @@
     "tabWidth": 4,
     "printWidth": 250
   },
-  "homepage": "https://github.com/Kentico/kontent-cli#readme",
+  "homepage": "https://github.com/kontent-ai/cli#readme",
   "dependencies": {
-    "@kentico/kontent-backup-manager": "3.2.1",
+    "@kontent-ai/backup-manager": "4.0.1",
     "chalk": "^4.0.0",
     "dotenv": "^8.2.0",
     "yargs": "^15.3.1"
   },
   "peerDependencies": {
-    "@kentico/kontent-management": "^2.0.0"
+    "@kontent-ai/management-sdk": "^3.1.0"
   },
   "devDependencies": {
     "@babel/core": "~7.9.0",
