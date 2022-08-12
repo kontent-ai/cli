@@ -7,7 +7,7 @@ TheKontent.ai CLI helps you when you need to change content models within your [
 
 **_NOTE:_** TheKontent.ai CLI tool supports only Javascript files, so if you write your migrations in Typescript or any other language you have to transpile your code before running.
 
-- [Kontent.ai CLI](#kentico-kontent-cli)
+- [Kontent.ai CLI](#kontent-ai-cli)
   - [Installation](#installation)
   - [🌟 Migration example](#-migration-example)
     - [1. Prepare a testing environment](#1-prepare-a-testing-environment)
@@ -22,7 +22,7 @@ TheKontent.ai CLI helps you when you need to change content models within your [
 
 ## Installation
 
-TheKontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) to manipulate content in your projects.
+TheKontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) to manipulate content in your projects.
 
 ```sh
 npm install -g @kontent-ai/cli
@@ -38,15 +38,15 @@ When you need to add new features to your project and app, it's better to verify
 
 ### 2. PrepareKontent.ai CLI boilerplate
 
-To improve the learning curve of our new CLI, we've prepared a [Kontent CLI boilerplate](https://github.com/Kentico/kontent-migrations-boilerplate) with examples on how to use the CLI. Clone the boilerplate GitHub repository on your drive. In the next step, you'll run a migration script from the boilerplate's `Migrations` directory.
+To improve the learning curve of our new CLI, we've prepared a [Kontent.ai CLI boilerplate](https://github.com/kontent-ai/migrations-boilerplate) with examples on how to use the CLI. Clone the boilerplate GitHub repository on your drive. In the next step, you'll run a migration script from the boilerplate's `Migrations` directory.
 
 ### 3. Run a migration
 
-Open a command line and navigate to the root of the boilerplate folder (should be `kontent-migrations-boilerplate`) and execute the following commands:
+Open a command line and navigate to the root of the boilerplate folder (should be `migrations-boilerplate`) and execute the following commands:
 
 ```sh
 # Navigates to the root of theKontent.ai CLI boilerplate folder.
-cd ./kontent-migrations-boilerplate
+cd ./migrations-boilerplate
 
 npm install
 
@@ -57,10 +57,10 @@ kontent environment add --name DEV --api-key <Api key> --project-id <Project ID>
 npm run migrate 01_sample_init_createBlogType
 ```
 
-Kontent CLI supports only running JavaScript migration files so in case you want to write in TypesSript, CoffeScript or in any other language you have to transpile your code before running.
-In the case of TypeScript, you may use this example from [Kontent CLI boilerplate](https://github.com/Kentico/kontent-migrations-boilerplate/blob/master/package.json#L7)
+Kontent.ai CLI supports only running JavaScript migration files so in case you want to write in TypesSript, CoffeScript or in any other language you have to transpile your code before running.
+In the case of TypeScript, you may use this example from [Kontent.ai CLI boilerplate](https://github.com/kontent-ai/migrations-boilerplate/blob/master/package.json#L7)
 
-That's it! You've run your firstKontent.ai migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
+That's it! You've run your first Kontent.ai migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
 
 The boilerplate is configured to transpile TypeScript migrations into plain JavaScript so that theKontent.ai CLI can execute the migrations. Note that if you don't want to use TypeScript for your migrations, it's fine to write the migrations directly in JavaScript.
 
@@ -94,7 +94,7 @@ The supported commands are divided into groups according to their target, at thi
 
 * `migration add --name <migration name>` – Generates a script file (in JavaScript or TypeScript) for running a migration on a [Kontent.ai](https://kontent.ai/) project.
   * The file is stored in the `Migrations` directory within the root of your repository. 
-  * Add your migration script in the body of the `run` function using the [Kontent Management SDK](https://github.com/Kentico/kontent-management-sdk-js) that was injected via the `apiClient` parameter.
+  * Add your migration script in the body of the `run` function using the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) that was injected via the `apiClient` parameter.
   * To choose between JavaScript and TypeScript when generating the script file, use the `--template-type` option, such as `--template-type "javascript"`.
   * The migration template contains an `order` property that is used to run a batch of migrations (range or all) in the specified order. The `order` must be a unique, positive integer or zero. There may be gaps between migrations, for example, the following sequence is perfectly fine 0,3,4,5,10
 
@@ -117,7 +117,7 @@ The supported commands are divided into groups according to their target, at thi
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
   * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to get additional information logged by HttpService into the console (option `--log-http-service-errors-to-console`).
 
-* `backup --action [backup|restore|clean]` - This command enables you to use [Kontent backup manager](https://github.com/kontent-ai/backup-manager-js)
+* `backup --action [backup|restore|clean]` - This command enables you to use [Kontent.ai backup manager](https://github.com/kontent-ai/backup-manager-js)
   * The purpose of this tool is to backup & restore [Kontent.ai projects](https://kontent.ai/). This project uses CM API to both get & restore data.
 
 ### Debugging
@@ -127,7 +127,7 @@ By default, we do not provide any additional logs from the HttpService. If you r
 If you come across an error and you're not sure how to fix it, execute your migration script as follows and setup your debugger to the specified port.
 
 ```sh
-node --inspect .\node_modules\@kentico\kontent-cli\lib\index.js migration run -n 07_sample_migration_publish -e DEV
+node --inspect .\node_modules\@kontent-ai\cli\lib\index.js migration run -n 07_sample_migration_publish -e DEV
 ```
 
 ## The vision

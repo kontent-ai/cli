@@ -7,7 +7,7 @@ import { FileService } from '@kontent-ai/backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
-    describe: 'Kontent backup tool to backup & restore Kontent.ai projects through Management API.',
+    describe: 'Kontent.ai backup tool to backup & restore projects through Management API.',
     builder: (yargs: any) =>
         yargs
             .options({
