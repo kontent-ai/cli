@@ -1,4 +1,4 @@
-import { ManagementClient } from '@kontent-ai/management-sdk';
+import { ManagementClient, SharedModels } from '@kontent-ai/management-sdk';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
@@ -33,7 +33,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
         fs.writeFileSync(migrationFilepath, migrationData);
         console.log(chalk.green(`Migration template ${migrationName} (${migrationFilepath}) was generated.`));
     } catch (e) {
-        console.error(`Couldn't save the migration.`, e.message);
+        console.error(`Couldn't save the migration.`, e instanceof Error ? e.message : 'Unknown error occurred.');
     }
 
     return migrationFilepath;
@@ -52,7 +52,7 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
 
         let error = e;
-        if (e.originalError !== undefined) {
+        if (e instanceof SharedModels.ContentManagementBaseKontentError && e.originalError !== undefined) {
             console.group('Error details');
             console.error(chalk.redBright('Message:'), e.message);
             console.error(chalk.redBright('Code:'), e.errorCode);
@@ -66,7 +66,7 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
             error = e.originalError;
         } else {
             console.group('Error details');
-            console.error(chalk.redBright('Message:'), e.message);
+            console.error(chalk.redBright('Message:'), e instanceof Error ? e.message : 'Unknown error');
             console.groupEnd();
         }
 
@@ -143,7 +143,7 @@ export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number
     return duplicates;
 };
 
-export const getMigrationsWithInvalidOrder = <T extends any>(array: T[]): T[] => {
+export const getMigrationsWithInvalidOrder = <T extends { module: any }>(array: T[]): T[] => {
     const migrationsWithInvalidOrder: T[] = [];
 
     for (const migration of array) {
