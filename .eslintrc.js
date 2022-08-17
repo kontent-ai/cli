@@ -75,8 +75,7 @@ module.exports = {
             "single"
         ],
         "@typescript-eslint/semi": [
-            "error",
-            null
+            "error"
         ],
         "@typescript-eslint/type-annotation-spacing": "error",
         "@typescript-eslint/unified-signatures": "error",
