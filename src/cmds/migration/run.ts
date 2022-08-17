@@ -76,7 +76,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 if (!args.all) {
                     if (args.range) {
                         if (!getRange(args.range)) {
-                            throw new Error(chalk.red(`The range has to be a string of a format "number:number" where the first number is less or equal to the second, eg.: "2:5".`));
+                            throw new Error(chalk.red('The range has to be a string of a format "number:number" where the first number is less or equal to the second, eg.: "2:5".'));
                         }
                     } else if (args.name) {
                         if (!isAllowedExtension(args.name)) {
@@ -193,9 +193,9 @@ export const getRange = (range: string): IRange | null => {
 
     return from <= to
         ? {
-              from,
-              to,
-          }
+            from,
+            to,
+        }
         : null;
 };
 

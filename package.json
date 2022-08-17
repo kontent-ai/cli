@@ -8,8 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "lint": "npx eslint \"src/**/*.ts\" && npx prettier --check \"src/**/*.ts\"",
-    "lint:fix": "npx eslint --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" && prettier --check \"src/**/*.ts\"",
+    "lint:fix": "eslint --fix \"src/**/*.ts\" && prettier --write \"src/**/*.ts\"",
     "debug": "node --inspect ./lib/index.js migration run --all -e DEV",
     "prepare": "husky install"
   },
