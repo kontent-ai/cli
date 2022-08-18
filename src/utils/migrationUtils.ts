@@ -33,7 +33,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
         fs.writeFileSync(migrationFilepath, migrationData);
         console.log(chalk.green(`Migration template ${migrationName} (${migrationFilepath}) was generated.`));
     } catch (e) {
-        console.error('Couldn\'t save the migration.', e instanceof Error ? e.message : 'Unknown error occurred.');
+        console.error("Couldn't save the migration.", e instanceof Error ? e.message : 'Unknown error occurred.');
     }
 
     return migrationFilepath;

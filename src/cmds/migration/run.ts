@@ -193,9 +193,9 @@ export const getRange = (range: string): IRange | null => {
 
     return from <= to
         ? {
-            from,
-            to,
-        }
+              from,
+              to,
+          }
         : null;
 };
 

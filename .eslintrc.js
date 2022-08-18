@@ -38,12 +38,11 @@ module.exports = {
                 "accessibility": "explicit"
             }
         ],
-        "@typescript-eslint/indent": "error",
         "@typescript-eslint/member-delimiter-style": [
             "error",
             {
                 "multiline": {
-                    "delimiter": "none",
+                    "delimiter": "semi",
                     "requireLast": true
                 },
                 "singleline": {
@@ -69,10 +68,6 @@ module.exports = {
         ],
         "@typescript-eslint/no-unused-expressions": "off",
         "@typescript-eslint/prefer-function-type": "error",
-        "@typescript-eslint/quotes": [
-            "error",
-            "single"
-        ],
         "@typescript-eslint/semi": [
             "error"
         ],
