@@ -39,7 +39,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, debugMode: boolean = false): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;
@@ -51,30 +51,34 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
 
+        let error = e;
         if (e.originalError !== undefined) {
             console.group('Error details');
             console.error(chalk.redBright('Message:'), e.message);
             console.error(chalk.redBright('Code:'), e.errorCode);
             console.error(chalk.redBright('Validation Errors:'), e.validationErrors);
             console.groupEnd();
+            console.log();
+            console.group('Response details:');
+            console.error(chalk.redBright('Message:'), e.originalError.message);
+            console.groupEnd();
 
-            if (debugMode) {
-                const requestConfig = e.originalError.config;
-                const bodyData = JSON.parse(requestConfig.data || {});
-
-                console.log();
-                console.group('Request details:');
-                console.error(chalk.yellow('URL:'), requestConfig.url);
-                console.error(chalk.yellow('Method:'), requestConfig.method);
-                console.error(chalk.yellow('Body:'), bodyData);
-                console.groupEnd();
-                console.log();
-                console.group('Response details:');
-                console.error(chalk.yellow('Message:'), e.originalError.message);
-                console.groupEnd();
-            }
+            error = e.originalError;
         } else {
+            console.group('Error details');
             console.error(chalk.redBright('Message:'), e.message);
+            console.groupEnd();
+        }
+
+        const requestConfig = error.config;
+        if (requestConfig) {
+            const bodyData = JSON.parse(requestConfig.data || {});
+            console.log();
+            console.group('Request details:');
+            console.error(chalk.yellow('URL:'), requestConfig.url);
+            console.error(chalk.yellow('Method:'), requestConfig.method);
+            console.error(chalk.yellow('Body:'), bodyData);
+            console.groupEnd();
         }
 
         isSuccess = false;

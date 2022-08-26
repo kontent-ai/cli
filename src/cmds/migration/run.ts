@@ -56,9 +56,9 @@ const runMigrationCommand: yargs.CommandModule = {
                     default: false,
                     type: 'boolean',
                 },
-                debug: {
-                    alias: 'd',
-                    describe: 'Run in debug mode',
+                'log-http-service-errors-to-console': {
+                    alias: 'l',
+                    describe: 'Log HttpService errors to console log.',
                     default: false,
                     type: 'boolean',
                 },
@@ -112,7 +112,7 @@ const runMigrationCommand: yargs.CommandModule = {
         const migrationName = argv.name;
         const runAll = argv.all;
         const runRange = argv.range && exports.getRange(argv.range);
-        const debugMode = argv.debug;
+        const logHttpServiceErrorsToConsole = argv.logHttpServiceErrorsToConsole;
         const continueOnError = argv.continueOnError;
         let migrationsResults: number = 0;
         const runForce = argv.force;
@@ -127,7 +127,7 @@ const runMigrationCommand: yargs.CommandModule = {
         const apiClient = createManagementClient({
             projectId,
             apiKey,
-            debugMode,
+            logHttpServiceErrorsToConsole,
         });
 
         loadMigrationsExecutionStatus();
@@ -155,7 +155,7 @@ const runMigrationCommand: yargs.CommandModule = {
             const sortedMigrationsToRun = migrationsToRun.sort((migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order);
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
-                const migrationResult = await runMigration(migration, apiClient, projectId, debugMode);
+                const migrationResult = await runMigration(migration, apiClient, projectId);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -176,7 +176,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
-            migrationsResults = await runMigration(migration, apiClient, projectId, debugMode);
+            migrationsResults = await runMigration(migration, apiClient, projectId);
         }
 
         process.exit(migrationsResults);

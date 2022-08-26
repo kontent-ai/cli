@@ -6,7 +6,7 @@ import * as dotEnv from 'dotenv';
 interface ICreateManagementClientParams {
     readonly projectId: string;
     readonly apiKey: string;
-    readonly debugMode: boolean;
+    readonly logHttpServiceErrorsToConsole: boolean;
 }
 
 const retryAbleCodes = [429, 503];
@@ -15,6 +15,7 @@ dotEnv.config();
 
 export const createManagementClient = (params: ICreateManagementClientParams): ManagementClient => {
     const httpService = new HttpService({
+        logErrorsToConsole: params.logHttpServiceErrorsToConsole,
         axiosRequestConfig: {
             headers: {
                 'X-KC-SOURCE': `${packageInfo.name};${packageInfo.version}`,

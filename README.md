@@ -115,12 +115,14 @@ The supported commands are divided into groups according to their target, at thi
 * `migration run` - Runs a migration script specified by file name (option `--name <file name>`), or runs multiple migration scripts in the order specified in the migration files (options `--all` or `--range`).
   * You can execute a migration against a specific project (options `--project <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>`) or environment stored in the local configuration file (option `--environment <YOUR_ENVIRONMENT_NAME>`).
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
-  * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to run in the debug mode (option `--debug`) and get additional information for certain issues logged into the console.
+  * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to get additional information logged by HttpService into the console (option `--log-http-service-errors-to-console`).
 
 * `backup --action [backup|restore|clean]` - This command enables you to use [Kontent backup manager](https://github.com/Kentico/kontent-backup-manager-js)
   * The purpose of this tool is to backup & restore [Kentico Kontent projects](https://kontent.ai/). This project uses CM API to both get & restore data.
 
 ### Debugging
+
+By default, we do not provide any additional logs from the HttpService. If you require these logs, you can change this behavior by using (option `--log-http-service-errors-to-console`).
 
 If you come across an error and you're not sure how to fix it, execute your migration script as follows and setup your debugger to the specified port.
 
