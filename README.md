@@ -122,6 +122,8 @@ The supported commands are divided into groups according to their target, at thi
 
 ### Debugging
 
+By default, we do not provide any additional logs from the HttpService. If you require these logs, you can change this behavior by using (option `--log-http-service-errors-to-console`).
+
 If you come across an error and you're not sure how to fix it, execute your migration script as follows and setup your debugger to the specified port.
 
 ```sh
