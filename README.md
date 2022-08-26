@@ -3,9 +3,9 @@
 [![npm](https://img.shields.io/npm/v/@kontent-ai/cli.svg)](https://www.npmjs.com/package/@kontent-ai/cli)
 [![Build](https://github.com/kontent-ai/cli/actions/workflows/test.yml/badge.svg)](https://github.com/kontent-ai/cli/actions/workflows/test.yml)
 
-TheKontent.ai CLI helps you when you need to change content models within your [Kontent.ai](https://kontent.ai/) projects and migrate existing content to match the changes. The CLI provides you with guidance on how to write and run migration scripts.
+The Kontent.ai CLI helps you when you need to change content models within your [Kontent.ai](https://kontent.ai/) projects and migrate existing content to match the changes. The CLI provides you with guidance on how to write and run migration scripts.
 
-**_NOTE:_** TheKontent.ai CLI tool supports only Javascript files, so if you write your migrations in Typescript or any other language you have to transpile your code before running.
+**_NOTE:_** The Kontent.ai CLI tool supports only Javascript files, so if you write your migrations in Typescript or any other language you have to transpile your code before running.
 
 - [Kontent.ai CLI](#kontent-ai-cli)
   - [Installation](#installation)
@@ -22,7 +22,7 @@ TheKontent.ai CLI helps you when you need to change content models within your [
 
 ## Installation
 
-TheKontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) to manipulate content in your projects.
+The Kontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) to manipulate content in your projects.
 
 ```sh
 npm install -g @kontent-ai/cli
@@ -36,7 +36,7 @@ The current version of the CLI is useful for creating and running migration temp
 
 When you need to add new features to your project and app, it's better to verify the changes in a separate non-production environment. In Kontent.ai, [clone your project](https://kontent.ai/learn/tutorials/manage-kontent/projects/clone-projects) from the list of your projects.
 
-### 2. PrepareKontent.ai CLI boilerplate
+### 2. Prepare Kontent.ai CLI boilerplate
 
 To improve the learning curve of our new CLI, we've prepared a [Kontent.ai CLI boilerplate](https://github.com/kontent-ai/migrations-boilerplate) with examples on how to use the CLI. Clone the boilerplate GitHub repository on your drive. In the next step, you'll run a migration script from the boilerplate's `Migrations` directory.
 
@@ -45,7 +45,7 @@ To improve the learning curve of our new CLI, we've prepared a [Kontent.ai CLI b
 Open a command line and navigate to the root of the boilerplate folder (should be `migrations-boilerplate`) and execute the following commands:
 
 ```sh
-# Navigates to the root of theKontent.ai CLI boilerplate folder.
+# Navigates to the root of the Kontent.ai CLI boilerplate folder.
 cd ./migrations-boilerplate
 
 npm install
@@ -62,7 +62,7 @@ In the case of TypeScript, you may use this example from [Kontent.ai CLI boilerp
 
 That's it! You've run your first Kontent.ai migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
 
-The boilerplate is configured to transpile TypeScript migrations into plain JavaScript so that theKontent.ai CLI can execute the migrations. Note that if you don't want to use TypeScript for your migrations, it's fine to write the migrations directly in JavaScript.
+The boilerplate is configured to transpile TypeScript migrations into plain JavaScript so that the Kontent.ai CLI can execute the migrations. Note that if you don't want to use TypeScript for your migrations, it's fine to write the migrations directly in JavaScript.
 
 ### 4. Explore existing migrations
 
@@ -134,7 +134,7 @@ node --inspect .\node_modules\@kontent-ai\cli\lib\index.js migration run -n 07_s
 
 * Writing migration scripts can involve a lot of repetitive work, especially when it requires getting different object types and iterating through them. That's why we've decided to continue improving the developer experience and focus on that in upcoming releases. We plan to reduce the code that you need to write to the bare minimum by providing you with a "command builder". This builder will allow you to write migrations using queries and callbacks that should be applied to every object selected by that query. For example, select content types, all items based on the types, and all variants of the items, and execute your callback function on them.
 
-* The tool isn't reserved only for migrations. A valid use case could also beKontent.ai project data export and import, which could together with the possibility to clone/create/archive projects via the management API be a great way to e.g. run integration tests on the test environment that would be archived after the successful tests run.
+* The tool isn't reserved only for migrations. A valid use case could also be Kontent.ai project data export and import, which could together with the possibility to clone/create/archive projects via the management API be a great way to e.g. run integration tests on the test environment that would be archived after the successful tests run.
 
 ## Feedback & Contribution
 

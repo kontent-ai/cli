@@ -3,7 +3,7 @@ import yargs from 'yargs';
 
 const createMigrationTool = (): number => {
     yargs
-        .usage('TheKontent.ai CLI is a tool you can use for generating and running Kontent.ai migration scripts.')
+        .usage('The Kontent.ai CLI is a tool you can use for generating and running Kontent.ai migration scripts.')
         .scriptName('kontent')
         .commandDir('cmds')
         .demandCommand(1, 'Please specify a command')
