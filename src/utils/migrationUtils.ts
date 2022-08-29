@@ -51,7 +51,7 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
 
-        let error = e;
+        let error = e as any;
         if (e instanceof SharedModels.ContentManagementBaseKontentError && e.originalError !== undefined) {
             console.group('Error details');
             console.error(chalk.redBright('Message:'), e.message);
