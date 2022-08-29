@@ -18,8 +18,8 @@
   },
   "lint-staged": {
     "*.ts": [
-      "npx prettier --write",
-      "npx eslint --fix"
+      "npx eslint --fix",
+      "npx prettier --write"
     ]
   },
   "bin": {
@@ -68,9 +68,6 @@
     "lint-staged": "^13.0.3",
     "prettier": "^2.7.1",
     "ts-jest": "^28.0.8",
-    "tslint": "~6.1.1",
-    "tslint-config-prettier": "~1.18.0",
-    "tslint-config-standard": "~9.0.0",
     "typescript": "~4.7.4"
   }
 }
