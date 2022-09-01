@@ -1,13 +1,13 @@
 import yargs from 'yargs';
 import chalk from 'chalk';
 import { environmentConfigExists, getEnvironmentsConfig } from '../utils/environmentUtils';
-import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kentico/kontent-backup-manager';
+import { CleanService, ExportService, ImportService, ZipService, IProcessedItem } from '@kontent-ai/backup-manager';
 import { getFileBackupName } from '../utils/fileUtils';
-import { FileService } from '@kentico/kontent-backup-manager/dist/cjs/lib/node';
+import { FileService } from '@kontent-ai/backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
-    describe: 'Kontent backup tool to backup & restore Kentico Kontent projects through Management API.',
+    describe: 'Kontent.ai backup tool to backup & restore projects through Management API.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -42,9 +42,9 @@ const kontentBackupCommand: yargs.CommandModule = {
                     describe: 'Environment name',
                     type: 'string',
                 },
-                'enable-publish': {
+                'preserve-workflow': {
                     alias: 'ep',
-                    describe: 'Indicates if language variants published on the source project are also published on target. Enabled by default',
+                    describe: 'Indicates if language variant workflow information should be preserved. Enabled by default',
                     type: 'boolean',
                     default: true,
                 },
@@ -102,6 +102,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                             console.log(`Exported: ${item.title} | ${item.type}`);
                         }
                     },
+                    skipValidation: true,
                 });
                 const exportedData = await exportService.exportAllAsync();
                 await zipService.createZipAsync(exportedData);
@@ -117,7 +118,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                             console.log(`Imported: ${item.title} | ${item.type}`);
                         }
                     },
-                    enablePublish: argv.enablePublish,
+                    preserveWorkflow: argv.preserveWorkflow,
                     projectId: projectId,
                     apiKey: apiKey,
                     enableLog: argv.log,

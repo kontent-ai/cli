@@ -3,7 +3,7 @@ import yargs from 'yargs';
 
 const createMigrationTool = (): number => {
     yargs
-        .usage('The Kontent CLI is a tool you can use for generating and running Kentico Kontent migration scripts.')
+        .usage('The Kontent.ai CLI is a tool you can use for generating and running Kontent.ai migration scripts.')
         .scriptName('kontent')
         .commandDir('cmds')
         .demandCommand(1, 'Please specify a command')
@@ -21,7 +21,7 @@ const createMigrationTool = (): number => {
         .example('kontent', 'backup --action backup --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .example('kontent', 'backup --action backup --environment <YOUR_ENVIRONMENT>')
         .example('kontent', 'backup --action restore --name backup_file --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .example('kontent', 'backup --action restore --name backup_file --environment <YOUR_ENVIRONMENT> --enable-publish false')
+        .example('kontent', 'backup --action restore --name backup_file --environment <YOUR_ENVIRONMENT> --preserve-workflow false')
         .example('kontent', 'backup --action clean --project-id <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
         .strict().argv;
 

@@ -69,7 +69,7 @@ export const loadMigrationsExecutionStatus = () => {
 
         status = JSON.parse(projectsMigrationStatuses);
     } catch (error) {
-        console.warn(`Status JSON file is invalid because of ${error.message}. Continuing with empty status.`);
+        console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
     }
 };
 
@@ -80,6 +80,6 @@ const saveStatusToFile = (data: string): void => {
         writeFileSync(statusFilepath, data, { flag: 'w' });
         console.log(`Status file was updated see ${statusFilepath}`);
     } catch (error) {
-        console.error(`Status file save failed, because of ${error.message}`);
+        console.error(`Status file save failed, because of ${error instanceof Error ? error.message : 'unknown error.'}`);
     }
 };
