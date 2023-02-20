@@ -7,6 +7,7 @@ import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
 import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
+import { formatDateForFileName } from './dateUtils';
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -24,10 +25,11 @@ const ensureMigrationsDirectoryExists = () => {
     }
 };
 
-export const saveMigrationFile = (migrationName: string, migrationData: string, templateType: TemplateType): string => {
+export const saveMigrationFile = (migrationName: string, migrationData: string, templateType: TemplateType, orderDate: Date | null): string => {
     ensureMigrationsDirectoryExists();
     const fileExtension = templateType === TemplateType.TypeScript ? '.ts' : '.js';
-    const migrationFilepath = getMigrationFilepath(migrationName + fileExtension);
+    const date = orderDate ? `${formatDateForFileName(orderDate)}` : '';
+    const migrationFilepath = getMigrationFilepath(date + migrationName + fileExtension);
 
     try {
         fs.writeFileSync(migrationFilepath, migrationData);
