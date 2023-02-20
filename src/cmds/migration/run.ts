@@ -152,7 +152,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 console.log('No migrations to run.');
             }
 
-            const sortedMigrationsToRun = migrationsToRun.sort((migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order);
+            const sortedMigrationsToRun = migrationsToRun.sort(orderComparator);
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
                 const migrationResult = await runMigration(migration, apiClient, projectId);
@@ -246,6 +246,18 @@ const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IM
     }
 
     return result;
+};
+
+const orderComparator = (migrationPrev: IMigration, migrationNext: IMigration) => {
+    if (typeof migrationPrev.module.order === 'number' && typeof migrationNext.module.order === 'number') {
+        return migrationPrev.module.order - migrationNext.module.order;
+    }
+
+    if (migrationPrev.module.order instanceof Date && migrationNext.module.order instanceof Date) {
+        return migrationPrev.module.order.getTime() - migrationNext.module.order.getTime();
+    }
+
+    return typeof migrationPrev.module.order === 'number' ? -1 : 1;
 };
 
 // yargs needs exported command in exports object

@@ -23,7 +23,7 @@ const updateMigrationStatus = (projectId: string, migrationStatus: IMigrationSta
     saveStatusFile();
 };
 
-export const markAsCompleted = (projectId: string, name: string, order: number) => {
+export const markAsCompleted = (projectId: string, name: string, order: number | Date) => {
     const migrationStatus = {
         name,
         order,
