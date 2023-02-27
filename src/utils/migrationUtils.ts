@@ -125,6 +125,7 @@ module.exports = migration;
 export const createMigration = (migrationName: string, templateType: TemplateType, useTimestampOrder: boolean): string => {
     ensureMigrationsDirectoryExists();
     const orderDate = true === useTimestampOrder ? new Date() : null;
+    orderDate?.setMilliseconds(0);
     const generatedMigration = templateType === TemplateType.TypeScript ? generateTypedMigration(orderDate) : generatePlainMigration(orderDate);
 
     return saveMigrationFile(migrationName, generatedMigration, templateType, orderDate);
