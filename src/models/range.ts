@@ -1,4 +1,4 @@
-export interface IRange {
-    from: number;
-    to: number;
+export interface IRange<T extends number | Date> {
+    from: T;
+    to: T;
 }
