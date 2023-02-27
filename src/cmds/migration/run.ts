@@ -76,7 +76,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 if (!args.all) {
                     if (args.range) {
                         if (!getRange(args.range) && !getRangeDate(args.range)) {
-                            throw new Error(chalk.red('The range has to be a string of a format "number:number" where the first number is less or equal to the second, eg.: "2:5".'));
+                            throw new Error(chalk.red('The range has to be a string of a format "number:number" or "Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss" where the first value (to the left to ":") is less or equal to the second, eg.: "2:5".'));
                         }
                     } else if (args.name) {
                         if (!isAllowedExtension(args.name)) {
@@ -200,7 +200,7 @@ export const getRange = (range: string): IRange<number> | null => {
 };
 
 export const getRangeDate = (range: string): IRange<Date> | null => {
-    // format is yyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss
+    // format is Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss
     const match = range.match(/^T(?<from_date>\d{4}((-\d{2}){0,2}))(?:-(?<from_time>(\d{2}-){0,2}\d{2}))?:(?<to_date>\d{4}((-\d{2}){0,2}))(?:-(?<to_time>(\d{2}-){0,2}\d{2}))?$/);
     if (!match) {
         return null;
