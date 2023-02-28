@@ -17,12 +17,11 @@ jobs:
       - run: npm install
       - run: npm run lint
       - run: npm run build
-      - run: echo ${{github.event.release.prerelease}}
-      - run: npm publish
-        if: ${{false}}
+      - run: npm publish 
+        if: ${{!github.event.release.prerelease}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_API_KEY }}
-      - run: npm publish
-        if: ${{false}}
+      - run: npm publish --tag prerelease
+        if: ${{github.event.release.prerelease}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_API_KEY }}
