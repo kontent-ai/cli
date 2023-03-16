@@ -47,8 +47,8 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
     let isSuccess = true;
 
     try {
-        await migration.module.run(client).then(() => {
-            markAsCompleted(projectId, migration.name, migration.module.order);
+        await migration.module.run(client).then(async () => {
+            await markAsCompleted(projectId, migration.name, migration.module.order);
         });
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
