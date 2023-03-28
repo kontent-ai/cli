@@ -292,9 +292,6 @@ const orderComparator = (migrationPrev: IMigration, migrationNext: IMigration) =
     return typeof migrationPrev.module.order === 'number' ? -1 : 1;
 };
 
-// yargs needs exported command in exports object
-Object.assign(exports, runMigrationCommand);
-
 const formatDate = (date: string, time: string) => {
     if (time === '') {
         time = '00:00';
@@ -309,3 +306,6 @@ const formatDate = (date: string, time: string) => {
 };
 
 const isIRangeDate = (x: IRange<number | Date>): x is IRange<Date> => x.from instanceof Date && x.to instanceof Date;
+
+// yargs needs exported command in exports object
+Object.assign(exports, runMigrationCommand);
