@@ -43,7 +43,7 @@ const saveStatusFile = async () => {
     if (fileExists(getStatusImplementationFilePath())) {
         try {
             const file = await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js');
-            file.saveStatusToFile(statusJSON);
+            await file.saveStatus(statusJSON);
         } catch (e) {
             console.log(`Could not load the plugin due to ${e}. Fallbacking to status.json`);
             saveStatusToFile(statusJSON);
@@ -72,23 +72,35 @@ const getStatusFilepath = (): string => {
     return path.join(process.cwd(), migrationStatusFilename);
 };
 
-export const loadMigrationsExecutionStatus = () => {
-    const statusFilepath = getStatusFilepath();
-    if (!fileExists(statusFilepath)) {
-        return;
+export const loadMigrationsExecutionStatus = async () => {
+    if (fileExists(getStatusImplementationFilePath())) {
+        try {
+            const file = await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js');
+            status = await file.readStatus();
+        } catch (e) {
+            console.log(`Could not load the plugin due to ${e}. Fallbacking to status.json`);
+            status = readFromStatus();
+        } finally {
+            return;
+        }
     }
-
-    try {
-        status = readFromStatus();
-    } catch (error) {
-        console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
-    }
+    status = readFromStatus();
 };
 
 const readFromStatus = (): IStatus => {
-    const projectsMigrationStatuses = readFileSync(getStatusFilepath()).toString();
+    const statusFilepath = getStatusFilepath();
+    if (!fileExists(statusFilepath)) {
+        return {};
+    }
 
-    return JSON.parse(projectsMigrationStatuses);
+    try {
+        const projectsMigrationStatuses = readFileSync(getStatusFilepath()).toString();
+
+        return JSON.parse(projectsMigrationStatuses);
+    } catch (error) {
+        console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
+        return {};
+    }  
 };
 
 const saveStatusToFile = (data: string): void => {
@@ -128,11 +140,11 @@ export const createStatusImplementationFile = () => {
 const statusImplementationTemplate = `
 import type {IStatus} from "@kontent-ai/cli";
 
-export const saveStatusToFile = (data: string) => {
+export const saveStatus = async (data: string) => {
 
 }
 
-export const readStatusFromFile = (): IStatus => {
+export const readStatus = async (): IStatus => {
 
 }
 `;

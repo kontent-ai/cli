@@ -130,7 +130,7 @@ const runMigrationCommand: yargs.CommandModule = {
             logHttpServiceErrorsToConsole,
         });
 
-        loadMigrationsExecutionStatus();
+        await loadMigrationsExecutionStatus();
 
         if (runAll || runRange) {
             let migrationsToRun = await loadMigrationFiles();
