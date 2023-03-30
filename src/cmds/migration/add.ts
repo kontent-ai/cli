@@ -20,8 +20,14 @@ const addMigrationCommand: yargs.CommandModule = {
                     type: 'string',
                     default: 'javascript',
                 },
+                'timestamp-order': {
+                    alias: 'd',
+                    describe: 'Let order of the migrations be determined by the time it was created.',
+                    type: 'boolean',
+                    default: false,
+                },
             })
-            .demandOption(['name', 'template-type']),
+            .demandOption(['name', 'template-type', 'timestamp-order']),
     handler: (argv: any) => {
         if (!['javascript', 'typescript'].includes(argv.templateType)) {
             console.error(chalk.redBright(`Unexpected template type ${argv.templateType} allowed is [typescript, javascript]`));
@@ -29,7 +35,7 @@ const addMigrationCommand: yargs.CommandModule = {
         }
 
         const templateType = argv.templateType === 'javascript' ? TemplateType.Javascript : TemplateType.TypeScript;
-        createMigration(argv.name, templateType);
+        createMigration(argv.name, templateType, argv.timestampOrder);
     },
 };
 

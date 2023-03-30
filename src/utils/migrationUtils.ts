@@ -7,6 +7,7 @@ import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
 import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
+import { formatDateForFileName } from './dateUtils';
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -24,10 +25,11 @@ const ensureMigrationsDirectoryExists = () => {
     }
 };
 
-export const saveMigrationFile = (migrationName: string, migrationData: string, templateType: TemplateType): string => {
+export const saveMigrationFile = (migrationName: string, migrationData: string, templateType: TemplateType, orderDate: Date | null): string => {
     ensureMigrationsDirectoryExists();
     const fileExtension = templateType === TemplateType.TypeScript ? '.ts' : '.js';
-    const migrationFilepath = getMigrationFilepath(migrationName + fileExtension);
+    const date = orderDate ? `${formatDateForFileName(orderDate)}` : '';
+    const migrationFilepath = getMigrationFilepath(date + migrationName + fileExtension);
 
     try {
         fs.writeFileSync(migrationFilepath, migrationData);
@@ -92,11 +94,12 @@ export const runMigration = async (migration: IMigration, client: ManagementClie
     return 0;
 };
 
-export const generateTypedMigration = (): string => {
+export const generateTypedMigration = (orderDate?: Date | null): string => {
+    const order = orderDate ? `new Date('${orderDate.toISOString()}')` : '1';
     return `import {MigrationModule} from "@kontent-ai/cli";
 
 const migration: MigrationModule = {
-    order: 1,
+    order: ${order},
     run: async (apiClient) => {
     },
 };
@@ -105,10 +108,12 @@ export default migration;
 `;
 };
 
-export const generatePlainMigration = (): string => {
+export const generatePlainMigration = (orderDate?: Date | null): string => {
+    const order = orderDate ? `new Date('${orderDate.toISOString()}')` : '1';
+
     return `
 const migration = {
-    order: 1,
+    order: ${order},
     run: async (apiClient) => {
     },
 };
@@ -117,15 +122,17 @@ module.exports = migration;
 `;
 };
 
-export const createMigration = (migrationName: string, templateType: TemplateType): string => {
+export const createMigration = (migrationName: string, templateType: TemplateType, useTimestampOrder: boolean): string => {
     ensureMigrationsDirectoryExists();
-    const generatedMigration = templateType === TemplateType.TypeScript ? generateTypedMigration() : generatePlainMigration();
+    const orderDate = true === useTimestampOrder ? new Date() : null;
+    orderDate?.setMilliseconds(0);
+    const generatedMigration = templateType === TemplateType.TypeScript ? generateTypedMigration(orderDate) : generatePlainMigration(orderDate);
 
-    return saveMigrationFile(migrationName, generatedMigration, templateType);
+    return saveMigrationFile(migrationName, generatedMigration, templateType, orderDate);
 };
 
-export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number): T[] => {
-    const allEntries = new Map<number, T[]>();
+export const getDuplicates = <T extends any>(array: T[], key: (obj: T) => number | Date): T[] => {
+    const allEntries = new Map<number | Date, T[]>();
     let duplicates: T[] = [];
 
     for (const item of array) {
@@ -147,6 +154,10 @@ export const getMigrationsWithInvalidOrder = <T extends { module: any }>(array: 
     const migrationsWithInvalidOrder: T[] = [];
 
     for (const migration of array) {
+        if (migration.module.order instanceof Date) {
+            continue;
+        }
+
         if (!Number.isInteger(migration.module.order) || Number(migration.module.order) < 0) {
             migrationsWithInvalidOrder.push(migration);
         }

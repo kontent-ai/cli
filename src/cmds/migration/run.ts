@@ -75,8 +75,8 @@ const runMigrationCommand: yargs.CommandModule = {
 
                 if (!args.all) {
                     if (args.range) {
-                        if (!getRange(args.range)) {
-                            throw new Error(chalk.red('The range has to be a string of a format "number:number" where the first number is less or equal to the second, eg.: "2:5".'));
+                        if (!getRange(args.range) && !getRangeDate(args.range)) {
+                            throw new Error(chalk.red('The range has to be a string of a format "number:number" or "Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss" where the first value (to the left to ":") is less or equal to the second, eg.: "2:5".'));
                         }
                     } else if (args.name) {
                         if (!isAllowedExtension(args.name)) {
@@ -111,7 +111,7 @@ const runMigrationCommand: yargs.CommandModule = {
         let apiKey = argv.apiKey;
         const migrationName = argv.name;
         const runAll = argv.all;
-        const runRange = argv.range && exports.getRange(argv.range);
+        const runRange = argv.range && (exports.getRange(argv.range) || getRangeDate(argv.range));
         const logHttpServiceErrorsToConsole = argv.logHttpServiceErrorsToConsole;
         const continueOnError = argv.continueOnError;
         let migrationsResults: number = 0;
@@ -152,7 +152,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 console.log('No migrations to run.');
             }
 
-            const sortedMigrationsToRun = migrationsToRun.sort((migrationPrev, migrationNext) => migrationPrev.module.order - migrationNext.module.order);
+            const sortedMigrationsToRun = migrationsToRun.sort(orderComparator);
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
                 const migrationResult = await runMigration(migration, apiClient, projectId);
@@ -183,7 +183,7 @@ const runMigrationCommand: yargs.CommandModule = {
     },
 };
 
-export const getRange = (range: string): IRange | null => {
+export const getRange = (range: string): IRange<number> | null => {
     const match = range.match(/^([0-9]+):([0-9]+)$/);
     if (!match) {
         return null;
@@ -192,6 +192,28 @@ export const getRange = (range: string): IRange | null => {
     const to = Number(match[2]);
 
     return from <= to
+        ? {
+              from,
+              to,
+          }
+        : null;
+};
+
+export const getRangeDate = (range: string): IRange<Date> | null => {
+    // format is Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss
+    const match = range.match(/^T(?<from_date>\d{4}((-\d{2}){0,2}))(?:-(?<from_time>(\d{2}-){0,2}\d{2}))?:(?<to_date>\d{4}((-\d{2}){0,2}))(?:-(?<to_time>(\d{2}-){0,2}\d{2}))?$/);
+    if (!match) {
+        return null;
+    }
+
+    const from = new Date(formatDate(match.groups?.from_date ?? '', match.groups?.from_time ?? ''));
+    const to = new Date(formatDate(match.groups?.to_date ?? '', match.groups?.to_time ?? ''));
+
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+        return null;
+    }
+
+    return from.getTime() <= to.getTime()
         ? {
               from,
               to,
@@ -210,10 +232,20 @@ const checkForDuplicates = (migrationsToRun: IMigration[]): void => {
     }
 };
 
-const getMigrationsByRange = (migrationsToRun: IMigration[], range: IRange): IMigration[] => {
+const getMigrationsByRange = (migrationsToRun: IMigration[], range: IRange<number | Date>): IMigration[] => {
     const migrations: IMigration[] = [];
 
-    for (const migration of migrationsToRun) {
+    if (isIRangeDate(range)) {
+        for (const migration of migrationsToRun.filter((x) => x.module.order instanceof Date)) {
+            if ((migration.module.order as Date).getTime() >= range.from.getTime() && (migration.module.order as Date).getTime() <= range.to.getTime()) {
+                migrations.push(migration);
+            }
+        }
+
+        return migrations.filter(String);
+    }
+
+    for (const migration of migrationsToRun.filter((x) => typeof x.module.order === 'number')) {
         if (migration.module.order >= range.from && migration.module.order <= range.to) {
             migrations.push(migration);
         }
@@ -247,6 +279,33 @@ const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IM
 
     return result;
 };
+
+const orderComparator = (migrationPrev: IMigration, migrationNext: IMigration) => {
+    if (typeof migrationPrev.module.order === 'number' && typeof migrationNext.module.order === 'number') {
+        return migrationPrev.module.order - migrationNext.module.order;
+    }
+
+    if (migrationPrev.module.order instanceof Date && migrationNext.module.order instanceof Date) {
+        return migrationPrev.module.order.getTime() - migrationNext.module.order.getTime();
+    }
+
+    return typeof migrationPrev.module.order === 'number' ? -1 : 1;
+};
+
+const formatDate = (date: string, time: string) => {
+    if (time === '') {
+        time = '00:00';
+    }
+    if (time.length === 2) {
+        time = time + ':00';
+    } else {
+        time = time.replaceAll('-', ':');
+    }
+
+    return `${date}T${time}Z`;
+};
+
+const isIRangeDate = (x: IRange<number | Date>): x is IRange<Date> => x.from instanceof Date && x.to instanceof Date;
 
 // yargs needs exported command in exports object
 Object.assign(exports, runMigrationCommand);
