@@ -1,13 +1,19 @@
 import { ManagementClient, SharedModels } from '@kontent-ai/management-sdk';
 import chalk from 'chalk';
 import path from 'path';
-import fs from 'fs';
-import { listFiles } from './fileUtils';
+import fs, { Dirent } from 'fs';
 import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
 import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
 import { formatDateForFileName } from './dateUtils';
+
+const listMigrationFiles = (fileExtension: string): Dirent[] => {
+    return fs
+        .readdirSync(getMigrationDirectory(), { withFileTypes: true })
+        .filter((f) => f.isFile())
+        .filter((f) => f.name.endsWith(fileExtension));
+};
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -182,7 +188,7 @@ export const loadModule = async (migrationFile: string): Promise<MigrationModule
 export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     const migrations: IMigration[] = [];
 
-    const files = listFiles('.js');
+    const files = listMigrationFiles('.js');
 
     for (const file of files) {
         migrations.push({ name: file.name, module: await loadModule(file.name) });
