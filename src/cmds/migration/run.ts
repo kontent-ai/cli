@@ -176,6 +176,12 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
+            const migrationToRun = skipExecutedMigrations(Array.of(migration), projectId);
+            
+            if(migrationToRun.length === 0){
+                return;
+            }
+
             migrationsResults = await runMigration(migration, apiClient, projectId);
         }
 
