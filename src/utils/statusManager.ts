@@ -100,7 +100,7 @@ const readFromStatus = (): IStatus => {
     } catch (error) {
         console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
         return {};
-    }  
+    }
 };
 
 const saveStatusToFile = (data: string): void => {
