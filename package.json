@@ -1,6 +1,6 @@
 {
   "name": "@kontent-ai/cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Command line interface tool that can be used for generating and runningKontent.ai migration scripts",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
