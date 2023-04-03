@@ -63,4 +63,19 @@ describe('Status manager', () => {
 
         expect(readStatusMocked).toHaveBeenCalled();
     });
+
+    it('MarkAsCompleted to be called with plugins', async () => {
+        jest.spyOn(fileUtils, 'fileExists').mockReturnValue(true);
+
+        const saveStatusMocked = jest.fn().mockImplementation(() => Promise.resolve());
+
+        jest.spyOn(statusPlugin, 'loadStatusPlugin').mockResolvedValue({
+            readStatus: jest.fn().mockResolvedValue({}),
+            saveStatus: saveStatusMocked,
+        });
+
+        await statusManager.markAsCompleted('', 'testMigration', 1);
+
+        expect(saveStatusMocked).toHaveBeenCalled();
+    });
 });
