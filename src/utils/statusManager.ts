@@ -46,7 +46,6 @@ const saveStatusFile = async () => {
             await file.saveStatus(statusJSON);
         } catch (e) {
             console.log(`Could not load the plugin due to ${e}. Fallbacking to status.json`);
-            saveStatusToFile(statusJSON);
         } finally {
             return;
         }
@@ -78,8 +77,7 @@ export const loadMigrationsExecutionStatus = async () => {
             const file = await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js');
             status = await file.readStatus();
         } catch (e) {
-            console.log(`Could not load the plugin due to ${e}. Fallbacking to status.json`);
-            status = readFromStatus();
+            console.log(`Could not load the plugin due to ${e}`);
         } finally {
             return;
         }
