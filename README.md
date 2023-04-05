@@ -126,6 +126,9 @@ The supported commands are divided into groups according to their target, at thi
 * `backup --action [backup|restore|clean]` - This command enables you to use [Kontent.ai backup manager](https://github.com/kontent-ai/backup-manager-js)
   * The purpose of this tool is to backup & restore [Kontent.ai projects](https://kontent.ai/). This project uses CM API to both get & restore data.
 
+* `status --implementation` - This command creates in your working directory a new directory with a file `statusImpl.ts`. Having this file created, CLI will take your custom implementation of saving/reading the migrations status.
+  > 1. Don't forget to transpile the `statusImpl.ts` into `statusImpl.js` into the Javascript as it won't work otherwise!
+
 ### Debugging
 
 By default, we do not provide any additional logs from the HttpService. If you require these logs, you can change this behavior by using (option `--log-http-service-errors-to-console`).
