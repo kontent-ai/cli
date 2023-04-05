@@ -7,6 +7,7 @@ import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
 import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
 import { formatDateForFileName } from './dateUtils';
+import { StatusPlugin } from './status/statusPlugin';
 
 const listMigrationFiles = (fileExtension: string): Dirent[] => {
     return fs
@@ -47,14 +48,14 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;
 
     try {
         await migration.module.run(client).then(async () => {
-            await markAsCompleted(projectId, migration.name, migration.module.order);
+            await markAsCompleted(projectId, migration.name, migration.module.order, saveStatusFromPlugin);
         });
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));

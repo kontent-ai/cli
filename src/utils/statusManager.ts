@@ -2,14 +2,14 @@ import { IMigrationStatus, IStatus } from '../models/status';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { fileExists } from './fileUtils';
 import * as path from 'path';
-import { loadStatusPlugin } from './status/statusPlugin';
+import { type StatusPlugin } from './status/statusPlugin';
 
 const migrationStatusFilename = 'status.json';
 const statusDirectoryName = 'status';
 const statusImplementationFilename = 'statusImpl.ts';
 let status: IStatus = {};
 
-const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrationStatus) => {
+const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     let projectMigrationsHistory = status[projectId];
 
     if (projectMigrationsHistory === undefined) {
@@ -23,10 +23,10 @@ const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrat
         projectMigrationsHistory.push(migrationStatus);
     }
 
-    await saveStatusFile();
+    await saveStatusFile(saveStatusFromPlugin);
 };
 
-export const markAsCompleted = async (projectId: string, name: string, order: number | Date) => {
+export const markAsCompleted = async (projectId: string, name: string, order: number | Date, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const migrationStatus = {
         name,
         order,
@@ -34,22 +34,22 @@ export const markAsCompleted = async (projectId: string, name: string, order: nu
         time: new Date(Date.now()),
     };
 
-    await updateMigrationStatus(projectId, migrationStatus);
+    await updateMigrationStatus(projectId, migrationStatus, saveStatusFromPlugin);
 };
 
-const saveStatusFile = async () => {
+const saveStatusFile = async (saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const statusJSON = JSON.stringify(status, null, 2);
 
-    if (fileExists(getStatusImplementationFilePath())) {
+    if (saveStatusFromPlugin) {
         try {
-            const file = await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js');
-            await file.saveStatus(statusJSON);
+            await saveStatusFromPlugin(statusJSON);
         } catch (e) {
-            console.log(`Could not load the plugin due to ${e}. Fallbacking to status.json`);
+            console.error(`The error ${e} occured when using saveStatus function from plugin.`);
         } finally {
             return;
         }
     }
+
     saveStatusToFile(statusJSON);
 };
 
@@ -71,17 +71,17 @@ const getStatusFilepath = (): string => {
     return path.join(process.cwd(), migrationStatusFilename);
 };
 
-export const loadMigrationsExecutionStatus = async () => {
-    if (fileExists(getStatusImplementationFilePath())) {
+export const loadMigrationsExecutionStatus = async (readStatusFromPlugin: StatusPlugin['readStatus'] | null) => {
+    if (readStatusFromPlugin) {
         try {
-            const file = await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js');
-            status = await file.readStatus();
+            status = await readStatusFromPlugin();
         } catch (e) {
-            console.log(`Could not load the plugin due to ${e}`);
+            console.error(`The error ${e} occured when using readStatus function from plugin.`);
         } finally {
             return;
         }
     }
+
     status = readFromStatus();
 };
 
@@ -112,7 +112,7 @@ const saveStatusToFile = (data: string): void => {
     }
 };
 
-const getStatusImplementationFilePath = () => path.join(process.cwd(), statusDirectoryName, statusImplementationFilename);
+export const getStatusImplementationFilePath = () => path.join(process.cwd(), statusDirectoryName, statusImplementationFilename);
 
 const getStatusImplementationDirectoryPath = () => path.join(process.cwd(), statusDirectoryName);
 

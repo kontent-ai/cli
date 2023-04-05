@@ -1,5 +1,4 @@
 import * as statusManager from '../utils/statusManager';
-import * as statusPlugin from '../utils/status/statusPlugin';
 import * as fileUtils from '../utils/fileUtils';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -20,7 +19,7 @@ describe('Status manager', () => {
     it('Project has success status in status manager file', async () => {
         const projectId = 'project1';
         const migrationName = 'migration1';
-        await statusManager.markAsCompleted(projectId, migrationName, 1);
+        await statusManager.markAsCompleted(projectId, migrationName, 1, null);
 
         const statusFile = readStatusFile();
         const status = statusFile[projectId][0];
@@ -32,7 +31,7 @@ describe('Status manager', () => {
         const project1Id = 'project1';
         const project2Id = 'project2';
         const migration1Name = 'migration1';
-        await statusManager.markAsCompleted(project1Id, migration1Name, 1);
+        await statusManager.markAsCompleted(project1Id, migration1Name, 1, null);
 
         const projectMigrationStatus = statusManager.wasSuccessfullyExecuted(migration1Name, project2Id);
 
@@ -42,7 +41,7 @@ describe('Status manager', () => {
     it('Executed migration is present in status file', async () => {
         const project2Id = 'project2';
         const migration2Name = 'migration2';
-        await statusManager.markAsCompleted(project2Id, migration2Name, 1);
+        await statusManager.markAsCompleted(project2Id, migration2Name, 1, null);
 
         const projectMigrationStatus = statusManager.wasSuccessfullyExecuted(project2Id, migration2Name);
 
@@ -54,12 +53,7 @@ describe('Status manager', () => {
 
         const readStatusMocked = jest.fn().mockResolvedValue({});
 
-        jest.spyOn(statusPlugin, 'loadStatusPlugin').mockResolvedValue({
-            readStatus: readStatusMocked,
-            saveStatus: jest.fn().mockImplementation(() => Promise.resolve()),
-        });
-
-        await statusManager.loadMigrationsExecutionStatus();
+        await statusManager.loadMigrationsExecutionStatus(readStatusMocked);
 
         expect(readStatusMocked).toHaveBeenCalled();
     });
@@ -69,12 +63,7 @@ describe('Status manager', () => {
 
         const saveStatusMocked = jest.fn().mockImplementation(() => Promise.resolve());
 
-        jest.spyOn(statusPlugin, 'loadStatusPlugin').mockResolvedValue({
-            readStatus: jest.fn().mockResolvedValue({}),
-            saveStatus: saveStatusMocked,
-        });
-
-        await statusManager.markAsCompleted('', 'testMigration', 1);
+        await statusManager.markAsCompleted('', 'testMigration', 1, saveStatusMocked);
 
         expect(saveStatusMocked).toHaveBeenCalled();
     });

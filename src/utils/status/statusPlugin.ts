@@ -1,6 +1,6 @@
 import { IStatus } from '../../models/status';
 
-interface StatusPlugin {
+export interface StatusPlugin {
     saveStatus: (data: string) => Promise<void>;
     readStatus: () => Promise<IStatus>;
 }
