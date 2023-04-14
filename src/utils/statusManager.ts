@@ -1,12 +1,11 @@
 import { IMigrationStatus, IStatus } from '../models/status';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { fileExists } from './fileUtils';
 import * as path from 'path';
 import { type StatusPlugin } from './status/statusPlugin';
 
 const migrationStatusFilename = 'status.json';
-const statusDirectoryName = 'status';
-const statusImplementationFilename = 'statusImpl.ts';
+const pluginsFilename = 'plugins.js';
 let status: IStatus = {};
 
 const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
@@ -112,37 +111,4 @@ const saveStatusToFile = (data: string): void => {
     }
 };
 
-export const getStatusImplementationFilePath = () => path.join(process.cwd(), statusDirectoryName, statusImplementationFilename);
-
-const getStatusImplementationDirectoryPath = () => path.join(process.cwd(), statusDirectoryName);
-
-export const createStatusImplementationFile = () => {
-    const statusImplementationPath = getStatusImplementationFilePath();
-
-    if (fileExists(statusImplementationPath)) {
-        console.error(`File ${statusImplementationPath} already exists`);
-    }
-
-    try {
-        if (!fileExists(getStatusImplementationDirectoryPath())) {
-            mkdirSync(getStatusImplementationDirectoryPath());
-        }
-
-        writeFileSync(statusImplementationPath, statusImplementationTemplate, { flag: 'w' });
-        console.log(`Status.ts file was created see ${statusImplementationPath}`);
-    } catch (error) {
-        console.error(`Status.ts file creation failed, because of ${error instanceof Error ? error.message : 'unknown error.'}`);
-    }
-};
-
-const statusImplementationTemplate = `
-import type {IStatus} from "@kontent-ai/cli";
-
-export const saveStatus = async (data: string) => {
-
-}
-
-export const readStatus = async (): IStatus => {
-
-}
-`;
+export const getPluginsFilePath = () => path.join(process.cwd(), pluginsFilename);

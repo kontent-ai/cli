@@ -4,7 +4,7 @@ import { getDuplicates, getSuccessfullyExecutedMigrations, getMigrationFilepath,
 import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
 import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
-import { getStatusImplementationFilePath, loadMigrationsExecutionStatus } from '../../utils/statusManager';
+import { getPluginsFilePath, loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
 import { IRange } from '../../models/range';
 import { loadStatusPlugin } from '../../utils/status/statusPlugin';
@@ -125,7 +125,7 @@ const runMigrationCommand: yargs.CommandModule = {
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
-        const plugin = fileExists(getStatusImplementationFilePath()) ? await loadStatusPlugin(getStatusImplementationFilePath().slice(0, -3) + '.js') : undefined;
+        const plugin = fileExists(getPluginsFilePath()) ? await loadStatusPlugin(getPluginsFilePath().slice(0, -3) + '.js') : undefined;
 
         const apiClient = createManagementClient({
             projectId,

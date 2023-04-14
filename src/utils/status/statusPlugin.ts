@@ -1,8 +1,8 @@
-import { IStatus } from '../../models/status';
+import { ReadStatusType, SaveStatusType } from '../../types';
 
 export interface StatusPlugin {
-    saveStatus: (data: string) => Promise<void>;
-    readStatus: () => Promise<IStatus>;
+    saveStatus: SaveStatusType;
+    readStatus: ReadStatusType;
 }
 
 export const loadStatusPlugin = async (path: string): Promise<StatusPlugin> => {
