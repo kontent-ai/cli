@@ -1,4 +1,4 @@
-import { IMigrationStatus, IStatus } from '../models/status';
+import { IMigrationStatus, IStatus, Operation } from '../models/status';
 import { readFileSync, writeFileSync } from 'fs';
 import { fileExists } from './fileUtils';
 import * as path from 'path';
@@ -25,12 +25,13 @@ const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrat
     await saveStatusFile(saveStatusFromPlugin);
 };
 
-export const markAsCompleted = async (projectId: string, name: string, order: number | Date, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
-    const migrationStatus = {
+export const markAsCompleted = async (projectId: string, name: string, order: number | Date, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
+    const migrationStatus: IMigrationStatus = {
         name,
         order,
         success: true,
         time: new Date(Date.now()),
+        lastOperation: operation
     };
 
     await updateMigrationStatus(projectId, migrationStatus, saveStatusFromPlugin);
@@ -61,9 +62,14 @@ const getMigrationStatus = (migrationName: string, projectId: string): IMigratio
     return projectStatus.find((migrationStatus) => migrationStatus.name === migrationName);
 };
 
-export const wasSuccessfullyExecuted = (migrationName: string, projectId: string): boolean => {
-    const result = getMigrationStatus(migrationName, projectId);
-    return !!result && result.success;
+export const shouldSkipMigration = (migrationName: string, projectId: string, operation: Operation): boolean => {
+    const migrationStatus = getMigrationStatus(migrationName, projectId);
+
+    if (migrationStatus === undefined || !migrationStatus.success){
+        return false;
+    }
+
+    return (migrationStatus?.lastOperation ?? 'run') === operation;
 };
 
 const getStatusFilepath = (): string => {

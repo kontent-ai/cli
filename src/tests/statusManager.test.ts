@@ -19,7 +19,7 @@ describe('Status manager', () => {
     it('Project has success status in status manager file', async () => {
         const projectId = 'project1';
         const migrationName = 'migration1';
-        await statusManager.markAsCompleted(projectId, migrationName, 1, null);
+        await statusManager.markAsCompleted(projectId, migrationName, 1, 'run', null);
 
         const statusFile = readStatusFile();
         const status = statusFile[projectId][0];
@@ -31,9 +31,9 @@ describe('Status manager', () => {
         const project1Id = 'project1';
         const project2Id = 'project2';
         const migration1Name = 'migration1';
-        await statusManager.markAsCompleted(project1Id, migration1Name, 1, null);
+        await statusManager.markAsCompleted(project1Id, migration1Name, 1, 'run', null);
 
-        const projectMigrationStatus = statusManager.wasSuccessfullyExecuted(migration1Name, project2Id);
+        const projectMigrationStatus = statusManager.shouldSkipMigration(migration1Name, project2Id, 'run');
 
         expect(projectMigrationStatus).toBe(false);
     });
@@ -41,9 +41,9 @@ describe('Status manager', () => {
     it('Executed migration is present in status file', async () => {
         const project2Id = 'project2';
         const migration2Name = 'migration2';
-        await statusManager.markAsCompleted(project2Id, migration2Name, 1, null);
+        await statusManager.markAsCompleted(project2Id, migration2Name, 1, 'run', null);
 
-        const projectMigrationStatus = statusManager.wasSuccessfullyExecuted(project2Id, migration2Name);
+        const projectMigrationStatus = statusManager.shouldSkipMigration(project2Id, migration2Name, 'run');
 
         expect(projectMigrationStatus).toBe(false);
     });
@@ -63,7 +63,7 @@ describe('Status manager', () => {
 
         const saveStatusMocked = jest.fn().mockImplementation(() => Promise.resolve());
 
-        await statusManager.markAsCompleted('', 'testMigration', 1, saveStatusMocked);
+        await statusManager.markAsCompleted('', 'testMigration', 1, 'run', saveStatusMocked);
 
         expect(saveStatusMocked).toHaveBeenCalled();
     });

@@ -7,6 +7,7 @@ import { createManagementClient } from '../../managementClientFactory';
 import { getPluginsFilePath, loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
 import { IRange } from '../../models/range';
+import { Operation } from '../../models/status';
 import { loadStatusPlugin } from '../../utils/status/statusPlugin';
 
 const runMigrationCommand: yargs.CommandModule = {
@@ -63,6 +64,12 @@ const runMigrationCommand: yargs.CommandModule = {
                     default: false,
                     type: 'boolean',
                 },
+                rollback: {
+                    alias: 'b',
+                    describe: 'Call rollback function from the migration',
+                    default: false,
+                    type: 'boolean'
+                }
             })
             .conflicts('all', 'name')
             .conflicts('range', 'name')
@@ -115,8 +122,11 @@ const runMigrationCommand: yargs.CommandModule = {
         const runRange = argv.range && (exports.getRange(argv.range) || getRangeDate(argv.range));
         const logHttpServiceErrorsToConsole = argv.logHttpServiceErrorsToConsole;
         const continueOnError = argv.continueOnError;
+        const rollback = argv.rollback;
         let migrationsResults: number = 0;
         const runForce = argv.force;
+
+        const operation: Operation = rollback ? 'rollback' : 'run';
 
         if (argv.environment) {
             const environments = getEnvironmentsConfig();
@@ -148,17 +158,17 @@ const runMigrationCommand: yargs.CommandModule = {
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
             } else {
-                migrationsToRun = skipExecutedMigrations(migrationsToRun, projectId);
+                migrationsToRun = skipExecutedMigrations(migrationsToRun, projectId, operation);
             }
 
             if (migrationsToRun.length === 0) {
                 console.log('No migrations to run.');
             }
 
-            const sortedMigrationsToRun = migrationsToRun.sort(orderComparator);
+            const sortedMigrationsToRun = migrationsToRun.sort(orderComparator(rollback));
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
-                const migrationResult = await runMigration(migration, apiClient, projectId, plugin?.saveStatus ?? null);
+                const migrationResult = await runMigration(migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -179,7 +189,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
-            migrationsResults = await runMigration(migration, apiClient, projectId, plugin?.saveStatus ?? null);
+            migrationsResults = await runMigration(migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
         }
 
         process.exit(migrationsResults);
@@ -268,8 +278,8 @@ const checkForInvalidOrder = (migrationsToRun: IMigration[]): void => {
     }
 };
 
-const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
-    const executedMigrations = getSuccessfullyExecutedMigrations(migrations, projectId);
+const skipExecutedMigrations = (migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
+    const executedMigrations = getSuccessfullyExecutedMigrations(migrations, projectId, operation);
     const result: IMigration[] = [];
 
     for (const migration of migrations) {
@@ -283,7 +293,7 @@ const skipExecutedMigrations = (migrations: IMigration[], projectId: string): IM
     return result;
 };
 
-const orderComparator = (migrationPrev: IMigration, migrationNext: IMigration) => {
+const comparator = (migrationPrev: IMigration, migrationNext: IMigration) => {
     if (typeof migrationPrev.module.order === 'number' && typeof migrationNext.module.order === 'number') {
         return migrationPrev.module.order - migrationNext.module.order;
     }
@@ -294,6 +304,9 @@ const orderComparator = (migrationPrev: IMigration, migrationNext: IMigration) =
 
     return typeof migrationPrev.module.order === 'number' ? -1 : 1;
 };
+
+const orderComparator = (rollback: boolean) => (migrationPrev: IMigration, migrationNext: IMigration) =>
+    rollback ? -comparator(migrationPrev, migrationNext) : comparator(migrationPrev, migrationNext);
 
 const formatDate = (date: string, time: string) => {
     if (time === '') {
