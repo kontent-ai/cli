@@ -7,7 +7,7 @@ import { createManagementClient } from '../../managementClientFactory';
 import { getPluginsFilePath, loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
 import { IRange } from '../../models/range';
-import { Operation } from '../../models/status';
+import { IStatus, Operation } from '../../models/status';
 import { loadStatusPlugin } from '../../utils/status/statusPlugin';
 
 const runMigrationCommand: yargs.CommandModule = {
@@ -143,7 +143,7 @@ const runMigrationCommand: yargs.CommandModule = {
             logHttpServiceErrorsToConsole,
         });
 
-        await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
+        const migrationsStatus = await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
 
         if (runAll || runRange) {
             let migrationsToRun = await loadMigrationFiles();
@@ -158,7 +158,7 @@ const runMigrationCommand: yargs.CommandModule = {
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
             } else {
-                migrationsToRun = skipExecutedMigrations(migrationsToRun, projectId, operation);
+                migrationsToRun = skipExecutedMigrations(migrationsStatus, migrationsToRun, projectId, operation);
             }
 
             if (migrationsToRun.length === 0) {
@@ -168,7 +168,7 @@ const runMigrationCommand: yargs.CommandModule = {
             const sortedMigrationsToRun = migrationsToRun.sort(orderComparator(rollback));
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
-                const migrationResult = await runMigration(migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
+                const migrationResult = await runMigration(migrationsStatus, migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -189,7 +189,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
-            migrationsResults = await runMigration(migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
+            migrationsResults = await runMigration(migrationsStatus, migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
         }
 
         process.exit(migrationsResults);
@@ -278,8 +278,8 @@ const checkForInvalidOrder = (migrationsToRun: IMigration[]): void => {
     }
 };
 
-const skipExecutedMigrations = (migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
-    const executedMigrations = getSuccessfullyExecutedMigrations(migrations, projectId, operation);
+const skipExecutedMigrations = (migrationStatus: IStatus, migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
+    const executedMigrations = getSuccessfullyExecutedMigrations(migrationStatus, migrations, projectId, operation);
     const result: IMigration[] = [];
 
     for (const migration of migrations) {
