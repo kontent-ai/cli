@@ -23,20 +23,13 @@ const updateMigrationStatus = async (status: IStatus, projectId: string, migrati
     await saveStatusFile(status, saveStatusFromPlugin);
 };
 
-export const markAsCompleted = async (
-    status: IStatus,
-    projectId: string,
-    name: string,
-    order: number | Date,
-    operation: Operation,
-    saveStatusFromPlugin: StatusPlugin['saveStatus'] | null
-    ) => {
+export const markAsCompleted = async (status: IStatus, projectId: string, name: string, order: number | Date, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const migrationStatus: IMigrationStatus = {
         name,
         order,
         success: true,
         time: new Date(Date.now()),
-        lastOperation: operation
+        lastOperation: operation,
     };
 
     await updateMigrationStatus(status, projectId, migrationStatus, saveStatusFromPlugin);
@@ -61,8 +54,7 @@ const saveStatusFile = async (migrationsStatus: IStatus, saveStatusFromPlugin: S
 const getMigrationStatus = (migrationsStatus: IStatus, migrationName: string, projectId: string): IMigrationStatus | null => {
     const projectStatus = migrationsStatus[projectId];
 
-    return projectStatus === undefined ?
-        null : projectStatus.find((migrationStatus) => migrationStatus.name === migrationName) ?? null;
+    return projectStatus === undefined ? null : projectStatus.find((migrationStatus) => migrationStatus.name === migrationName) ?? null;
 };
 
 export const shouldSkipMigration = (migrationsStatus: IStatus, migrationName: string, projectId: string, operation: Operation): boolean => {

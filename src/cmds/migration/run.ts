@@ -68,8 +68,8 @@ const runMigrationCommand: yargs.CommandModule = {
                     alias: 'b',
                     describe: 'Call rollback function from the migration',
                     default: false,
-                    type: 'boolean'
-                }
+                    type: 'boolean',
+                },
             })
             .conflicts('all', 'name')
             .conflicts('range', 'name')
@@ -305,8 +305,7 @@ const comparator = (migrationPrev: IMigration, migrationNext: IMigration) => {
     return typeof migrationPrev.module.order === 'number' ? -1 : 1;
 };
 
-const orderComparator = (rollback: boolean) => (migrationPrev: IMigration, migrationNext: IMigration) =>
-    rollback ? -comparator(migrationPrev, migrationNext) : comparator(migrationPrev, migrationNext);
+const orderComparator = (rollback: boolean) => (migrationPrev: IMigration, migrationNext: IMigration) => rollback ? -comparator(migrationPrev, migrationNext) : comparator(migrationPrev, migrationNext);
 
 const formatDate = (date: string, time: string) => {
     if (time === '') {

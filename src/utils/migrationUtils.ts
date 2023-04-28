@@ -17,7 +17,6 @@ const listMigrationFiles = (fileExtension: string): Dirent[] => {
         .filter((f) => f.name.endsWith(fileExtension));
 };
 
-
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
     return path.join(process.cwd(), migrationDirectory);
@@ -50,13 +49,7 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (
-    migrationsStatus: IStatus,
-    migration: IMigration,
-    client: ManagementClient,
-    projectId: string,
-    operation: Operation
-    , saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
+export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, client: ManagementClient, projectId: string, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
     console.log(`Running the ${operation === 'rollback' && 'rollback of'} ${migration.name} migration.`);
 
     let isSuccess = true;
@@ -67,7 +60,7 @@ export const runMigration = async (
                 await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
             });
         } else {
-            if(migration.module.rollback === undefined) {
+            if (migration.module.rollback === undefined) {
                 throw new Error('No rollback function specified');
             }
             migration.module.rollback?.(client).then(async () => {
@@ -219,12 +212,7 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getSuccessfullyExecutedMigrations = (
-    migrationsStatus: IStatus,
-    migrations: IMigration[],
-    projectId: string,
-    operation: Operation
-    ): IMigration[] => {
+export const getSuccessfullyExecutedMigrations = (migrationsStatus: IStatus, migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status

@@ -15,8 +15,8 @@ const migrations: IMigration[] = [
                 console.log('test1');
             },
             rollback: async () => {
-                console.log("rollback 1");
-            }
+                console.log('rollback 1');
+            },
         },
     },
     {
@@ -27,8 +27,8 @@ const migrations: IMigration[] = [
                 console.log('test2');
             },
             rollback: async () => {
-                console.log("rollback 2");
-            }
+                console.log('rollback 2');
+            },
         },
     },
     {
@@ -39,15 +39,14 @@ const migrations: IMigration[] = [
                 console.log('test3');
             },
             rollback: async () => {
-                console.log("rollback 3");
-            }
+                console.log('rollback 3');
+            },
         },
     },
 ];
 
-const migrationStatus: IStatus =
-{
-    "fcb801c6-fe1d-41cf-af91-ec13802a1ed2": [
+const migrationStatus: IStatus = {
+    'fcb801c6-fe1d-41cf-af91-ec13802a1ed2': [
         {
             name: 'test1',
             success: true,
@@ -68,12 +67,9 @@ const migrationStatus: IStatus =
             order: 3,
             time: new Date(Date.now()),
             lastOperation: 'run',
-        }
-    ]
+        },
+    ],
 };
-
-
-
 
 describe('run migration command tests', () => {
     let mockExit: jest.SpyInstance<never, [code?: number | undefined]>;
@@ -86,12 +82,13 @@ describe('run migration command tests', () => {
         jest.spyOn(migrationUtils, 'loadMigrationFiles').mockReturnValue(
             new Promise((resolve) => {
                 resolve(migrations);
-        }));
+            })
+        );
 
         mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
             return undefined as never;
         });
-      });
+    });
 
     it('with date range all, all rollbacks should be called', async () => {
         jest.spyOn(statusManager, 'loadMigrationsExecutionStatus').mockImplementation(async () => ({}));
@@ -101,7 +98,7 @@ describe('run migration command tests', () => {
             projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             range: '',
             all: true,
-            rollback: 'true'
+            rollback: 'true',
         });
 
         const migration1 = jest.spyOn(migrations[0].module, 'rollback');
@@ -129,10 +126,10 @@ describe('run migration command tests', () => {
 
         const args: any = yargs.parse([], {
             apiKey: '',
-            'projectId': 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             range: '',
             all: true,
-            rollback: 'true'
+            rollback: 'true',
         });
 
         const migration1 = jest.spyOn(migrations[0].module, 'rollback');
