@@ -1,13 +1,20 @@
 import { ManagementClient, SharedModels } from '@kontent-ai/management-sdk';
 import chalk from 'chalk';
 import path from 'path';
-import fs from 'fs';
-import { listFiles } from './fileUtils';
+import fs, { Dirent } from 'fs';
 import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
 import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
 import { formatDateForFileName } from './dateUtils';
+import { StatusPlugin } from './status/statusPlugin';
+
+const listMigrationFiles = (fileExtension: string): Dirent[] => {
+    return fs
+        .readdirSync(getMigrationDirectory(), { withFileTypes: true })
+        .filter((f) => f.isFile())
+        .filter((f) => f.name.endsWith(fileExtension));
+};
 
 export const getMigrationDirectory = (): string => {
     const migrationDirectory = 'Migrations';
@@ -41,14 +48,14 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string): Promise<number> => {
+export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
     console.log(`Running the ${migration.name} migration.`);
 
     let isSuccess = true;
 
     try {
-        await migration.module.run(client).then(() => {
-            markAsCompleted(projectId, migration.name, migration.module.order);
+        await migration.module.run(client).then(async () => {
+            await markAsCompleted(projectId, migration.name, migration.module.order, saveStatusFromPlugin);
         });
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
@@ -182,7 +189,7 @@ export const loadModule = async (migrationFile: string): Promise<MigrationModule
 export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     const migrations: IMigration[] = [];
 
-    const files = listFiles('.js');
+    const files = listMigrationFiles('.js');
 
     for (const file of files) {
         migrations.push({ name: file.name, module: await loadModule(file.name) });

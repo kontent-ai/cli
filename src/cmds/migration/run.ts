@@ -4,9 +4,10 @@ import { getDuplicates, getSuccessfullyExecutedMigrations, getMigrationFilepath,
 import { fileExists, getFileWithExtension, isAllowedExtension } from '../../utils/fileUtils';
 import { environmentConfigExists, getEnvironmentsConfig } from '../../utils/environmentUtils';
 import { createManagementClient } from '../../managementClientFactory';
-import { loadMigrationsExecutionStatus } from '../../utils/statusManager';
+import { getPluginsFilePath, loadMigrationsExecutionStatus } from '../../utils/statusManager';
 import { IMigration } from '../../models/migration';
 import { IRange } from '../../models/range';
+import { loadStatusPlugin } from '../../utils/status/statusPlugin';
 
 const runMigrationCommand: yargs.CommandModule = {
     command: 'run',
@@ -124,13 +125,15 @@ const runMigrationCommand: yargs.CommandModule = {
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
+        const plugin = fileExists(getPluginsFilePath()) ? await loadStatusPlugin(getPluginsFilePath().slice(0, -3) + '.js') : undefined;
+
         const apiClient = createManagementClient({
             projectId,
             apiKey,
             logHttpServiceErrorsToConsole,
         });
 
-        loadMigrationsExecutionStatus();
+        await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
 
         if (runAll || runRange) {
             let migrationsToRun = await loadMigrationFiles();
@@ -155,7 +158,7 @@ const runMigrationCommand: yargs.CommandModule = {
             const sortedMigrationsToRun = migrationsToRun.sort(orderComparator);
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
-                const migrationResult = await runMigration(migration, apiClient, projectId);
+                const migrationResult = await runMigration(migration, apiClient, projectId, plugin?.saveStatus ?? null);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -176,7 +179,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
-            migrationsResults = await runMigration(migration, apiClient, projectId);
+            migrationsResults = await runMigration(migration, apiClient, projectId, plugin?.saveStatus ?? null);
         }
 
         process.exit(migrationsResults);

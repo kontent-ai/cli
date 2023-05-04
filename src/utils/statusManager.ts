@@ -2,11 +2,13 @@ import { IMigrationStatus, IStatus } from '../models/status';
 import { readFileSync, writeFileSync } from 'fs';
 import { fileExists } from './fileUtils';
 import * as path from 'path';
+import { type StatusPlugin } from './status/statusPlugin';
 
 const migrationStatusFilename = 'status.json';
+const pluginsFilename = 'plugins.js';
 let status: IStatus = {};
 
-const updateMigrationStatus = (projectId: string, migrationStatus: IMigrationStatus) => {
+const updateMigrationStatus = async (projectId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     let projectMigrationsHistory = status[projectId];
 
     if (projectMigrationsHistory === undefined) {
@@ -20,10 +22,10 @@ const updateMigrationStatus = (projectId: string, migrationStatus: IMigrationSta
         projectMigrationsHistory.push(migrationStatus);
     }
 
-    saveStatusFile();
+    await saveStatusFile(saveStatusFromPlugin);
 };
 
-export const markAsCompleted = (projectId: string, name: string, order: number | Date) => {
+export const markAsCompleted = async (projectId: string, name: string, order: number | Date, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const migrationStatus = {
         name,
         order,
@@ -31,11 +33,21 @@ export const markAsCompleted = (projectId: string, name: string, order: number |
         time: new Date(Date.now()),
     };
 
-    updateMigrationStatus(projectId, migrationStatus);
+    await updateMigrationStatus(projectId, migrationStatus, saveStatusFromPlugin);
 };
 
-const saveStatusFile = () => {
+const saveStatusFile = async (saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const statusJSON = JSON.stringify(status, null, 2);
+
+    if (saveStatusFromPlugin) {
+        try {
+            await saveStatusFromPlugin(statusJSON);
+        } catch (e) {
+            console.error(`The error ${e} occured when using saveStatus function from plugin.`);
+        } finally {
+            return;
+        }
+    }
 
     saveStatusToFile(statusJSON);
 };
@@ -58,18 +70,33 @@ const getStatusFilepath = (): string => {
     return path.join(process.cwd(), migrationStatusFilename);
 };
 
-export const loadMigrationsExecutionStatus = () => {
+export const loadMigrationsExecutionStatus = async (readStatusFromPlugin: StatusPlugin['readStatus'] | null) => {
+    if (readStatusFromPlugin) {
+        try {
+            status = await readStatusFromPlugin();
+        } catch (e) {
+            console.error(`The error ${e} occured when using readStatus function from plugin.`);
+        } finally {
+            return;
+        }
+    }
+
+    status = readFromStatus();
+};
+
+const readFromStatus = (): IStatus => {
     const statusFilepath = getStatusFilepath();
     if (!fileExists(statusFilepath)) {
-        return;
+        return {};
     }
 
     try {
-        const projectsMigrationStatuses = readFileSync(statusFilepath).toString();
+        const projectsMigrationStatuses = readFileSync(getStatusFilepath()).toString();
 
-        status = JSON.parse(projectsMigrationStatuses);
+        return JSON.parse(projectsMigrationStatuses);
     } catch (error) {
         console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
+        return {};
     }
 };
 
@@ -83,3 +110,5 @@ const saveStatusToFile = (data: string): void => {
         console.error(`Status file save failed, because of ${error instanceof Error ? error.message : 'unknown error.'}`);
     }
 };
+
+export const getPluginsFilePath = () => path.join(process.cwd(), pluginsFilename);

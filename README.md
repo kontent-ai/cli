@@ -126,6 +126,31 @@ The supported commands are divided into groups according to their target, at thi
 * `backup --action [backup|restore|clean]` - This command enables you to use [Kontent.ai backup manager](https://github.com/kontent-ai/backup-manager-js)
   * The purpose of this tool is to backup & restore [Kontent.ai projects](https://kontent.ai/). This project uses CM API to both get & restore data.
 
+### Custom implementation of reading/saving status of migrations
+
+You might want to implement your way to store information about migrations status. For instance, you would like to save it into DB such as MongoDB, Firebase, etc,... and not use the default JSON file. Therefore, we provide you with an option to implement functions `readStatus` and `saveStatus`. To do so, create a new file called `plugins.js` at the root of your migrations project, and implement mentioned functions there. To fit into the required declarations, you can use the template below:
+
+```js
+//plugins.js
+exports.saveStatus = async (data) => {}
+
+exports.readStatus = async () => {}
+```
+> Note: Both functions must be implemented.
+
+It is also possible to use Typescript. We have prepared types `SaveStatusType` and `ReadStatusType` to typesafe your functions. To create plugins in Typescript, create a file `plugins.ts` and implement your functions there. We suggest using and implementing the template below:
+
+```ts
+//plugins.ts
+import type { ReadStatusType, SaveStatusType } from "@kontent-ai/cli";
+
+export const saveStatus: SaveStatusType = async (data: string) => {}
+
+export const readStatus: ReadStatusType = async () => {}
+```
+
+> Note: Don't forget to transpile `plugins.ts` into `plugins.js` otherwise your plugins will not work.
+
 ### Debugging
 
 By default, we do not provide any additional logs from the HttpService. If you require these logs, you can change this behavior by using (option `--log-http-service-errors-to-console`).
