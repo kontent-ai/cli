@@ -143,6 +143,13 @@ const runMigrationCommand: yargs.CommandModule = {
             logHttpServiceErrorsToConsole,
         });
 
+        const migrationOptions = {
+            client: apiClient,
+            projectId: projectId,
+            operation: operation,
+            saveStatusFromPlugin: plugin?.saveStatus ?? null
+        };
+
         const migrationsStatus = await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
 
         if (runAll || runRange) {
@@ -168,7 +175,7 @@ const runMigrationCommand: yargs.CommandModule = {
             const sortedMigrationsToRun = migrationsToRun.sort(orderComparator(rollback));
             let executedMigrationsCount = 0;
             for (const migration of sortedMigrationsToRun) {
-                const migrationResult = await runMigration(migrationsStatus, migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
+                const migrationResult = await runMigration(migrationsStatus, migration, migrationOptions);
 
                 if (migrationResult > 0) {
                     if (!continueOnError) {
@@ -189,7 +196,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 module: migrationModule,
             };
 
-            migrationsResults = await runMigration(migrationsStatus, migration, apiClient, projectId, operation, plugin?.saveStatus ?? null);
+            migrationsResults = await runMigration(migrationsStatus, migration, migrationOptions);
         }
 
         process.exit(migrationsResults);
@@ -206,9 +213,9 @@ export const getRange = (range: string): IRange<number> | null => {
 
     return from <= to
         ? {
-              from,
-              to,
-          }
+            from,
+            to,
+        }
         : null;
 };
 
@@ -228,9 +235,9 @@ export const getRangeDate = (range: string): IRange<Date> | null => {
 
     return from.getTime() <= to.getTime()
         ? {
-              from,
-              to,
-          }
+            from,
+            to,
+        }
         : null;
 };
 

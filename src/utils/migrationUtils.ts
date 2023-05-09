@@ -49,7 +49,16 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, client: ManagementClient, projectId: string, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
+interface RunMigrationOptions {
+    client: ManagementClient;
+    projectId: string;
+    operation: Operation;
+    saveStatusFromPlugin: StatusPlugin['saveStatus'] | null;
+}
+
+export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, options: RunMigrationOptions): Promise<number> => {
+    const {client, projectId, operation, saveStatusFromPlugin} = options;
+
     console.log(`Running the ${operation === 'rollback' && 'rollback of'} ${migration.name} migration.`);
 
     let isSuccess = true;
@@ -60,7 +69,7 @@ export const runMigration = async (migrationsStatus: IStatus, migration: IMigrat
                 await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
             });
         } else {
-            if (migration.module.rollback === undefined) {
+            if (!migration.module.rollback) {
                 throw new Error('No rollback function specified');
             }
             migration.module.rollback?.(client).then(async () => {

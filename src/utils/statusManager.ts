@@ -100,7 +100,6 @@ const readFromStatus = (): IStatus => {
         return {};
     }
 
-    return {};
 };
 
 const saveStatusToFile = (data: string): void => {
