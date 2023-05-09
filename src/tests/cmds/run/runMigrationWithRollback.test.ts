@@ -71,6 +71,32 @@ const migrationStatus: IStatus = {
     ],
 };
 
+const migrationStatusAllRollbacks: IStatus = {
+    'fcb801c6-fe1d-41cf-af91-ec13802a1ed2': [
+        {
+            name: 'test1',
+            success: true,
+            order: 1,
+            time: new Date(Date.now()),
+            lastOperation: 'rollback',
+        },
+        {
+            name: 'test2',
+            success: true,
+            order: 2,
+            time: new Date(Date.now()),
+            lastOperation: 'rollback',
+        },
+        {
+            name: 'test3',
+            success: true,
+            order: 3,
+            time: new Date(Date.now()),
+            lastOperation: 'rollback',
+        },
+    ],
+};
+
 describe('run migration command tests', () => {
     let mockExit: jest.SpyInstance<never, [code?: number | undefined]>;
     beforeEach(() => {
@@ -149,4 +175,29 @@ describe('run migration command tests', () => {
 
         expect(mockExit).toHaveBeenCalledWith(0);
     });
+
+    it('with date range all, only rollback from first and last migrations should should be called', async () => {
+        jest.spyOn(statusManager, 'loadMigrationsExecutionStatus').mockImplementation(async () => migrationStatusAllRollbacks);
+
+        const args: any = yargs.parse([], {
+            apiKey: '',
+            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            range: '',
+            all: true,
+            rollback: 'true',
+        });
+
+        const migration1 = jest.spyOn(migrations[0].module, 'rollback');
+        const migration2 = jest.spyOn(migrations[1].module, 'rollback');
+        const migration3 = jest.spyOn(migrations[2].module, 'rollback');
+
+        await handler(args);
+
+        expect(migration3).not.toBeCalled();
+        expect(migration2).not.toBeCalled();
+        expect(migration1).not.toBeCalled();
+
+        expect(mockExit).toHaveBeenCalledWith(0);
+    });
+
 });
