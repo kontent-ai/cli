@@ -57,14 +57,14 @@ interface RunMigrationOptions {
 }
 
 export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, options: RunMigrationOptions): Promise<number> => {
-    const {client, projectId, operation, saveStatusFromPlugin} = options;
+    const { client, projectId, operation, saveStatusFromPlugin } = options;
 
     console.log(`Running the ${operation === 'rollback' && 'rollback of'} ${migration.name} migration.`);
 
     let isSuccess = true;
 
     try {
-        if(operation === 'run') {
+        if (operation === 'run') {
             await migration.module.run(client).then(async () => {
                 await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
             });

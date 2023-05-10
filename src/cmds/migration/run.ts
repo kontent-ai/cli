@@ -147,7 +147,7 @@ const runMigrationCommand: yargs.CommandModule = {
             client: apiClient,
             projectId: projectId,
             operation: operation,
-            saveStatusFromPlugin: plugin?.saveStatus ?? null
+            saveStatusFromPlugin: plugin?.saveStatus ?? null,
         };
 
         const migrationsStatus = await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
@@ -213,9 +213,9 @@ export const getRange = (range: string): IRange<number> | null => {
 
     return from <= to
         ? {
-            from,
-            to,
-        }
+              from,
+              to,
+          }
         : null;
 };
 
@@ -235,9 +235,9 @@ export const getRangeDate = (range: string): IRange<Date> | null => {
 
     return from.getTime() <= to.getTime()
         ? {
-            from,
-            to,
-        }
+              from,
+              to,
+          }
         : null;
 };
 

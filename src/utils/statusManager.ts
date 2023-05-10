@@ -4,7 +4,6 @@ import { fileExists } from './fileUtils';
 import * as path from 'path';
 import { type StatusPlugin } from './status/statusPlugin';
 
-
 const migrationStatusFilename = 'status.json';
 const pluginsFilename = 'plugins.js';
 // let status: IStatus = {};
@@ -99,7 +98,6 @@ const readFromStatus = (): IStatus => {
         console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
         return {};
     }
-
 };
 
 const saveStatusToFile = (data: string): void => {
