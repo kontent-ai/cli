@@ -2,6 +2,7 @@
 
 exports[`Status manager Project has success status in status manager file 1`] = `
 Object {
+  "lastOperation": "run",
   "name": "migration1",
   "order": 1,
   "success": true,

@@ -5,9 +5,10 @@ import fs, { Dirent } from 'fs';
 import { TemplateType } from '../models/templateType';
 import { MigrationModule } from '../types';
 import { IMigration } from '../models/migration';
-import { markAsCompleted, wasSuccessfullyExecuted } from './statusManager';
+import { markAsCompleted, shouldSkipMigration } from './statusManager';
 import { formatDateForFileName } from './dateUtils';
 import { StatusPlugin } from './status/statusPlugin';
+import { IStatus, Operation } from '../models/status';
 
 const listMigrationFiles = (fileExtension: string): Dirent[] => {
     return fs
@@ -48,15 +49,33 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
     return migrationFilepath;
 };
 
-export const runMigration = async (migration: IMigration, client: ManagementClient, projectId: string, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null): Promise<number> => {
-    console.log(`Running the ${migration.name} migration.`);
+interface RunMigrationOptions {
+    client: ManagementClient;
+    projectId: string;
+    operation: Operation;
+    saveStatusFromPlugin: StatusPlugin['saveStatus'] | null;
+}
+
+export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, options: RunMigrationOptions): Promise<number> => {
+    const { client, projectId, operation, saveStatusFromPlugin } = options;
+
+    console.log(`Running the ${operation === 'rollback' && 'rollback of'} ${migration.name} migration.`);
 
     let isSuccess = true;
 
     try {
-        await migration.module.run(client).then(async () => {
-            await markAsCompleted(projectId, migration.name, migration.module.order, saveStatusFromPlugin);
-        });
+        if (operation === 'run') {
+            await migration.module.run(client).then(async () => {
+                await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
+            });
+        } else {
+            if (!migration.module.rollback) {
+                throw new Error('No rollback function specified');
+            }
+            migration.module.rollback?.(client).then(async () => {
+                await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
+            });
+        }
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
 
@@ -109,6 +128,8 @@ const migration: MigrationModule = {
     order: ${order},
     run: async (apiClient) => {
     },
+    rollback: async(apiClient) => {
+    },
 };
 
 export default migration;
@@ -122,6 +143,8 @@ export const generatePlainMigration = (orderDate?: Date | null): string => {
 const migration = {
     order: ${order},
     run: async (apiClient) => {
+    },
+    rollback: async(apiClient) => {
     },
 };
 
@@ -198,12 +221,12 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getSuccessfullyExecutedMigrations = (migrations: IMigration[], projectId: string): IMigration[] => {
+export const getSuccessfullyExecutedMigrations = (migrationsStatus: IStatus, migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status
     for (const migration of migrations) {
-        if (wasSuccessfullyExecuted(migration.name, projectId)) {
+        if (shouldSkipMigration(migrationsStatus, migration.name, projectId, operation)) {
             alreadyExecutedMigrations.push(migration);
         }
     }

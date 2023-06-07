@@ -95,6 +95,7 @@ The supported commands are divided into groups according to their target, at thi
 * `migration add --name <migration name>` – Generates a script file (in JavaScript or TypeScript) for running a migration on a [Kontent.ai](https://kontent.ai/) project.
   * The file is stored in the `Migrations` directory within the root of your repository. 
   * Add your migration script in the body of the `run` function using the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) that was injected via the `apiClient` parameter.
+  * Add your rollback script in the body of the `rollback` function using the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) that was injected via the `apiClient` parameter.
   * To choose between JavaScript and TypeScript when generating the script file, use the `--template-type` option, such as `--template-type "javascript"`.
   * The migration template contains an `order` property that is used to run a batch of migrations (range or all) in the specified order. Order can be one of the two types - `number` or `date`.
     * Ordering by `number` has a higher priority. The `order` must be a unique positive integer or zero. There may be gaps between migrations, for example, the following sequence is perfectly fine 0,3,4,5,10
@@ -120,7 +121,9 @@ The supported commands are divided into groups according to their target, at thi
   * By adding `--range` you need to add value in form of `number:number` in case of number ordering or in the format of `Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss` in case of date order.
     > When using the range with dates, only the year value is mandatory and all other values are optional. It is fine to have a range specified like `T2023-01:2023-02`. It will take all migrations created in January of 2023. Notice the T at the beginning of the Date range. It helps to separate date ordering from number order.
   * You can execute a migration against a specific project (options `--project <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>`) or environment stored in the local configuration file (option `--environment <YOUR_ENVIRONMENT_NAME>`).
+  * To execute your `rollback` scripts instead of `run` scripts, use the switch option `--rollback` or shortly `-b`.
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
+    > Note: For every migration there is only one record in the status file. Calling run/rollback continously overrides the that record with new data.
   * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to get additional information logged by HttpService into the console (option `--log-http-service-errors-to-console`).
 
 * `backup --action [backup|restore|clean]` - This command enables you to use [Kontent.ai backup manager](https://github.com/kontent-ai/backup-manager-js)

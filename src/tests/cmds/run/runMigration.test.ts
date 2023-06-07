@@ -36,7 +36,7 @@ const migrations: IMigration[] = [
 ];
 
 jest.spyOn(statusManager, 'markAsCompleted').mockImplementation(async () => {});
-jest.spyOn(statusManager, 'loadMigrationsExecutionStatus').mockImplementation(async () => {});
+jest.spyOn(statusManager, 'loadMigrationsExecutionStatus').mockImplementation(async () => ({}));
 jest.spyOn(migrationUtils, 'loadMigrationFiles').mockReturnValue(
     new Promise((resolve) => {
         resolve(migrations);
