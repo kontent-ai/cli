@@ -65,16 +65,15 @@ export const runMigration = async (migrationsStatus: IStatus, migration: IMigrat
 
     try {
         if (operation === 'run') {
-            await migration.module.run(client).then(async () => {
-                await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
-            });
+            await migration.module.run(client);
+            await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
         } else {
             if (!migration.module.rollback) {
                 throw new Error('No rollback function specified');
             }
-            migration.module.rollback?.(client).then(async () => {
-                await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
-            });
+
+            await migration.module.rollback(client);
+            await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
         }
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
