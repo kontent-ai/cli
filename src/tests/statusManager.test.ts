@@ -49,7 +49,7 @@ describe('Status manager', () => {
     });
 
     it('loadMigrationsExecutionStatus to be called with plugins', async () => {
-        const expectedStatus = { "30816c62-8d41-4dc4-a1ab-40440070b7bf": [] };
+        const expectedStatus = { '30816c62-8d41-4dc4-a1ab-40440070b7bf': [] };
 
         const readStatusPlugin = async () => {
             return expectedStatus;
