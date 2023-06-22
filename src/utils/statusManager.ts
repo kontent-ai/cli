@@ -6,7 +6,6 @@ import { type StatusPlugin } from './status/statusPlugin';
 
 const migrationStatusFilename = 'status.json';
 const pluginsFilename = 'plugins.js';
-// let status: IStatus = {};
 
 const updateMigrationStatus = async (status: IStatus, projectId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     status[projectId] = status[projectId] === undefined ? [] : status[projectId];
@@ -40,9 +39,9 @@ const saveStatusFile = async (migrationsStatus: IStatus, saveStatusFromPlugin: S
     if (saveStatusFromPlugin) {
         try {
             await saveStatusFromPlugin(statusJSON);
+            return;
         } catch (e) {
             console.error(`The error ${e} occured when using saveStatus function from plugin.`);
-        } finally {
             return;
         }
     }
@@ -76,7 +75,6 @@ export const loadMigrationsExecutionStatus = async (readStatusFromPlugin: Status
             return await readStatusFromPlugin();
         } catch (e) {
             console.error(`The error ${e} occured when using readStatus function from plugin.`);
-        } finally {
             return {};
         }
     }
