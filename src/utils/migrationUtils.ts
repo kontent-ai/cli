@@ -59,7 +59,7 @@ interface RunMigrationOptions {
 export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, options: RunMigrationOptions): Promise<number> => {
     const { client, projectId, operation, saveStatusFromPlugin } = options;
 
-    console.log(`Running the ${operation === 'rollback' && 'rollback of'} ${migration.name} migration.`);
+    console.log(`Running the ${operation === 'rollback' ? 'rollback of' : ''} ${migration.name} migration.`);
 
     let isSuccess = true;
 
@@ -115,7 +115,7 @@ export const runMigration = async (migrationsStatus: IStatus, migration: IMigrat
         return 1;
     }
 
-    console.log(chalk.green(`The \"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`));
+    console.log(chalk.green(`The ${operation === 'rollback' ? 'rollback of ' : ''}\"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`));
     return 0;
 };
 

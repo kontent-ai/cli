@@ -150,7 +150,13 @@ const runMigrationCommand: yargs.CommandModule = {
             saveStatusFromPlugin: plugin?.saveStatus ?? null,
         };
 
-        const migrationsStatus = await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
+        let migrationsStatus: IStatus;
+        try {
+            migrationsStatus = await loadMigrationsExecutionStatus(plugin?.readStatus ?? null);
+        } catch (e) {
+            console.error(`An error ${chalk.red(e)} occured when trying to read status`);
+            process.exit(1);
+        }
 
         if (runAll || runRange) {
             let migrationsToRun = await loadMigrationFiles();

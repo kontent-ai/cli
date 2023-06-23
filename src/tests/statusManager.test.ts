@@ -49,13 +49,25 @@ describe('Status manager', () => {
     });
 
     it('loadMigrationsExecutionStatus to be called with plugins', async () => {
-        jest.spyOn(fileUtils, 'fileExists').mockReturnValue(true);
+        const expectedStatus = { '30816c62-8d41-4dc4-a1ab-40440070b7bf': [] };
 
-        const readStatusMocked = jest.fn().mockResolvedValue({});
+        const readStatusPlugin = async () => {
+            return expectedStatus;
+        };
 
-        await statusManager.loadMigrationsExecutionStatus(readStatusMocked);
+        const returnedStatus = await statusManager.loadMigrationsExecutionStatus(readStatusPlugin);
 
-        expect(readStatusMocked).toHaveBeenCalled();
+        expect(returnedStatus).toEqual(expectedStatus);
+    });
+
+    it('loadMigrationsExecutionStatus to be called with plugin that throw', async () => {
+        const readStatusPlugin = async () => {
+            throw new Error('Error during plugin function');
+        };
+
+        expect.assertions(1);
+
+        return statusManager.loadMigrationsExecutionStatus(readStatusPlugin).catch((e) => expect((e as Error).message).toMatch('Error during plugin function'));
     });
 
     it('MarkAsCompleted to be called with plugins', async () => {
