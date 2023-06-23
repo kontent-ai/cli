@@ -60,6 +60,16 @@ describe('Status manager', () => {
         expect(returnedStatus).toEqual(expectedStatus);
     });
 
+    it('loadMigrationsExecutionStatus to be called with plugin that throw', async () => {
+        const readStatusPlugin = async () => {
+            throw new Error('Error during plugin function');
+        };
+
+        expect.assertions(1);
+
+        return statusManager.loadMigrationsExecutionStatus(readStatusPlugin).catch((e) => expect((e as Error).message).toMatch('Error during plugin function'));
+    });
+
     it('MarkAsCompleted to be called with plugins', async () => {
         jest.spyOn(fileUtils, 'fileExists').mockReturnValue(true);
 

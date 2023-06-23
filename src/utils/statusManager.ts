@@ -41,8 +41,9 @@ const saveStatusFile = async (migrationsStatus: IStatus, saveStatusFromPlugin: S
             await saveStatusFromPlugin(statusJSON);
             return;
         } catch (e) {
-            console.error(`The error ${e} occured when using saveStatus function from plugin.`);
-            return;
+            console.error(`The error ${e} occured when using saveStatus function from plugin. Fallbacking to write status into status.json`);
+            saveStatusToFile(statusJSON);
+            throw new Error((e as Error).message);
         }
     }
 
@@ -71,12 +72,7 @@ const getStatusFilepath = (): string => {
 
 export const loadMigrationsExecutionStatus = async (readStatusFromPlugin: StatusPlugin['readStatus'] | null): Promise<IStatus> => {
     if (readStatusFromPlugin) {
-        try {
-            return await readStatusFromPlugin();
-        } catch (e) {
-            console.error(`The error ${e} occured when using readStatus function from plugin.`);
-            return {};
-        }
+        return await readStatusFromPlugin();
     }
 
     return readFromStatus();
