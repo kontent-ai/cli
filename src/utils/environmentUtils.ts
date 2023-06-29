@@ -6,13 +6,13 @@ import { fileExists } from './fileUtils';
 
 const environmentsConfigName = '.environments.json';
 
-export const saveEnvironmentConfig = (name: string, projectId: string, apiKey: string) => {
+export const saveEnvironmentConfig = (name: string, environmentId: string, apiKey: string) => {
     const environments = getEnvironmentsConfig();
     if (environments[name]) {
         console.log(chalk.yellow(`The \"${name}\" environment already exists and will be overwritten.`));
     }
 
-    environments[name] = { projectId, apiKey };
+    environments[name] = { environmentId, apiKey };
     const environmentsJSON = JSON.stringify(environments, null, 2);
 
     saveEnvironmentData(environmentsJSON, name);

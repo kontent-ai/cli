@@ -4,7 +4,7 @@ const packageInfo = require('../package.json');
 import * as dotEnv from 'dotenv';
 
 interface ICreateManagementClientParams {
-    readonly projectId: string;
+    readonly environmentId: string;
     readonly apiKey: string;
     readonly logHttpServiceErrorsToConsole: boolean;
 }
@@ -25,7 +25,7 @@ export const createManagementClient = (params: ICreateManagementClientParams): M
 
     return new ManagementClient({
         httpService: httpService,
-        projectId: params.projectId,
+        environmentId: params.environmentId,
         apiKey: params.apiKey,
         baseUrl: process.env.BASE_URL,
         retryStrategy: {

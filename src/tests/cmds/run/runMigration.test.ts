@@ -55,7 +55,7 @@ describe('run migration command tests', () => {
     it('with date range (T2023-03-25:2023-03-27), two migrations should be called', async () => {
         const args: any = yargs.parse([], {
             apiKey: '',
-            projectId: '',
+            environmentId: '',
             range: 'T2023-03-25:2023-03-27',
         });
 

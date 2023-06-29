@@ -121,7 +121,7 @@ describe('run migration command tests', () => {
 
         const args: any = yargs.parse([], {
             apiKey: '',
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             range: '',
             all: true,
             rollback: 'true',
@@ -152,7 +152,7 @@ describe('run migration command tests', () => {
 
         const args: any = yargs.parse([], {
             apiKey: '',
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             range: '',
             all: true,
             rollback: 'true',
@@ -181,7 +181,7 @@ describe('run migration command tests', () => {
 
         const args: any = yargs.parse([], {
             apiKey: '',
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             range: '',
             all: true,
             rollback: 'true',

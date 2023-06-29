@@ -7,7 +7,7 @@ export interface IMigrationStatus {
 }
 
 export interface IStatus {
-    [projectId: string]: IMigrationStatus[];
+    [environmentId: string]: IMigrationStatus[];
 }
 
 export type Operation = 'run' | 'rollback';

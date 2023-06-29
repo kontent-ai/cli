@@ -7,21 +7,21 @@ import { type StatusPlugin } from './status/statusPlugin';
 const migrationStatusFilename = 'status.json';
 const pluginsFilename = 'plugins.js';
 
-const updateMigrationStatus = async (status: IStatus, projectId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
-    status[projectId] = status[projectId] === undefined ? [] : status[projectId];
-    const projectMigrationsHistory = status[projectId];
+const updateMigrationStatus = async (status: IStatus, environmentId: string, migrationStatus: IMigrationStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
+    status[environmentId] = status[environmentId] === undefined ? [] : status[environmentId];
+    const environmentsMigrationsHistory = status[environmentId];
 
-    const previousMigrationStatusIndex = projectMigrationsHistory.findIndex((executedMigration) => executedMigration.name === migrationStatus.name);
+    const previousMigrationStatusIndex = environmentsMigrationsHistory.findIndex((executedMigration) => executedMigration.name === migrationStatus.name);
     if (previousMigrationStatusIndex > -1) {
-        projectMigrationsHistory[previousMigrationStatusIndex] = migrationStatus;
+        environmentsMigrationsHistory[previousMigrationStatusIndex] = migrationStatus;
     } else {
-        projectMigrationsHistory.push(migrationStatus);
+        environmentsMigrationsHistory.push(migrationStatus);
     }
 
     await saveStatusFile(status, saveStatusFromPlugin);
 };
 
-export const markAsCompleted = async (status: IStatus, projectId: string, name: string, order: number | Date, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
+export const markAsCompleted = async (status: IStatus, environmentId: string, name: string, order: number | Date, operation: Operation, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
     const migrationStatus: IMigrationStatus = {
         name,
         order,
@@ -30,7 +30,7 @@ export const markAsCompleted = async (status: IStatus, projectId: string, name: 
         lastOperation: operation,
     };
 
-    await updateMigrationStatus(status, projectId, migrationStatus, saveStatusFromPlugin);
+    await updateMigrationStatus(status, environmentId, migrationStatus, saveStatusFromPlugin);
 };
 
 const saveStatusFile = async (migrationsStatus: IStatus, saveStatusFromPlugin: StatusPlugin['saveStatus'] | null) => {
@@ -50,14 +50,14 @@ const saveStatusFile = async (migrationsStatus: IStatus, saveStatusFromPlugin: S
     saveStatusToFile(statusJSON);
 };
 
-const getMigrationStatus = (migrationsStatus: IStatus, migrationName: string, projectId: string): IMigrationStatus | null => {
-    const projectStatus = migrationsStatus[projectId];
+const getMigrationStatus = (migrationsStatus: IStatus, migrationName: string, environmentId: string): IMigrationStatus | null => {
+    const environmentStatus = migrationsStatus[environmentId];
 
-    return projectStatus === undefined ? null : projectStatus.find((migrationStatus) => migrationStatus.name === migrationName) ?? null;
+    return environmentStatus === undefined ? null : environmentStatus.find((migrationStatus) => migrationStatus.name === migrationName) ?? null;
 };
 
-export const shouldSkipMigration = (migrationsStatus: IStatus, migrationName: string, projectId: string, operation: Operation): boolean => {
-    const migrationStatus = getMigrationStatus(migrationsStatus, migrationName, projectId);
+export const shouldSkipMigration = (migrationsStatus: IStatus, migrationName: string, environmentId: string, operation: Operation): boolean => {
+    const migrationStatus = getMigrationStatus(migrationsStatus, migrationName, environmentId);
 
     if (migrationStatus === null || !migrationStatus.success) {
         return false;
@@ -85,9 +85,9 @@ const readFromStatus = (): IStatus => {
     }
 
     try {
-        const projectsMigrationStatuses = readFileSync(getStatusFilepath()).toString();
+        const environmentsMigrationStatuses = readFileSync(getStatusFilepath()).toString();
 
-        return JSON.parse(projectsMigrationStatuses);
+        return JSON.parse(environmentsMigrationStatuses);
     } catch (error) {
         console.warn(`Status JSON file is invalid because of ${error instanceof Error ? error.message : 'unknown error.'}. Continuing with empty status.`);
         return {};

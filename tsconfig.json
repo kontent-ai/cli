@@ -30,6 +30,7 @@
     "resolveJsonModule": true
   },
   "exclude": [
+    "coverage",
     "node_modules",
     "Migrations",
     "lib",

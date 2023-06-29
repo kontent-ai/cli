@@ -1,5 +1,5 @@
 export interface IEnvironment {
-    readonly projectId: string;
+    readonly environmentId: string;
     readonly apiKey: string;
 }
 

@@ -43,13 +43,13 @@
   },
   "homepage": "https://github.com/kontent-ai/cli#readme",
   "dependencies": {
-    "@kontent-ai/backup-manager": "4.0.1",
+    "@kontent-ai/backup-manager": "4.1.0",
     "chalk": "^4.1.2",
-    "dotenv": "^16.0.1",
-    "yargs": "^17.7.0"
+    "dotenv": "^16.3.1",
+    "yargs": "^17.7.2"
   },
   "peerDependencies": {
-    "@kontent-ai/management-sdk": "^3.1.0"
+    "@kontent-ai/management-sdk": "^5.0.0"
   },
   "devDependencies": {
     "@babel/core": "~7.18.10",

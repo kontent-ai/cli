@@ -7,7 +7,7 @@ import { FileService } from '@kontent-ai/backup-manager/dist/cjs/lib/node';
 
 const kontentBackupCommand: yargs.CommandModule = {
     command: 'backup',
-    describe: 'Kontent.ai backup tool to backup & restore projects through Management API.',
+    describe: 'Kontent.ai backup tool to backup & restore environments through Management API.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -27,9 +27,9 @@ const kontentBackupCommand: yargs.CommandModule = {
                     type: 'boolean',
                     default: true,
                 },
-                'project-id': {
-                    alias: 'p',
-                    describe: 'Project ID to run the migration script on',
+                'environment-id': {
+                    alias: 'e',
+                    describe: 'Environment ID to run the migration script on',
                     type: 'string',
                 },
                 'api-key': {
@@ -50,10 +50,10 @@ const kontentBackupCommand: yargs.CommandModule = {
                 },
             })
             .conflicts('environment', 'api-key')
-            .conflicts('environment', 'project-id')
+            .conflicts('environment', 'environment-id')
             .check((args: any) => {
-                if (!args.environment && !(args.projectId && args.apiKey)) {
-                    throw new Error(chalk.red('Specify an environment or a project ID with its Management API key.'));
+                if (!args.environment && !(args.environmentId && args.apiKey)) {
+                    throw new Error(chalk.red('Specify an environment or a environment ID with its Management API key.'));
                 }
 
                 if (args.environment) {
@@ -71,12 +71,12 @@ const kontentBackupCommand: yargs.CommandModule = {
                 return true;
             }),
     handler: async (argv: any) => {
-        let projectId = argv.projectId;
+        let environmentId = argv.environmentId;
         let apiKey = argv.apiKey;
         if (argv.environment) {
             const environments = getEnvironmentsConfig();
 
-            projectId = environments[argv.environment].projectId || argv.projectId;
+            environmentId = environments[argv.environment].environmentId || argv.environmentId;
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
@@ -96,7 +96,7 @@ const kontentBackupCommand: yargs.CommandModule = {
             case 'backup':
                 const exportService = new ExportService({
                     apiKey: apiKey,
-                    projectId: projectId,
+                    projectId: environmentId,
                     onExport: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Exported: ${item.title} | ${item.type}`);
@@ -119,7 +119,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                         }
                     },
                     preserveWorkflow: argv.preserveWorkflow,
-                    projectId: projectId,
+                    projectId: environmentId,
                     apiKey: apiKey,
                     enableLog: argv.log,
                     fixLanguages: true,
@@ -134,7 +134,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                             console.log(`Deleted: ${item.title} | ${item.type}`);
                         }
                     },
-                    projectId: projectId,
+                    projectId: environmentId,
                     apiKey: apiKey,
                 });
 
