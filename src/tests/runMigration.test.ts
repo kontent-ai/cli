@@ -17,7 +17,7 @@ describe('statusManager runMigration function', () => {
 
         const returnCode = await runMigration({}, migration, {
             client: createManagementClient({ apiKey: '' }),
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             operation: 'rollback',
             saveStatusFromPlugin: null,
         });
@@ -39,7 +39,7 @@ describe('statusManager runMigration function', () => {
 
         const returnCode = await runMigration({}, migration, {
             client: createManagementClient({ apiKey: '' }),
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             operation: 'rollback',
             saveStatusFromPlugin: null,
         });
@@ -62,7 +62,7 @@ describe('statusManager runMigration function', () => {
 
         const returnCode = await runMigration({}, migration, {
             client: createManagementClient({ apiKey: '' }),
-            projectId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
+            environmentId: 'fcb801c6-fe1d-41cf-af91-ec13802a1ed2',
             operation: 'run',
             saveStatusFromPlugin: null,
         });

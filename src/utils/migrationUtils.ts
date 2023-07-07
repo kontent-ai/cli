@@ -51,13 +51,13 @@ export const saveMigrationFile = (migrationName: string, migrationData: string, 
 
 interface RunMigrationOptions {
     client: ManagementClient;
-    projectId: string;
+    environmentId: string;
     operation: Operation;
     saveStatusFromPlugin: StatusPlugin['saveStatus'] | null;
 }
 
 export const runMigration = async (migrationsStatus: IStatus, migration: IMigration, options: RunMigrationOptions): Promise<number> => {
-    const { client, projectId, operation, saveStatusFromPlugin } = options;
+    const { client, environmentId, operation, saveStatusFromPlugin } = options;
 
     console.log(`Running the ${operation === 'rollback' ? 'rollback of' : ''} ${migration.name} migration.`);
 
@@ -66,14 +66,14 @@ export const runMigration = async (migrationsStatus: IStatus, migration: IMigrat
     try {
         if (operation === 'run') {
             await migration.module.run(client);
-            await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
+            await markAsCompleted(migrationsStatus, environmentId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
         } else {
             if (!migration.module.rollback) {
                 throw new Error('No rollback function specified');
             }
 
             await migration.module.rollback(client);
-            await markAsCompleted(migrationsStatus, projectId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
+            await markAsCompleted(migrationsStatus, environmentId, migration.name, migration.module.order, operation, saveStatusFromPlugin);
         }
     } catch (e) {
         console.error(chalk.redBright('An error occurred while running migration:'), chalk.yellowBright(migration.name), chalk.redBright('see the output from running the script.'));
@@ -115,7 +115,7 @@ export const runMigration = async (migrationsStatus: IStatus, migration: IMigrat
         return 1;
     }
 
-    console.log(chalk.green(`The ${operation === 'rollback' ? 'rollback of ' : ''}\"${migration.name}\" migration on a project with ID \"${projectId}\" executed successfully.`));
+    console.log(chalk.green(`The ${operation === 'rollback' ? 'rollback of ' : ''}\"${migration.name}\" migration on an environment with ID \"${environmentId}\" executed successfully.`));
     return 0;
 };
 
@@ -220,12 +220,12 @@ export const loadMigrationFiles = async (): Promise<IMigration[]> => {
     return migrations.filter(String);
 };
 
-export const getSuccessfullyExecutedMigrations = (migrationsStatus: IStatus, migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
+export const getSuccessfullyExecutedMigrations = (migrationsStatus: IStatus, migrations: IMigration[], environmentId: string, operation: Operation): IMigration[] => {
     const alreadyExecutedMigrations: IMigration[] = [];
 
     // filter by execution status
     for (const migration of migrations) {
-        if (shouldSkipMigration(migrationsStatus, migration.name, projectId, operation)) {
+        if (shouldSkipMigration(migrationsStatus, migration.name, environmentId, operation)) {
             alreadyExecutedMigrations.push(migration);
         }
     }

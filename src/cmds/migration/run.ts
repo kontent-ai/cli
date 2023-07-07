@@ -21,9 +21,9 @@ const runMigrationCommand: yargs.CommandModule = {
                     describe: 'Migration name',
                     type: 'string',
                 },
-                'project-id': {
-                    alias: 'p',
-                    describe: 'Project ID to run the migration script on',
+                'environment-id': {
+                    alias: 'e',
+                    describe: 'Environment ID to run the migration script on',
                     type: 'string',
                 },
                 'api-key': {
@@ -75,10 +75,10 @@ const runMigrationCommand: yargs.CommandModule = {
             .conflicts('range', 'name')
             .conflicts('all', 'range')
             .conflicts('environment', 'api-key')
-            .conflicts('environment', 'project-id')
+            .conflicts('environment', 'environment-id')
             .check((args: any) => {
-                if (!args.environment && !(args.projectId && args.apiKey)) {
-                    throw new Error(chalk.red('Specify an environment or a project ID with its Management API key.'));
+                if (!args.environment && !(args.environmentId && args.apiKey)) {
+                    throw new Error(chalk.red('Specify an environment or a environment ID with its Management API key.'));
                 }
 
                 if (!args.all) {
@@ -115,7 +115,7 @@ const runMigrationCommand: yargs.CommandModule = {
                 return true;
             }),
     handler: async (argv: any): Promise<void> => {
-        let projectId = argv.projectId;
+        let environmentId = argv.environmentId;
         let apiKey = argv.apiKey;
         const migrationName = argv.name;
         const runAll = argv.all;
@@ -131,21 +131,21 @@ const runMigrationCommand: yargs.CommandModule = {
         if (argv.environment) {
             const environments = getEnvironmentsConfig();
 
-            projectId = environments[argv.environment].projectId || argv.projectId;
+            environmentId = environments[argv.environment].environmentId || argv.environmentId;
             apiKey = environments[argv.environment].apiKey || argv.apiKey;
         }
 
         const plugin = fileExists(getPluginsFilePath()) ? await loadStatusPlugin(getPluginsFilePath().slice(0, -3) + '.js') : undefined;
 
         const apiClient = createManagementClient({
-            projectId,
+            environmentId,
             apiKey,
             logHttpServiceErrorsToConsole,
         });
 
         const migrationOptions = {
             client: apiClient,
-            projectId: projectId,
+            environmentId: environmentId,
             operation: operation,
             saveStatusFromPlugin: plugin?.saveStatus ?? null,
         };
@@ -171,7 +171,7 @@ const runMigrationCommand: yargs.CommandModule = {
             if (runForce) {
                 console.log('Skipping to check already executed migrations');
             } else {
-                migrationsToRun = skipExecutedMigrations(migrationsStatus, migrationsToRun, projectId, operation);
+                migrationsToRun = skipExecutedMigrations(migrationsStatus, migrationsToRun, environmentId, operation);
             }
 
             if (migrationsToRun.length === 0) {
@@ -291,8 +291,8 @@ const checkForInvalidOrder = (migrationsToRun: IMigration[]): void => {
     }
 };
 
-const skipExecutedMigrations = (migrationStatus: IStatus, migrations: IMigration[], projectId: string, operation: Operation): IMigration[] => {
-    const executedMigrations = getSuccessfullyExecutedMigrations(migrationStatus, migrations, projectId, operation);
+const skipExecutedMigrations = (migrationStatus: IStatus, migrations: IMigration[], environmentId: string, operation: Operation): IMigration[] => {
+    const executedMigrations = getSuccessfullyExecutedMigrations(migrationStatus, migrations, environmentId, operation);
     const result: IMigration[] = [];
 
     for (const migration of migrations) {

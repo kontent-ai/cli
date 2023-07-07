@@ -3,26 +3,27 @@
 [![npm](https://img.shields.io/npm/v/@kontent-ai/cli.svg)](https://www.npmjs.com/package/@kontent-ai/cli)
 [![Build](https://github.com/kontent-ai/cli/actions/workflows/test.yml/badge.svg)](https://github.com/kontent-ai/cli/actions/workflows/test.yml)
 
-The Kontent.ai CLI helps you when you need to change content models within your [Kontent.ai](https://kontent.ai/) projects and migrate existing content to match the changes. The CLI provides you with guidance on how to write and run migration scripts.
+The Kontent.ai CLI helps you when you need to change content models within your [Kontent.ai](https://kontent.ai/) environments and migrate existing content to match the changes. The CLI provides you with guidance on how to write and run migration scripts.
 
 **_NOTE:_** The Kontent.ai CLI tool supports only Javascript files, so if you write your migrations in Typescript or any other language you have to transpile your code before running.
 
-- [Kontent.ai CLI](#kontent-ai-cli)
+- [Kontent.ai CLI](#kontentai-cli)
   - [Installation](#installation)
   - [🌟 Migration example](#-migration-example)
     - [1. Prepare a testing environment](#1-prepare-a-testing-environment)
-    - [2. PrepareKontent.ai CLI boilerplate](#2-prepare-kontent-cli-boilerplate)
+    - [2. Prepare Kontent.ai CLI boilerplate](#2-prepare-kontentai-cli-boilerplate)
     - [3. Run a migration](#3-run-a-migration)
     - [4. Explore existing migrations](#4-explore-existing-migrations)
   - [Usage](#usage)
     - [Commands](#commands)
+    - [Custom implementation of reading/saving status of migrations](#custom-implementation-of-readingsaving-status-of-migrations)
     - [Debugging](#debugging)
   - [The vision](#the-vision)
-  - [Feedback & Contribution](#feedback--contribution)
+  - [Feedback \& Contribution](#feedback--contribution)
 
 ## Installation
 
-The Kontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) to manipulate content in your projects.
+The Kontent.ai CLI requires Node 10+ and npm 6+, and uses the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) to manipulate content in your environments.
 
 ```sh
 npm install -g @kontent-ai/cli
@@ -50,14 +51,14 @@ cd ./migrations-boilerplate
 
 npm install
 
-# Registers an environment (a pair of two keys, a project ID and API key used to manage the project) for migrations.
-kontent environment add --name DEV --api-key <Api key> --project-id <Project ID> (Use the copy of your production project from the first step)
+# Registers an environment (a pair of two keys, a environment ID and API key used to manage the environment) for migrations.
+kontent environment add --name DEV --api-key <Api key> --environment-id <Environment ID> (Use the copy of your production project from the first step)
 
 # Runs a specific migration.
 npm run migrate 01_sample_init_createBlogType
 ```
 
-Kontent.ai CLI supports only running JavaScript migration files so in case you want to write in TypesSript, CoffeScript or in any other language you have to transpile your code before running.
+Kontent.ai CLI supports only running JavaScript migration files so in case you want to write in TypesScript, CoffeScript or in any other language you have to transpile your code before running.
 In the case of TypeScript, you may use this example from [Kontent.ai CLI boilerplate](https://github.com/kontent-ai/migrations-boilerplate/blob/master/package.json#L7)
 
 That's it! You've run your first Kontent.ai migration. This migration created a content type called *Blog* that contains three text elements named *Title*, *Author* and *Text*. The sample migration is written in TypeScript.
@@ -68,7 +69,7 @@ The boilerplate is configured to transpile TypeScript migrations into plain Java
 
 You should now be able to go through the other boilerplate sample migrations. The migration scripts in the *Migrations* directory all focus on one scenario – replacing a piece of text from the *Author* text element with *Author* content items, which contain more information about the author. This way you can replace the texts within your items by more complex objects containing, for example, images and rich text.
 
-You can use similar approach for your own specific scenarios. For example, imagine you need to add display information to the images inserted in your articles. You may want to specify relative size or caption for each image. To do this, you would need to open each article and replace every image with a component that would contain the image and a few elements for image metadata. You'd create small migration scripts for separate parts of the scenario (such as creating a new type, updating the articles, and so on) and the migrations will take care of the process for all articles within your project.
+You can use similar approach for your own specific scenarios. For example, imagine you need to add display information to the images inserted in your articles. You may want to specify relative size or caption for each image. To do this, you would need to open each article and replace every image with a component that would contain the image and a few elements for image metadata. You'd create small migration scripts for separate parts of the scenario (such as creating a new type, updating the articles, and so on) and the migrations will take care of the process for all articles within your environment.
 
 ## Usage
 
@@ -89,10 +90,10 @@ kontent migration add --help
 The supported commands are divided into groups according to their target, at this first version there are just to spaces "migration" and "environment" containing following commands:
 
 * `environment add` –  Store information about the environment locally.
-  * The environment is defined as a named pair of values. For example, "DEV" environment can be defined as a pair of a specific project ID and Management API key. This named pair of values is stored within your local repository in a configuration file named `.environments.json`. 
-  * You can specify a named pair of project ID and Management API key using these options: `--project-id <your project ID> --api-key <management api key> --name <name of the environment>`.
+  * The environment is defined as a named pair of values. For example, "DEV" environment can be defined as a pair of a specific environment ID and Management API key. This named pair of values is stored within your local repository in a configuration file named `.environments.json`. 
+  * You can specify a named pair of environment ID and Management API key using these options: `--environment-id <your environment ID> --api-key <management api key> --name <name of the environment>`.
 
-* `migration add --name <migration name>` – Generates a script file (in JavaScript or TypeScript) for running a migration on a [Kontent.ai](https://kontent.ai/) project.
+* `migration add --name <migration name>` – Generates a script file (in JavaScript or TypeScript) for running a migration on a [Kontent.ai](https://kontent.ai/) environment.
   * The file is stored in the `Migrations` directory within the root of your repository. 
   * Add your migration script in the body of the `run` function using the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) that was injected via the `apiClient` parameter.
   * Add your rollback script in the body of the `rollback` function using the [Kontent.ai Management SDK](https://github.com/kontent-ai/management-sdk-js) that was injected via the `apiClient` parameter.
@@ -120,10 +121,10 @@ The supported commands are divided into groups according to their target, at thi
 * `migration run` - Runs a migration script specified by file name (option `--name <file name>`), or runs multiple migration scripts in the order specified in the migration files (options `--all` or `--range`).
   * By adding `--range` you need to add value in form of `number:number` in case of number ordering or in the format of `Tyyyy-mm-dd-hh-mm-ss:yyyy-mm-dd-hh-mm-ss` in case of date order.
     > When using the range with dates, only the year value is mandatory and all other values are optional. It is fine to have a range specified like `T2023-01:2023-02`. It will take all migrations created in January of 2023. Notice the T at the beginning of the Date range. It helps to separate date ordering from number order.
-  * You can execute a migration against a specific project (options `--project <YOUR_PROJECT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>`) or environment stored in the local configuration file (option `--environment <YOUR_ENVIRONMENT_NAME>`).
+  * You can execute a migration against a specific environment (options `--environment <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>`) or environment stored in the local configuration file (option `--environment <YOUR_ENVIRONMENT_NAME>`).
   * To execute your `rollback` scripts instead of `run` scripts, use the switch option `--rollback` or shortly `-b`.
   * After each run of a migration script, the CLI logs the execution into a status file. This file holds data for the next run to prevent running the same migration script more than once. You can choose to override this behavior, for example for debugging purposes, by using the `--force` parameter.
-    > Note: For every migration there is only one record in the status file. Calling run/rollback continously overrides the that record with new data.
+    > Note: For every migration there is only one record in the status file. Calling run/rollback continuously overrides the that record with new data.
   * You can choose whether you want to keep executing the migration scripts even if one migration script fails (option `--continue-on-error`) or whether you want to get additional information logged by HttpService into the console (option `--log-http-service-errors-to-console`).
 
 * `backup --action [backup|restore|clean]` - This command enables you to use [Kontent.ai backup manager](https://github.com/kontent-ai/backup-manager-js)

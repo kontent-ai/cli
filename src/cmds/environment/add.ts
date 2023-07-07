@@ -3,7 +3,7 @@ import { saveEnvironmentConfig } from '../../utils/environmentUtils';
 
 const addEnvironmentCommand: yargs.CommandModule = {
     command: 'add',
-    describe: 'Store information about the environment locally. The environment is defined as a named pair of values. For example, a "DEV" environment can be defined as a pair of specific project ID and Management API key.',
+    describe: 'Store information about the environment locally. The environment is defined as a named pair of values. For example, a "DEV" environment can be defined as a pair of specific environment ID and Management API key.',
     builder: (yargs: any) =>
         yargs
             .options({
@@ -12,9 +12,9 @@ const addEnvironmentCommand: yargs.CommandModule = {
                     describe: 'Environment name',
                     type: 'string',
                 },
-                'project-id': {
-                    alias: 'p',
-                    describe: 'Project ID to run the migration script on',
+                'environment-id': {
+                    alias: 'e',
+                    describe: 'Environment ID to run the migration script on',
                     type: 'string',
                 },
                 'api-key': {
@@ -23,9 +23,9 @@ const addEnvironmentCommand: yargs.CommandModule = {
                     type: 'string',
                 },
             })
-            .demandOption(['project-id', 'api-key', 'name']),
+            .demandOption(['environment-id', 'api-key', 'name']),
     handler: (argv: any) => {
-        saveEnvironmentConfig(argv.name, argv.projectId, argv.apiKey);
+        saveEnvironmentConfig(argv.name, argv.environmentId, argv.apiKey);
     },
 };
 

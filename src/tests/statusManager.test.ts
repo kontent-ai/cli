@@ -16,36 +16,36 @@ describe('Status manager', () => {
         jest.spyOn(Date, 'now').mockImplementation(() => 1575939660000);
     });
 
-    it('Project has success status in status manager file', async () => {
-        const projectId = 'project1';
+    it('Environment has success status in status manager file', async () => {
+        const environmentId = 'environment1';
         const migrationName = 'migration1';
-        await statusManager.markAsCompleted({}, projectId, migrationName, 1, 'run', null);
+        await statusManager.markAsCompleted({}, environmentId, migrationName, 1, 'run', null);
 
         const statusFile = readStatusFile();
-        const status = statusFile[projectId][0];
+        const status = statusFile[environmentId][0];
 
         expect(status).toMatchSnapshot();
     });
 
     it('Not executed migration is not present in status file', async () => {
-        const project1Id = 'project1';
-        const project2Id = 'project2';
+        const environment1 = 'environment1';
+        const environment2 = 'environment2';
         const migration1Name = 'migration1';
-        await statusManager.markAsCompleted({}, project1Id, migration1Name, 1, 'run', null);
+        await statusManager.markAsCompleted({}, environment1, migration1Name, 1, 'run', null);
 
-        const projectMigrationStatus = statusManager.shouldSkipMigration({}, migration1Name, project2Id, 'run');
+        const environmentMigrationStatus = statusManager.shouldSkipMigration({}, migration1Name, environment2, 'run');
 
-        expect(projectMigrationStatus).toBe(false);
+        expect(environmentMigrationStatus).toBe(false);
     });
 
     it('Executed migration is present in status file', async () => {
-        const project2Id = 'project2';
+        const environmentId2 = 'environment2';
         const migration2Name = 'migration2';
-        await statusManager.markAsCompleted({}, project2Id, migration2Name, 1, 'run', null);
+        await statusManager.markAsCompleted({}, environmentId2, migration2Name, 1, 'run', null);
 
-        const projectMigrationStatus = statusManager.shouldSkipMigration({}, project2Id, migration2Name, 'run');
+        const environmentMigrationStatus = statusManager.shouldSkipMigration({}, environmentId2, migration2Name, 'run');
 
-        expect(projectMigrationStatus).toBe(false);
+        expect(environmentMigrationStatus).toBe(false);
     });
 
     it('loadMigrationsExecutionStatus to be called with plugins', async () => {
