@@ -13,7 +13,7 @@ const addEnvironmentCommand: yargs.CommandModule = {
                     type: 'string',
                 },
                 'environment-id': {
-                    alias: 'e',
+                    alias: 'eid',
                     describe: 'Environment ID to run the migration script on',
                     type: 'string',
                 },

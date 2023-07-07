@@ -28,7 +28,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                     default: true,
                 },
                 'environment-id': {
-                    alias: 'e',
+                    alias: 'eid',
                     describe: 'Environment ID to run the migration script on',
                     type: 'string',
                 },
