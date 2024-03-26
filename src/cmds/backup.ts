@@ -96,13 +96,12 @@ const kontentBackupCommand: yargs.CommandModule = {
             case 'backup':
                 const exportService = new ExportService({
                     apiKey: apiKey,
-                    projectId: environmentId,
+                    environmentId: environmentId,
                     onExport: (item: IProcessedItem) => {
                         if (argv.log) {
                             console.log(`Exported: ${item.title} | ${item.type}`);
                         }
                     },
-                    skipValidation: true,
                 });
                 const exportedData = await exportService.exportAllAsync();
                 await zipService.createZipAsync(exportedData);
@@ -119,7 +118,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                         }
                     },
                     preserveWorkflow: argv.preserveWorkflow,
-                    projectId: environmentId,
+                    environmentId: environmentId,
                     apiKey: apiKey,
                     enableLog: argv.log,
                     fixLanguages: true,
@@ -134,7 +133,7 @@ const kontentBackupCommand: yargs.CommandModule = {
                             console.log(`Deleted: ${item.title} | ${item.type}`);
                         }
                     },
-                    projectId: environmentId,
+                    environmentId: environmentId,
                     apiKey: apiKey,
                 });
 
