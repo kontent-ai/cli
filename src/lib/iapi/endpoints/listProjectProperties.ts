@@ -1,5 +1,5 @@
 import { createFetchQuery } from "@kontent-ai/core-sdk";
-import { z } from "zod";
+import * as z from "zod/mini";
 
 import { type IapiClient, iapiEndpointUrl, iapiQueryBase } from "../client.js";
 
@@ -16,6 +16,6 @@ export type ProjectProperty = z.infer<typeof ProjectPropertySchema>;
 export const listProjectProperties = (c: IapiClient, environmentId: string) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, `/api/project/${environmentId}/property`),
-    zodSchema: ProjectPropertyListSchema,
+    schema: ProjectPropertyListSchema,
     ...iapiQueryBase(c),
   });

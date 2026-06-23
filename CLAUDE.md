@@ -27,7 +27,7 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 
 ### API clients
 
-- `iapi` (`src/lib/iapi`) — internal Kontent.ai API; hand-rolled client + one file per endpoint, built on `@kontent-ai/core-sdk` HTTP service.
+- `iapi` (`src/lib/iapi`) — internal Kontent.ai API; hand-rolled client, one file per endpoint, over `@kontent-ai/core-sdk`. Endpoint validators (the `schema` field) must be **`zod/mini`** (`import * as z from "zod/mini"`) — classic `zod` won't infer the payload.
 - `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`.
 - `@kontent-ai/core-sdk` — shared HTTP/SDK layer both clients build on.
 

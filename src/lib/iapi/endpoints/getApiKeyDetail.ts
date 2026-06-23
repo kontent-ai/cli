@@ -1,5 +1,5 @@
 import { createFetchQuery, jsonValueSchema } from "@kontent-ai/core-sdk";
-import { z } from "zod";
+import * as z from "zod/mini";
 
 import { type IapiClient, iapiEndpointUrl, iapiQueryBase } from "../client.js";
 import { ApiKeyTypeSchema } from "./listApiKeys.js";
@@ -23,6 +23,6 @@ export type ApiKeyDetail = z.infer<typeof ApiKeyDetailSchema>;
 export const getApiKeyDetail = (c: IapiClient, containerId: string, tokenSeedId: string) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, `/api/project-container/${containerId}/keys/${tokenSeedId}`),
-    zodSchema: ApiKeyDetailSchema,
+    schema: ApiKeyDetailSchema,
     ...iapiQueryBase(c),
   });
