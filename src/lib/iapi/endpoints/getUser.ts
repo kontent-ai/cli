@@ -1,12 +1,12 @@
 import { createFetchQuery } from "@kontent-ai/core-sdk";
-import { z } from "zod";
+import * as z from "zod/mini";
 
 import { type IapiClient, iapiEndpointUrl, iapiQueryBase } from "../client.js";
 
 export const UserInfoSchema = z.object({
   userId: z.string(),
-  isEmailVerified: z.boolean().optional(),
-  hadTrial: z.boolean().optional(),
+  isEmailVerified: z.optional(z.boolean()),
+  hadTrial: z.optional(z.boolean()),
 });
 
 export type UserInfo = z.infer<typeof UserInfoSchema>;
@@ -14,6 +14,6 @@ export type UserInfo = z.infer<typeof UserInfoSchema>;
 export const getUser = (c: IapiClient) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, "/api/user"),
-    zodSchema: UserInfoSchema,
+    schema: UserInfoSchema,
     ...iapiQueryBase(c),
   });
