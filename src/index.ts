@@ -1,31 +1,62 @@
 #!/usr/bin/env node
-import yargs from 'yargs';
 
-const createMigrationTool = (): number => {
-    yargs
-        .usage('The Kontent.ai CLI is a tool you can use for generating and running Kontent.ai migration scripts.')
-        .scriptName('kontent')
-        .commandDir('cmds')
-        .demandCommand(1, 'Please specify a command')
-        .wrap(null)
-        .help('h')
-        .alias('h', 'help')
-        .example('kontent', 'environment add --name DEV --environment-id <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .example('kontent', 'migration add --name 02_my_migration')
+import chalk from "chalk";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import {
+  createTelemetry,
+  formatTelemetryMode,
+  registerTelemetrySignalFlush,
+} from "./lib/telemetry/tracking.js";
+import { addLogLevelOptions, logInfo } from "./log.js";
+import type { CommandDeps, RegisterCommand } from "./types/yargs.js";
 
-        .example('kontent', 'migration run --name migration01 --environment-id <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .example('kontent', 'migration run --name migration01 --environment DEV --debug true')
-        .example('kontent', 'migration run --all --environment DEV')
-        .example('kontent', 'migration run --range 1:4 --environment DEV')
+const commandsToRegister: ReadonlyArray<RegisterCommand> = [
+  (await import("./commands/login/login.js")).register,
+  (await import("./commands/logout/logout.js")).register,
+  (await import("./commands/project/project.js")).register,
+  (await import("./commands/telemetry/telemetry.js")).register,
+];
 
-        .example('kontent', 'backup --action backup --environment-id <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .example('kontent', 'backup --action backup --environment <YOUR_ENVIRONMENT>')
-        .example('kontent', 'backup --action restore --name backup_file --environment-id <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .example('kontent', 'backup --action restore --name backup_file --environment <YOUR_ENVIRONMENT> --preserve-workflow false')
-        .example('kontent', 'backup --action clean --environment-id <YOUR_ENVIRONMENT_ID> --api-key <YOUR_MANAGEMENT_API_KEY>')
-        .strict().argv;
+const emptyYargs = yargs(hideBin(process.argv));
 
-    return 0;
-};
+const initialYargs = emptyYargs
+  .wrap(emptyYargs.terminalWidth())
+  .env("KONTENT")
+  .scriptName("kontent")
+  .epilogue("Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai")
+  .demandCommand(1, chalk.red("You need to provide a command to run."))
+  .strict()
+  .config("configFile", "Path to a JSON file with CLI parameters.")
+  .help("h")
+  .alias("h", "help")
+  .alias("v", "version");
 
-createMigrationTool();
+const withLogLevel = addLogLevelOptions(initialYargs);
+
+// Hidden options exist only so .strict() + .env("KONTENT") accept the
+// KONTENT_* env vars; the resolvers read process.env directly. The auth0* ones
+// are a developer escape hatch for pointing the CLI at a non-default tenant
+// (e.g. QA) via KONTENT_AUTH0_* env vars.
+const withHiddenEnvOptions = withLogLevel
+  .option("doNotTrack", { type: "boolean", hidden: true })
+  .option("telemetryDebug", { type: "boolean", hidden: true })
+  .option("url", { type: "string", hidden: true })
+  .option("auth0Domain", { type: "string", hidden: true })
+  .option("auth0ClientId", { type: "string", hidden: true })
+  .option("auth0Audience", { type: "string", hidden: true });
+
+const { telemetry, mode } = await createTelemetry();
+const deps: CommandDeps = { telemetry };
+registerTelemetrySignalFlush(telemetry);
+
+// Runs after parsing (so --verbose is known) and before the command handler.
+const withTelemetryModeLog = withHiddenEnvOptions.middleware((args) => {
+  logInfo(args, "verbose", formatTelemetryMode(mode));
+});
+
+await commandsToRegister
+  .reduce((current, register) => register(current, deps), withTelemetryModeLog)
+  .parseAsync();
+
+await telemetry.flush();

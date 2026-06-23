@@ -1,39 +1,16 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "module": "commonjs",
-    "lib": [
-      "esnext",
-      "DOM"
-    ],
-    "sourceMap": true,
-    "allowJs": true,
-    "outDir": "./lib/",
-    "strict": true,
-    "declaration": true,
-    "rootDir": "src",
-    "moduleResolution": "node",
-    "alwaysStrict": true,
-    "strictPropertyInitialization": true,
-    "forceConsistentCasingInFileNames": true,
-    "noUnusedParameters": false,
-    "noUnusedLocals": true,
-    "strictFunctionTypes": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "declarationDir": "./lib",
-    "declarationMap": true,
-    "typeRoots": [
-      "./node_modules/@types"
-    ],
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "exclude": [
-    "coverage",
-    "node_modules",
-    "Migrations",
-    "lib",
-    "./*.js"
-  ]
+  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }
