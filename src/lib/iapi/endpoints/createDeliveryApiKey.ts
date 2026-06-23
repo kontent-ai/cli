@@ -29,6 +29,6 @@ export const createDeliveryApiKey = (
       expires_at: input.expiresAt.toISOString(),
       type: "delivery-api",
     },
-    zodSchema: ApiKeyDetailSchema,
+    schema: ApiKeyDetailSchema,
     ...iapiQueryBase(c),
   });

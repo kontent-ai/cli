@@ -1,5 +1,5 @@
 import { createMutationQuery } from "@kontent-ai/core-sdk";
-import { z } from "zod";
+import * as z from "zod/mini";
 
 import { type IapiClient, iapiEndpointUrl, iapiQueryBase } from "../client.js";
 
@@ -47,6 +47,6 @@ export const listApiKeys = (c: IapiClient, containerId: string, filter: ListApiK
       api_key_types: filter.apiKeyTypes ?? null,
       environments: filter.environments ?? null,
     },
-    zodSchema: ApiKeyListingSchema,
+    schema: ApiKeyListingSchema,
     ...iapiQueryBase(c),
   });
