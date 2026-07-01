@@ -34,8 +34,6 @@ export const createAmplitudeSink = (apiKey: string): TelemetrySink => {
   const client = createInstance();
   // Not awaited on purpose: events tracked before init resolves are queued internally.
   client.init(apiKey, {
-    // TODO: switch back to "EU" once the production Amplitude project exists
-    // in the EU data center; the current test project is in the US.
     serverZone: "US",
     // The CLI process is short-lived; the default thresholds (300 events / 10 s)
     // would never fire before exit.
