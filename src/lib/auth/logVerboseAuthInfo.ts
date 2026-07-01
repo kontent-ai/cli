@@ -16,8 +16,6 @@ export const logVerboseAuthInfo = async (
     return;
   }
 
-  logInfo(params, "verbose", `\n\nresult tokens ${inspectValue(tokens)}`);
-
   if (tokens.idToken !== undefined) {
     logInfo(
       params,

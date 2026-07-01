@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -25,5 +25,7 @@ jobs:
         run: pnpm lint
       - name: Biome
         run: pnpm biome:check
+      - name: Test
+        run: pnpm test
       - name: Build
         run: pnpm build

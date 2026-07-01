@@ -10,6 +10,20 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kontent-ai/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kontent-ai/cli/issues"
+  },
+  "homepage": "https://github.com/kontent-ai/cli#readme",
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "clean": "rm -rf dist",
@@ -24,8 +38,15 @@
     "biome:fix": "biome check --fix --unsafe",
     "prepare": "pnpm run clean && pnpm run build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "kontent",
+    "kontent-ai",
+    "kontent.ai",
+    "cli",
+    "headless-cms",
+    "cms"
+  ],
+  "author": "Kontent.ai <devrel@kontent.ai>",
   "license": "MIT",
   "packageManager": "pnpm@11.8.0",
   "devDependencies": {
