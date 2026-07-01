@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  # Required for npm OIDC Trusted Publishing
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+      - name: Use Node.js from .nvmrc file
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Release tag ($TAG) does not match package.json version ($PKG). Bump package.json before releasing."
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: ESLint
+        run: pnpm lint
+      - name: Biome
+        run: pnpm biome:check
+      - name: Test
+        run: pnpm test
+
+      - name: Select Amplitude key
+        env:
+          PROD_KEY: ${{ secrets.KONTENT_CLI_AMPLITUDE_API_KEY }}
+          DEV_KEY: ${{ secrets.KONTENT_CLI_AMPLITUDE_API_KEY_DEV }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            KEY="$DEV_KEY"
+            NAME="development"
+          else
+            KEY="$PROD_KEY"
+            NAME="production"
+          fi
+          if [ -z "$KEY" ]; then
+            echo "::error::Amplitude $NAME key is not set. Configure the matching secret before releasing."
+            exit 1
+          fi
+          echo "::add-mask::$KEY"
+          echo "KONTENT_CLI_AMPLITUDE_API_KEY=$KEY" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          KONTENT_AUTH0_DOMAIN: ${{ vars.KONTENT_AUTH0_DOMAIN }}
+          KONTENT_AUTH0_CLIENT_ID: ${{ vars.KONTENT_AUTH0_CLIENT_ID }}
+          KONTENT_AUTH0_AUDIENCE: ${{ vars.KONTENT_AUTH0_AUDIENCE }}
+        run: pnpm build
+
+      - name: Publish (latest)
+        if: ${{ !github.event.release.prerelease }}
+        run: pnpm publish --access public --no-git-checks
+
+      - name: Publish (prerelease)
+        if: ${{ github.event.release.prerelease }}
+        run: pnpm publish --tag prerelease --access public --no-git-checks
