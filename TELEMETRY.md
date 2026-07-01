@@ -76,6 +76,9 @@ Both values are stored in the CLI config file with owner-only permissions
 - macOS: `~/.config/kontent-cli/config.json`
 - Windows: `%APPDATA%\kontent-cli\config.json`
 
+If `XDG_CONFIG_HOME` is set, it takes precedence over the default location on all
+platforms.
+
 ## How to disable telemetry
 
 Telemetry is automatically off when:
@@ -111,16 +114,17 @@ set, telemetry stays off even after `kontent telemetry enable`.
 
 ## Retention
 
-<!-- TODO: state the telemetry data retention period. -->
+Telemetry data is retained in line with the Kontent.ai
+[Privacy Policy](https://kontent.ai/privacy/).
 
 ## Third-party provider
 
-Telemetry is processed by [Amplitude](https://amplitude.com/) in the European
-Union (EU) data center.
+Telemetry is processed by [Amplitude](https://amplitude.com/) in the United
+States (US) data center.
 
 ## Privacy
 
-Telemetry is processed in the EU and handled in line with the GDPR. We collect
+Telemetry is processed in the US and handled in line with the GDPR. We collect
 the minimum needed to improve the CLI, you can opt out at any time (see above),
 and we never sell or monetize the data.
 
