@@ -205,12 +205,14 @@ const createKeyAndReturnSecret = async (
   containerId: string,
   envId: string,
 ): Promise<Result<string, BootstrapError>> => {
-  const expiresAt = new Date();
+  const now = new Date();
+  const expiresAt = new Date(now);
   expiresAt.setUTCFullYear(expiresAt.getUTCFullYear() + 1);
+  const createdDate = now.toISOString().slice(0, 10);
   const createSpinner = spinner();
   createSpinner.start("Creating delivery API key");
   const created = await createDeliveryApiKey(client, containerId, {
-    name: `kontent-cli bootstrap (${envId.slice(0, 8)})`,
+    name: `Delivery key — CLI bootstrap (${createdDate})`,
     environments: [envId],
     hasPreviewDeliveryAccess: true,
     expiresAt,
