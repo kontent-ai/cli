@@ -29,7 +29,7 @@ export const register: RegisterCommand = (sub, deps) =>
         })
         .option("path", {
           type: "string",
-          demandOption: true,
+          default: "./karma-nextjs-app",
           describe: "Target directory for the cloned app (must be empty or non-existent)",
         }),
     handler: async (args) => runBootstrap(args, deps.telemetry),
