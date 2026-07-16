@@ -20,7 +20,7 @@ import {
 
 const FLUSH_TIMEOUT_MS = 1500;
 
-const FIRST_RUN_NOTICE = `kontent-cli sends anonymous usage telemetry (command name, success/failure,
+const FIRST_RUN_NOTICE = `The Kontent.ai CLI sends anonymous usage telemetry (command name, success/failure,
 duration) to help improve it. Opt out: kontent telemetry disable`;
 
 export type CommandTracker = Readonly<{

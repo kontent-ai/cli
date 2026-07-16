@@ -17,7 +17,7 @@ conditions in [How to disable telemetry](#how-to-disable-telemetry) applies. The
 first time the CLI sends telemetry, it prints a one-time notice:
 
 ```text
-kontent-cli sends anonymous usage telemetry (command name, success/failure,
+The Kontent.ai CLI sends anonymous usage telemetry (command name, success/failure,
 duration) to help improve it. Opt out: kontent telemetry disable
 ```
 
@@ -71,10 +71,10 @@ while you are signed in.
 Both values are stored in the CLI config file with owner-only permissions
 (`0600`):
 
-- Linux: `$XDG_CONFIG_HOME/kontent-cli/config.json` (defaults to
-  `~/.config/kontent-cli/config.json`)
-- macOS: `~/.config/kontent-cli/config.json`
-- Windows: `%APPDATA%\kontent-cli\config.json`
+- Linux: `$XDG_CONFIG_HOME/kontent/cli/config.json` (defaults to
+  `~/.config/kontent/cli/config.json`)
+- macOS: `~/.config/kontent/cli/config.json`
+- Windows: `%APPDATA%\kontent\cli\config.json`
 
 If `XDG_CONFIG_HOME` is set, it takes precedence over the default location on all
 platforms.

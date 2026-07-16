@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guidance for agents working in this repo. `kontent-cli` is the Kontent.ai command-line interface (`kontent` bin → `src/index.ts`). ESM, TypeScript, pnpm.
+Guidance for agents working in this repo. The Kontent.ai CLI (`kontent` bin → `src/index.ts`) is the command-line interface. ESM, TypeScript, pnpm.
 
 **Keep this file current, concise, and token-aware.** When a change alters a documented architecture/convention/pattern, update CLAUDE.md in the same change — but prune stale or low-value lines rather than letting it grow. Always check before halting whether anything you did makes a statement here stale.
 

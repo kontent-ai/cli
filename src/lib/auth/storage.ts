@@ -3,7 +3,7 @@ import { AsyncEntry } from "@napi-rs/keyring";
 import { err, ok, type Result } from "../result.js";
 import type { AuthError, TokenSet } from "./types.js";
 
-const SERVICE = "kontent-cli";
+const SERVICE = "ai.kontent.cli";
 const ACCOUNT = "default";
 
 export type TokenStorage = Readonly<{
