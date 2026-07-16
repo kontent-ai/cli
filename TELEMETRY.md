@@ -131,4 +131,4 @@ and we never sell or monetize the data.
 For details on how Kontent.ai handles data, see the
 [Privacy Policy](https://kontent.ai/privacy/).
 
-Questions or concerns: <security@kontent.ai>
+Questions or concerns: <privacy@kontent.ai>
