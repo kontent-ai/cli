@@ -13,7 +13,7 @@ export type CliConfig = Readonly<{
 }>;
 
 export const getCliConfigPath = (): string =>
-  path.join(resolveConfigBaseDir(), "kontent-cli", "config.json");
+  path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json");
 
 const resolveConfigBaseDir = (): string => {
   if (process.env.XDG_CONFIG_HOME) {

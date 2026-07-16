@@ -2,7 +2,7 @@ import { getDefaultHttpService, type HttpAdapter, type JsonValue } from "@konten
 import type { IapiClient } from "../../src/lib/iapi/client.js";
 
 const testBaseUrl = { protocol: "https", host: "iapi.test" } as const;
-const testSdkInfo = { name: "kontent-cli-test", version: "0.0.0", host: "npmjs.com" } as const;
+const testSdkInfo = { name: "kontent-test", version: "0.0.0", host: "npmjs.com" } as const;
 
 export type IapiRoute = Readonly<{
   method: string;
