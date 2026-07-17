@@ -14,7 +14,7 @@ import { listProjectProperties } from "../../lib/iapi/endpoints/listProjectPrope
 import type { MapiClient } from "../../lib/mapi/client.js";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
 import { type LogOptions, logError, logWarning } from "../../log.js";
-import { buildEnvValues, findSample, type SampleApp } from "./samples.js";
+import { buildEnvValues, findSample, type PreviewSpaceConfig, type SampleApp } from "./samples.js";
 import { ensureLocalhostSpace, PREVIEW_PORT, type SpaceSetupError } from "./space.js";
 
 export type BootstrapParams = LogOptions &
@@ -101,8 +101,8 @@ export const performBootstrap = async (
 
   await wireEnvFile(params, sample, deliveryKey);
 
-  if (sample.hasPreviewSpace) {
-    await setupLocalhostSpace(params, mapiClient);
+  if (sample.previewSpace) {
+    await setupLocalhostSpace(params, mapiClient, sample.previewSpace);
   }
 
   return ok({ subscriptionId, sampleProjectType: sampleValue });
@@ -111,10 +111,11 @@ export const performBootstrap = async (
 const setupLocalhostSpace = async (
   params: BootstrapParams,
   mapiClient: MapiClient,
+  previewSpace: PreviewSpaceConfig,
 ): Promise<void> => {
   const spaceSpinner = spinner();
   spaceSpinner.start("Setting up localhost preview space");
-  const result = await ensureLocalhostSpace(mapiClient);
+  const result = await ensureLocalhostSpace(mapiClient, previewSpace);
 
   if (isErr(result)) {
     spaceSpinner.error("Could not set up the localhost preview space");
