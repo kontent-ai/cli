@@ -3,6 +3,8 @@
 import chalk from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { getKontentBaseDomain, validateKontentDomain } from "./lib/config/kontentUrl.js";
+import { isErr } from "./lib/result.js";
 import {
   createTelemetry,
   formatTelemetryMode,
@@ -45,6 +47,12 @@ const withHiddenEnvOptions = withLogLevel
   .option("auth0Domain", { type: "string", hidden: true })
   .option("auth0ClientId", { type: "string", hidden: true })
   .option("auth0Audience", { type: "string", hidden: true });
+
+const kontentDomainResult = validateKontentDomain(getKontentBaseDomain());
+if (isErr(kontentDomainResult)) {
+  console.error(`${chalk.red("Error:")} ${kontentDomainResult.error}`);
+  process.exit(1);
+}
 
 const { telemetry, mode } = await createTelemetry();
 const deps: CommandDeps = { telemetry };
