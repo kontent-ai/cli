@@ -3,7 +3,6 @@ import { match } from "ts-pattern";
 import { getAuth0Config } from "../../lib/auth/config.js";
 import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../lib/auth/deviceFlow.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
-import { decodeIdTokenClaims } from "../../lib/auth/idTokenClaims.js";
 import { logVerboseAuthInfo } from "../../lib/auth/logVerboseAuthInfo.js";
 import { createKeyringStorage, type TokenStorage } from "../../lib/auth/storage.js";
 import { decideAuth, refreshOrClear } from "../../lib/auth/tokenAccess.js";
@@ -89,22 +88,7 @@ const persistTokens = async (
   }
 };
 
-const identifierFromTokens = (tokens: TokenSet | null): string | null => {
-  if (tokens === null || tokens.idToken === undefined) {
-    return null;
-  }
-  return pickIdentifier(decodeIdTokenClaims(tokens.idToken));
-};
-
-const pickIdentifier = (claims: Record<string, unknown>): string | null => {
-  const candidates = [claims.email, claims.preferred_username, claims.sub];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.length > 0) {
-      return candidate;
-    }
-  }
-  return null;
-};
+const identifierFromTokens = (tokens: TokenSet | null): string | null => tokens?.identifier ?? null;
 
 const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
   onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }) => {
