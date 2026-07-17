@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import open from "open";
 import { match } from "ts-pattern";
 import { getAuth0Config } from "../../lib/auth/config.js";
@@ -7,6 +8,7 @@ import { logVerboseAuthInfo } from "../../lib/auth/logVerboseAuthInfo.js";
 import { createKeyringStorage, type TokenStorage } from "../../lib/auth/storage.js";
 import { decideAuth, refreshOrClear } from "../../lib/auth/tokenAccess.js";
 import type { AuthError, TokenSet } from "../../lib/auth/types.js";
+import { errorMessage } from "../../lib/error.js";
 import { createIapiClient } from "../../lib/iapi/client.js";
 import { err, isErr, isOk, ok, type Result } from "../../lib/result.js";
 import { type LogOptions, logInfo, logWarning } from "../../log.js";
@@ -91,14 +93,31 @@ const persistTokens = async (
 const identifierFromTokens = (tokens: TokenSet | null): string | null => tokens?.identifier ?? null;
 
 const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
-  onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }) => {
+  onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }, done) => {
     logInfo(
       params,
       "standard",
-      `Press Enter to open the browser. Code: ${userCode} (expires in ${formatExpiry(expiresInSeconds)}).`,
+      `To sign in, open:\n  ${verificationUriComplete}\n` +
+        `Code: ${userCode} (expires in ${formatExpiry(expiresInSeconds)}).\n` +
+        "Press Enter to open the browser.",
     );
-    await waitForEnter();
-    await open(verificationUriComplete);
+
+    if (!process.stdin.isTTY) {
+      await tryOpen(params, verificationUriComplete);
+      return;
+    }
+
+    try {
+      // Re-open the browser on each Enter; once() rejects when `done` aborts (polling settled).
+      while (!done.aborted) {
+        await once(process.stdin, "data", { signal: done });
+        await tryOpen(params, verificationUriComplete);
+      }
+    } catch {
+      // `done` aborted (auth done, denied, or expired) — stop re-opening.
+    } finally {
+      process.stdin.pause();
+    }
   },
   nowMs: () => Date.now(),
 });
@@ -106,14 +125,14 @@ const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
 const formatExpiry = (seconds: number): string =>
   seconds % 60 === 0 ? `${seconds / 60} minutes` : `${seconds} seconds`;
 
-const waitForEnter = async (): Promise<void> => {
-  await new Promise<void>((resolve) => {
-    const onData = () => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      resolve();
-    };
-    process.stdin.resume();
-    process.stdin.once("data", onData);
-  });
+const tryOpen = async (params: LogOptions, url: string): Promise<void> => {
+  try {
+    await open(url);
+  } catch (cause) {
+    logWarning(
+      params,
+      "verbose",
+      `Could not open the browser automatically: ${errorMessage(cause)}`,
+    );
+  }
 };
