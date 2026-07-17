@@ -1,11 +1,16 @@
 import { match } from "ts-pattern";
 
+export type PreviewSpaceConfig = Readonly<{
+  rootItemCodename: string;
+  collectionCodename: string;
+}>;
+
 type BaseSample = Readonly<{
   templateRepo: string; // giget spec
   envTemplateFile: string;
   envIdVarName: string;
   apiKeyVarName: string;
-  hasPreviewSpace?: boolean;
+  previewSpace?: PreviewSpaceConfig;
 }>;
 
 export type SampleApp =
@@ -31,7 +36,10 @@ const SAMPLES: readonly SampleApp[] = [
     envTemplateFile: ".env.template",
     envIdVarName: "KONTENT_ENVIRONMENT_ID",
     apiKeyVarName: "KONTENT_DELIVERY_API_KEY",
-    hasPreviewSpace: true,
+    previewSpace: {
+      rootItemCodename: "university_landing",
+      collectionCodename: "default",
+    },
   },
   {
     projectType: "Ficto",
