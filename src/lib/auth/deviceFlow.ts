@@ -14,7 +14,9 @@ export type DeviceCodeInfo = Readonly<{
 }>;
 
 export type DeviceFlowDeps = Readonly<{
-  onUserCode: (info: DeviceCodeInfo) => Promise<void>;
+  // `done` aborts once polling settles (success, denial, or expiry), letting the interaction
+  // re-open the browser until then.
+  onUserCode: (info: DeviceCodeInfo, done: AbortSignal) => Promise<void>;
   nowMs: () => number;
 }>;
 
@@ -45,15 +47,25 @@ export const loginViaDeviceFlow = async (
   }
 
   const handle = handleResult.value;
-  await deps.onUserCode({
-    userCode: handle.user_code,
-    verificationUri: handle.verification_uri,
-    verificationUriComplete: handle.verification_uri_complete,
-    expiresInSeconds: handle.expires_in,
-  });
+  const pollPromise = handle.poll();
+  const controller = new AbortController();
+  void pollPromise.then(
+    () => controller.abort(),
+    () => controller.abort(),
+  );
+
+  await deps.onUserCode(
+    {
+      userCode: handle.user_code,
+      verificationUri: handle.verification_uri,
+      verificationUriComplete: handle.verification_uri_complete,
+      expiresInSeconds: handle.expires_in,
+    },
+    controller.signal,
+  );
 
   try {
-    const polled = await handle.poll();
+    const polled = await pollPromise;
     const issuedAtMs = deps.nowMs();
     return ok(mapOpenIdTokensToTokenSet(polled, issuedAtMs));
   } catch (cause) {
