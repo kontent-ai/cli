@@ -60,7 +60,7 @@ const runBootstrap = async (params: BootstrapParams, telemetry: Telemetry): Prom
     subscription: result.value.subscriptionId,
     "sample-project-type": result.value.sampleProjectType,
   });
-  note(`cd ${params.path}\nnpm ci\nnpm run dev`, "Next steps");
+  note(`cd ${params.path}\nnpm ci\nnpm run dev:https`, "Next steps");
   outro("Done.");
 };
 
