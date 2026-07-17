@@ -1,6 +1,4 @@
-import { inspect } from "node:util";
 import { intro, note, outro } from "@clack/prompts";
-import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { getAuthenticatedIapiClient } from "../../../core/iapi/authenticatedClient.js";
 import {
@@ -10,10 +8,11 @@ import {
 } from "../../../core/project/bootstrap.js";
 import { supportedProjectTypes } from "../../../core/project/samples.js";
 import { formatAuthError } from "../../../lib/auth/formatAuthError.js";
+import { formatIapiError } from "../../../lib/iapi/formatIapiError.js";
 import { createMapiClient } from "../../../lib/mapi/client.js";
 import { isErr } from "../../../lib/result.js";
 import type { Telemetry } from "../../../lib/telemetry/tracking.js";
-import { type LogOptions, logError } from "../../../log.js";
+import { logError } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 
 export const register: RegisterCommand = (sub, deps) =>
@@ -77,7 +76,7 @@ const bootstrapErrorCode = (error: BootstrapError): string =>
     .with({ kind: "create-key-failed" }, (e) => `create-key-failed:${e.sdkError.details.reason}`)
     .otherwise((e) => e.kind);
 
-const handleBootstrapError = (params: LogOptions, error: BootstrapError): void =>
+const handleBootstrapError = (params: BootstrapParams, error: BootstrapError): void =>
   match(error)
     // soft exits: the user chose to stop or the environment is not eligible
     .with({ kind: "aborted" }, (e) => {
@@ -89,22 +88,20 @@ const handleBootstrapError = (params: LogOptions, error: BootstrapError): void =
       );
     })
     .otherwise((hardError) => {
-      logError(params, formatBootstrapError(hardError));
+      logError(params, formatBootstrapError(params, hardError));
       process.exitCode = 1;
     });
 
 const formatBootstrapError = (
+  params: BootstrapParams,
   error: Exclude<BootstrapError, { kind: "aborted" } | { kind: "unsupported-sample" }>,
 ): string =>
   match(error)
     .with({ kind: "target-not-usable" }, (e) => e.message)
     .with({ kind: "clone-failed" }, (e) => e.message)
-    .with({ kind: "project-info-failed" }, (e) => formatSdkError(e.sdkError))
-    .with({ kind: "properties-failed" }, (e) => formatSdkError(e.sdkError))
-    .with({ kind: "list-keys-failed" }, (e) => formatSdkError(e.sdkError))
-    .with({ kind: "key-detail-failed" }, (e) => formatSdkError(e.sdkError))
-    .with({ kind: "create-key-failed" }, (e) => formatSdkError(e.sdkError))
+    .with({ kind: "project-info-failed" }, (e) => formatIapiError(e.sdkError, params))
+    .with({ kind: "properties-failed" }, (e) => formatIapiError(e.sdkError, params))
+    .with({ kind: "list-keys-failed" }, (e) => formatIapiError(e.sdkError, params))
+    .with({ kind: "key-detail-failed" }, (e) => formatIapiError(e.sdkError, params))
+    .with({ kind: "create-key-failed" }, (e) => formatIapiError(e.sdkError, params))
     .exhaustive();
-
-const formatSdkError = (err: KontentSdkError): string =>
-  `[${err.details.reason}] ${err.message}\nurl: ${err.url}\ndetails: ${inspect(err.details, { depth: 5, colors: false, breakLength: 100 })}`;
