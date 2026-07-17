@@ -1,5 +1,6 @@
 import type { TokenSet as OpenIdTokenSet } from "openid-client";
 
+import { deriveIdentifier } from "./identifier.js";
 import type { TokenSet } from "./types.js";
 
 export const mapOpenIdTokensToTokenSet = (
@@ -14,9 +15,7 @@ export const mapOpenIdTokensToTokenSet = (
   return {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token ?? fallbackRefreshToken,
-    idToken: tokens.id_token,
     expiresAt: tokens.expires_in !== undefined ? issuedAtMs + tokens.expires_in * 1000 : undefined,
-    scope: tokens.scope,
-    tokenType: tokens.token_type,
+    identifier: deriveIdentifier(tokens.id_token),
   };
 };

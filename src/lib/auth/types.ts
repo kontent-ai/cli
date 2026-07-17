@@ -1,10 +1,11 @@
 export type TokenSet = Readonly<{
   accessToken: string;
   refreshToken?: string;
-  idToken?: string;
   expiresAt?: number;
-  scope?: string;
-  tokenType?: string;
+  // Small account label derived from the id token at login time. We persist
+  // this instead of the raw id token, whose size overflows Windows' credential
+  // blob limit (2560 chars).
+  identifier?: string;
 }>;
 
 export type AuthDecision =

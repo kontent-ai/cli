@@ -4,7 +4,6 @@ import { Issuer } from "openid-client";
 
 import { isVerbose, type LogOptions, logInfo } from "../../log.js";
 import type { Auth0Config } from "./config.js";
-import { decodeIdTokenClaims } from "./idTokenClaims.js";
 import type { TokenSet } from "./types.js";
 
 export const logVerboseAuthInfo = async (
@@ -14,14 +13,6 @@ export const logVerboseAuthInfo = async (
 ): Promise<void> => {
   if (!isVerbose(params)) {
     return;
-  }
-
-  if (tokens.idToken !== undefined) {
-    logInfo(
-      params,
-      "verbose",
-      `\n\nID Token Claims ${inspectValue(decodeIdTokenClaims(tokens.idToken))}`,
-    );
   }
 
   try {
