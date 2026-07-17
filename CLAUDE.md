@@ -48,7 +48,7 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 
 ## Testing
 
-Vitest; `test/integration/` for integration tests, `test/helpers/` for shared helpers. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
+Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
 
 ## Telemetry
 
