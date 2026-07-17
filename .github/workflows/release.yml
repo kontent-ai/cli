@@ -71,10 +71,12 @@ jobs:
           KONTENT_AUTH0_AUDIENCE: ${{ vars.KONTENT_AUTH0_AUDIENCE }}
         run: pnpm build
 
+      # --ignore-scripts: publish the Build step's dist/ as-is; otherwise the
+      # `prepare` hook rebuilds without KONTENT_AUTH0_* env and bakes empty config.
       - name: Publish (latest)
         if: ${{ !github.event.release.prerelease }}
-        run: pnpm publish --access public --no-git-checks
+        run: pnpm publish --access public --no-git-checks --ignore-scripts
 
       - name: Publish (prerelease)
         if: ${{ github.event.release.prerelease }}
-        run: pnpm publish --tag prerelease --access public --no-git-checks
+        run: pnpm publish --tag prerelease --access public --no-git-checks --ignore-scripts
