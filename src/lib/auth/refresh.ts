@@ -1,4 +1,4 @@
-import { Issuer } from "openid-client";
+import { errors, Issuer } from "openid-client";
 
 import { isErr, ok, type Result, tryAsync } from "../result.js";
 import type { Auth0Config } from "./config.js";
@@ -25,7 +25,10 @@ export const refreshTokens = async (
 
   const refreshed = await tryAsync(
     async () => client.refresh(refreshToken),
-    (cause): AuthError => ({ kind: "refresh-failed", cause }),
+    (cause): AuthError =>
+      isInvalidGrant(cause)
+        ? { kind: "refresh-rejected", cause }
+        : { kind: "refresh-failed", cause },
   );
   if (isErr(refreshed)) {
     return refreshed;
@@ -33,3 +36,8 @@ export const refreshTokens = async (
 
   return ok(mapOpenIdTokensToTokenSet(refreshed.value, Date.now(), refreshToken));
 };
+
+// RFC 6749 §5.2: invalid_grant means the refresh token itself is dead (expired,
+// revoked, or rotated); any other failure may succeed on retry.
+const isInvalidGrant = (cause: unknown): boolean =>
+  cause instanceof errors.OPError && cause.error === "invalid_grant";

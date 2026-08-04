@@ -1,7 +1,7 @@
 import { once } from "node:events";
 import open from "open";
 import { match } from "ts-pattern";
-import { getAuth0Config } from "../../lib/auth/config.js";
+import { type Auth0Config, getAuth0Config } from "../../lib/auth/config.js";
 import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../lib/auth/deviceFlow.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { logVerboseAuthInfo } from "../../lib/auth/logVerboseAuthInfo.js";
@@ -47,7 +47,14 @@ export const performLogin = async (
     .with({ type: "refresh-token" }, async ({ refreshToken }) => {
       const refreshed = await refreshOrClear(storage, config, refreshToken);
       if (isErr(refreshed)) {
-        return err(refreshed.error);
+        if (refreshed.error.kind !== "refresh-rejected") {
+          // Transient failure (network, Auth0 down): the device flow would die
+          // at the same place, so surface the error and keep the stored session.
+          return err(refreshed.error);
+        }
+        logInfo(params, "standard", "Saved session expired, starting a new sign-in.");
+        logWarning(params, "verbose", formatAuthError(refreshed.error));
+        return await runDeviceFlow(params, storage, config);
       }
       await persistTokens(params, storage, refreshed.value);
       await ensureUserIdCached(params, {
@@ -59,24 +66,30 @@ export const performLogin = async (
         identifier: identifierFromTokens(refreshed.value),
       });
     })
-    .with({ type: "login" }, async () => {
-      const result = await loginViaDeviceFlow(config, deviceFlowDeps(params));
-      if (isErr(result)) {
-        return err(result.error);
-      }
-      await persistTokens(params, storage, result.value);
-      // Fresh login may be a different account, so overwrite the cached userId.
-      await ensureUserIdCached(params, {
-        client: createIapiClient({ token: result.value.accessToken }),
-        shouldForceRefresh: true,
-      });
-      await logVerboseAuthInfo(params, config, result.value);
-      return ok({
-        isAlreadyAuthenticated: false,
-        identifier: identifierFromTokens(result.value),
-      });
-    })
+    .with({ type: "login" }, async () => runDeviceFlow(params, storage, config))
     .exhaustive();
+};
+
+const runDeviceFlow = async (
+  params: LoginParams,
+  storage: TokenStorage,
+  config: Auth0Config,
+): Promise<Result<LoginOutcome, AuthError>> => {
+  const result = await loginViaDeviceFlow(config, deviceFlowDeps(params));
+  if (isErr(result)) {
+    return err(result.error);
+  }
+  await persistTokens(params, storage, result.value);
+  // Fresh login may be a different account, so overwrite the cached userId.
+  await ensureUserIdCached(params, {
+    client: createIapiClient({ token: result.value.accessToken }),
+    shouldForceRefresh: true,
+  });
+  await logVerboseAuthInfo(params, config, result.value);
+  return ok({
+    isAlreadyAuthenticated: false,
+    identifier: identifierFromTokens(result.value),
+  });
 };
 
 const persistTokens = async (

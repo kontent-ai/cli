@@ -2,6 +2,7 @@ import { isCI } from "ci-info";
 import { match } from "ts-pattern";
 import { type LogOptions, logInfo } from "../../log.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
+import { isOk } from "../result.js";
 import {
   formatTelemetryOffReason,
   isTelemetryDebug,
@@ -36,7 +37,7 @@ export type Telemetry = Readonly<{
 export type TelemetryMode =
   | { readonly kind: "live" }
   | { readonly kind: "disabled"; readonly reason: TelemetryOffReason }
-  | { readonly kind: "notice-run" }
+  | { readonly kind: "notice-run"; readonly hasPersistedNotice: boolean }
   | { readonly kind: "debug" }
   | { readonly kind: "init-failed" };
 
@@ -142,11 +143,14 @@ const resolveSink = async (): Promise<SinkResolution> => {
   }
 
   if (config.telemetryNoticeShown !== true) {
+    // Written during createTelemetry(), before yargs runs the handler that
+    // produces the event, so the disclosure always precedes the data.
     process.stderr.write(`${FIRST_RUN_NOTICE}\n\n`);
-    // Best effort: if the write fails, the notice shows again next run and
-    // telemetry keeps sending nothing.
-    await writeCliConfig({ telemetryNoticeShown: true });
-    return { sink: null, mode: { kind: "notice-run" } };
+    const persisted = await writeCliConfig({ telemetryNoticeShown: true });
+    return {
+      sink: createAmplitudeSink(amplitudeApiKey),
+      mode: { kind: "notice-run", hasPersistedNotice: isOk(persisted) },
+    };
   }
 
   return { sink: createAmplitudeSink(amplitudeApiKey), mode: { kind: "live" } };
@@ -159,7 +163,11 @@ export const formatTelemetryMode = (mode: TelemetryMode): string =>
       { kind: "disabled" },
       (m) => `Telemetry: disabled (${formatTelemetryOffReason(m.reason)})`,
     )
-    .with({ kind: "notice-run" }, () => "Telemetry: enabled (first run, nothing sent)")
+    .with({ kind: "notice-run" }, (m) =>
+      m.hasPersistedNotice
+        ? "Telemetry: enabled (first run, notice shown)"
+        : "Telemetry: enabled (first run, notice shown; could not save config, notice will repeat)",
+    )
     .with({ kind: "debug" }, () => "Telemetry: debug dry-run (printing payloads, sending nothing)")
     .with({ kind: "init-failed" }, () => "Telemetry: disabled (initialization failed)")
     .exhaustive();

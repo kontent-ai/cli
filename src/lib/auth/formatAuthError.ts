@@ -26,6 +26,10 @@ export const formatAuthError = (error: AuthError): string =>
       ({ cause }) => `token refresh failed: ${describeCause(cause)}`,
     )
     .with(
+      { kind: "refresh-rejected" },
+      ({ cause }) => `refresh token rejected: ${describeCause(cause)}`,
+    )
+    .with(
       { kind: "storage-read-failed" },
       ({ cause }) => `failed to read stored tokens: ${describeCause(cause)}`,
     )
