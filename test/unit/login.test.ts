@@ -81,7 +81,6 @@ describe("performLogin when the refresh fails transiently", () => {
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
     const transientError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") } as const;
     vi.mocked(refreshTokens).mockResolvedValue(err(transientError));
-    vi.mocked(loginViaDeviceFlow).mockClear();
 
     const result = await performLogin({});
 
@@ -96,7 +95,6 @@ describe("performLogin when the refresh succeeds", () => {
     const storage = fakeStorage(EXPIRED_TOKENS);
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
     vi.mocked(refreshTokens).mockResolvedValue(ok(FRESH_TOKENS));
-    vi.mocked(loginViaDeviceFlow).mockClear();
 
     const result = await performLogin({});
 
