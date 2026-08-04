@@ -43,7 +43,7 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 - **Prefer `readonly`** types and `ReadonlyArray` for inputs.
 - **ESM import extensions:** relative imports must end in `.js` (biome enforces `useImportExtensions`).
 - **No redundant wrappers.** Don't add a function that only forwards to another; reuse existing helpers instead of duplicating logic.
-- **Comments only for non-obvious "why".** No restating-the-code comments. No emojis anywhere.
+- **Comments only for non-obvious "why".** No restating-the-code comments, no repeating a fact already stated elsewhere (put domain facts once, on the type), no justifying a change to the reviewer ("X already did Y, so..."). No emojis anywhere.
 - **No barrel files** except a deliberate public API.
 
 ## Testing

@@ -22,6 +22,9 @@ export type AuthError =
   | { readonly kind: "device-auth-failed"; readonly cause: unknown }
   | { readonly kind: "poll-failed"; readonly code: string; readonly description?: string }
   | { readonly kind: "refresh-failed"; readonly cause: unknown }
+  // Auth0 answered invalid_grant: the refresh token is expired, revoked, or
+  // already rotated. Unlike refresh-failed, this is not retryable.
+  | { readonly kind: "refresh-rejected"; readonly cause: unknown }
   | { readonly kind: "storage-read-failed"; readonly cause: unknown }
   | { readonly kind: "storage-write-failed"; readonly cause: unknown }
   | { readonly kind: "storage-clear-failed"; readonly cause: unknown }

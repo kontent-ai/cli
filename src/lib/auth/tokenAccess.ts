@@ -27,15 +27,18 @@ export const decideAuth = (tokens: TokenSet | null, nowMs: number): AuthDecision
   return { type: "login" };
 };
 
-// Refreshes the token set, clearing stored tokens if the refresh fails so a
-// stale refresh token can't get retried forever.
+/**
+ * Refreshes the token set. Clears stored tokens only when Auth0 rejects the
+ * refresh token as dead; transient failures keep the session so the next run
+ * can retry silently.
+ */
 export const refreshOrClear = async (
   storage: TokenStorage,
   config: Auth0Config,
   refreshToken: string,
 ): Promise<Result<TokenSet, AuthError>> => {
   const refreshed = await refreshTokens(config, refreshToken);
-  if (isErr(refreshed)) {
+  if (isErr(refreshed) && refreshed.error.kind === "refresh-rejected") {
     await storage.clear();
   }
   return refreshed;
@@ -64,6 +67,11 @@ export const getValidAccessToken = async (): Promise<Result<string, AuthError>> 
       async ({ refreshToken }): Promise<Result<string, AuthError>> => {
         const refreshed = await refreshOrClear(storage, getAuth0Config(), refreshToken);
         if (isErr(refreshed)) {
+          if (refreshed.error.kind === "refresh-rejected") {
+            // The tokens were just cleared, so the actionable state is "log in
+            // again" rather than the raw invalid_grant response.
+            return err({ kind: "not-logged-in" });
+          }
           return refreshed;
         }
         const written = await storage.write(refreshed.value);
