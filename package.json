@@ -1,6 +1,6 @@
 {
   "name": "@kontent-ai/cli",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Kontent.ai command-line interface",
   "type": "module",
   "main": "./dist/index.mjs",
