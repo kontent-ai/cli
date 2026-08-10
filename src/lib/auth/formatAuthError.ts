@@ -7,7 +7,6 @@ export const formatAuthError = (error: AuthError): string =>
     .with({ kind: "not-logged-in" }, () => "Not logged in. Run `kontent login` first.")
     .with({ kind: "access-denied" }, () => "login cancelled")
     .with({ kind: "expired-token" }, () => "device flow expired")
-    .with({ kind: "slow-down" }, () => "polling rate limited; please retry")
     .with(
       { kind: "discovery-failed" },
       ({ cause }) => `failed to discover Auth0 issuer: ${describeCause(cause)}`,

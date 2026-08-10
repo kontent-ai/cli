@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { performLogin } from "../../src/core/login/login.js";
-import { loginViaDeviceFlow } from "../../src/lib/auth/deviceFlow.js";
-import { refreshTokens } from "../../src/lib/auth/refresh.js";
+import { loginViaDeviceFlow, refreshTokens } from "../../src/lib/auth/auth0.js";
 import { createKeyringStorage } from "../../src/lib/auth/storage.js";
 import type { TokenSet } from "../../src/lib/auth/types.js";
 import { err, ok } from "../../src/lib/result.js";
@@ -10,20 +9,13 @@ vi.mock("../../src/lib/auth/storage.js", () => ({
   createKeyringStorage: vi.fn(),
 }));
 
-vi.mock("../../src/lib/auth/refresh.js", () => ({
+vi.mock("../../src/lib/auth/auth0.js", () => ({
   refreshTokens: vi.fn(),
-}));
-
-vi.mock("../../src/lib/auth/deviceFlow.js", () => ({
   loginViaDeviceFlow: vi.fn(),
 }));
 
 vi.mock("../../src/core/user/user.js", () => ({
   ensureUserIdCached: vi.fn(async () => {}),
-}));
-
-vi.mock("../../src/lib/auth/logVerboseAuthInfo.js", () => ({
-  logVerboseAuthInfo: vi.fn(async () => {}),
 }));
 
 const EXPIRED_TOKENS: TokenSet = {

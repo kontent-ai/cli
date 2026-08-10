@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 
 import { err, isErr, ok, type Result } from "../result.js";
+import { refreshTokens } from "./auth0.js";
 import { type Auth0Config, getAuth0Config } from "./config.js";
-import { refreshTokens } from "./refresh.js";
 import { createKeyringStorage, type TokenStorage } from "./storage.js";
 import type { AuthDecision, AuthError, TokenSet } from "./types.js";
 
