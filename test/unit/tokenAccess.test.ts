@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { refreshTokens } from "../../src/lib/auth/auth0.js";
 import type { Auth0Config } from "../../src/lib/auth/config.js";
-import { refreshTokens } from "../../src/lib/auth/refresh.js";
 import { createKeyringStorage } from "../../src/lib/auth/storage.js";
 import { getValidAccessToken, refreshOrClear } from "../../src/lib/auth/tokenAccess.js";
 import type { TokenSet } from "../../src/lib/auth/types.js";
 import { err, ok } from "../../src/lib/result.js";
 
-vi.mock("../../src/lib/auth/refresh.js", () => ({
+vi.mock("../../src/lib/auth/auth0.js", () => ({
   refreshTokens: vi.fn(),
 }));
 
@@ -17,6 +17,7 @@ vi.mock("../../src/lib/auth/storage.js", () => ({
 const CONFIG: Auth0Config = {
   domain: "example.auth0.com",
   clientId: "client-id",
+  audience: "https://example.test/api",
   scope: "openid profile email offline_access",
 };
 
@@ -24,6 +25,7 @@ vi.mock("../../src/lib/auth/config.js", () => ({
   getAuth0Config: vi.fn(() => ({
     domain: "example.auth0.com",
     clientId: "client-id",
+    audience: "https://example.test/api",
     scope: "openid profile email offline_access",
   })),
 }));

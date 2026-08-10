@@ -1,7 +1,7 @@
 export type Auth0Config = Readonly<{
   domain: string;
   clientId: string;
-  audience?: string;
+  audience: string;
   scope: string;
 }>;
 

@@ -17,7 +17,6 @@ export type AuthError =
   | { readonly kind: "not-logged-in" }
   | { readonly kind: "access-denied" }
   | { readonly kind: "expired-token" }
-  | { readonly kind: "slow-down" }
   | { readonly kind: "discovery-failed"; readonly cause: unknown }
   | { readonly kind: "device-auth-failed"; readonly cause: unknown }
   | { readonly kind: "poll-failed"; readonly code: string; readonly description?: string }

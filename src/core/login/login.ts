@@ -1,10 +1,9 @@
 import { once } from "node:events";
 import open from "open";
 import { match } from "ts-pattern";
+import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../lib/auth/auth0.js";
 import { type Auth0Config, getAuth0Config } from "../../lib/auth/config.js";
-import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../lib/auth/deviceFlow.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
-import { logVerboseAuthInfo } from "../../lib/auth/logVerboseAuthInfo.js";
 import { createKeyringStorage, type TokenStorage } from "../../lib/auth/storage.js";
 import { decideAuth, refreshOrClear } from "../../lib/auth/tokenAccess.js";
 import type { AuthError, TokenSet } from "../../lib/auth/types.js";
@@ -60,7 +59,6 @@ export const performLogin = async (
       await ensureUserIdCached(params, {
         client: createIapiClient({ token: refreshed.value.accessToken }),
       });
-      await logVerboseAuthInfo(params, config, refreshed.value);
       return ok({
         isAlreadyAuthenticated: false,
         identifier: identifierFromTokens(refreshed.value),
@@ -85,7 +83,6 @@ const runDeviceFlow = async (
     client: createIapiClient({ token: result.value.accessToken }),
     shouldForceRefresh: true,
   });
-  await logVerboseAuthInfo(params, config, result.value);
   return ok({
     isAlreadyAuthenticated: false,
     identifier: identifierFromTokens(result.value),
