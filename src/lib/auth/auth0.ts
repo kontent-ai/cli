@@ -1,4 +1,5 @@
 import {
+  ClientError,
   type Configuration,
   discovery,
   initiateDeviceAuthorization,
@@ -124,6 +125,13 @@ const isInvalidGrant = (cause: unknown): boolean =>
 // authorization_pending and slow_down never reach here: pollDeviceAuthorizationGrant
 // retries them internally and only rejects on terminal errors.
 const mapPollError = (cause: unknown): AuthError => {
+  // The library enforces the code's lifetime locally: pollDeviceAuthorizationGrant
+  // installs an AbortSignal.timeout(expires_in), so an abandoned flow almost always
+  // ends here rather than in the server's expired_token response.
+  if (cause instanceof ClientError && cause.code === "OAUTH_TIMEOUT") {
+    return { kind: "expired-token" };
+  }
+
   if (!(cause instanceof ResponseBodyError)) {
     return { kind: "unknown", cause };
   }
@@ -134,7 +142,7 @@ const mapPollError = (cause: unknown): AuthError => {
     .otherwise(
       (code): AuthError => ({
         kind: "poll-failed",
-        code: code ?? "unknown",
+        code,
         description: cause.error_description,
       }),
     );
