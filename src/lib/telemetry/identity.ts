@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
+import { createKeyringStorage } from "../auth/storage.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
+import { isErr } from "../result.js";
 
 export type TelemetryIdentity = Readonly<{
   deviceId: string;
@@ -29,7 +31,17 @@ const resolveDeviceId = async (): Promise<string> => {
   return deviceId;
 };
 
+/**
+ * Resolves the cached user id, gated on stored tokens. The cache can outlive its
+ * session (failed logout clear, copied config file), so the keyring decides who
+ * is logged in.
+ */
 const resolveUserId = async (): Promise<string | null> => {
+  const stored = await createKeyringStorage().read();
+  if (isErr(stored) || stored.value === null) {
+    return null;
+  }
+
   const cachedUserId = (await readCliConfig()).userId;
   return isValidId(cachedUserId) ? cachedUserId : null;
 };
