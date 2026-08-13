@@ -16,6 +16,7 @@ import type { CommandDeps, RegisterCommand } from "./types/yargs.js";
 const commandsToRegister: ReadonlyArray<RegisterCommand> = [
   (await import("./commands/login/login.js")).register,
   (await import("./commands/logout/logout.js")).register,
+  (await import("./commands/mapi/mapi.js")).register,
   (await import("./commands/project/project.js")).register,
   (await import("./commands/telemetry/telemetry.js")).register,
 ];

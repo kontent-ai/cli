@@ -49,6 +49,16 @@ identifiers (GUIDs) for the resource they act on — e.g. bootstrap adds `projec
 `subscription`, `sample-project-type`. These are never content, credentials, or
 command argument values.
 
+`kontent mapi` emits `cli__mapi` with two extra properties:
+
+| Property      | Description                                                          |
+| ------------- | -------------------------------------------------------------------- |
+| `status-code` | HTTP status code the Management API answered with                     |
+| `auth-source` | Which credential was used: `header` (an `Authorization` header), `mapi-key` (`--mapiKey`/`KONTENT_MAPI_KEY`), or `login` (stored login token) |
+
+The requested endpoint path is never sent — it carries environment ids and
+codenames. `auth-source` names the mechanism, never the credential.
+
 ## What is NOT collected
 
 - Credentials of any kind: API keys, access tokens, passwords.
