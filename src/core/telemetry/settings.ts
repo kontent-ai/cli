@@ -44,15 +44,12 @@ export const setTelemetryStatus = async (logger: Logger, isEnabled: boolean): Pr
 
 const warnIfEnvForcesOff = (logger: Logger): void => {
   if (isTruthyEnv(process.env.DO_NOT_TRACK)) {
-    logger.warning(
-      "standard",
-      "Note: DO_NOT_TRACK is set, so telemetry stays off in this environment.",
-    );
+    logger.warning("standard", "DO_NOT_TRACK is set, so telemetry stays off in this environment.");
   }
   if (isTruthyEnv(process.env.KONTENT_DO_NOT_TRACK)) {
     logger.warning(
       "standard",
-      "Note: KONTENT_DO_NOT_TRACK is set, so telemetry stays off in this environment.",
+      "KONTENT_DO_NOT_TRACK is set, so telemetry stays off in this environment.",
     );
   }
 };

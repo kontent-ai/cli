@@ -51,7 +51,11 @@ export const createLogger = (verbosity: LogLevel, sink: Writable = process.stder
 
   return {
     info: (logAtLevel, ...messages) => write(logAtLevel, messages),
-    warning: (logAtLevel, ...messages) => write(logAtLevel, messages),
+    warning: (logAtLevel, ...messages) =>
+      write(
+        logAtLevel,
+        messages.map((message) => `${chalkStderr.yellow("Warning:")} ${message}`),
+      ),
     error: (...messages) =>
       write(
         "standard",

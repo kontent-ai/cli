@@ -13,7 +13,7 @@ export const performLogout = async (logger: Logger): Promise<Result<void, AuthEr
   // Drop the cached userId so telemetry stops identifying the previous user.
   const clearedUserId = await writeCliConfig({ userId: undefined });
   if (isErr(clearedUserId)) {
-    logger.warning("verbose", `Could not clear cached userId: ${clearedUserId.error}`);
+    logger.warning("standard", `Could not clear cached userId: ${clearedUserId.error}`);
   }
   return ok(undefined);
 };

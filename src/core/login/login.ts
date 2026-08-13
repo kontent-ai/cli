@@ -24,7 +24,7 @@ export const performLogin = async (logger: Logger): Promise<Result<LoginOutcome,
 
   const stored = await storage.read();
   if (isErr(stored)) {
-    logger.warning("verbose", formatAuthError(stored.error));
+    logger.warning("standard", formatAuthError(stored.error));
   }
   const storedTokens = isOk(stored) ? stored.value : null;
 
@@ -134,6 +134,6 @@ const tryOpen = async (logger: Logger, url: string): Promise<void> => {
   try {
     await open(url);
   } catch (cause) {
-    logger.warning("verbose", `Could not open the browser automatically: ${errorMessage(cause)}`);
+    logger.warning("standard", `Could not open the browser automatically: ${errorMessage(cause)}`);
   }
 };
