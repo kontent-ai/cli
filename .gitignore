@@ -4,6 +4,11 @@ coverage/
 .DS_Store
 *.log
 .env
+.env.local
 
 # Local sample-app clones created by `kontent project bootstrap`
 my-kickstart/
+
+# Claude Code local state; plans are carried into worktrees via .worktreeinclude
+.claude/worktrees/
+.claude/plans/
