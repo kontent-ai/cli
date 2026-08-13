@@ -5,7 +5,7 @@ import { readCliConfig, writeCliConfig } from "../../lib/config/cliConfig.js";
 import type { IapiClient } from "../../lib/iapi/client.js";
 import { getUser, type UserInfo } from "../../lib/iapi/endpoints/getUser.js";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
-import { type LogOptions, logWarning } from "../../log.js";
+import type { Logger } from "../../log.js";
 
 export type UserError =
   | { readonly kind: "auth-failed"; readonly authError: AuthError }
@@ -15,7 +15,7 @@ type EnsureUserIdOptions = Readonly<{ client: IapiClient; shouldForceRefresh?: b
 
 // Best-effort: never throws, so a /user failure can't break login.
 export const ensureUserIdCached = async (
-  params: LogOptions,
+  logger: Logger,
   options: EnsureUserIdOptions,
 ): Promise<void> => {
   const cached = (await readCliConfig()).userId;
@@ -25,13 +25,13 @@ export const ensureUserIdCached = async (
 
   const result = await fetchUser(options.client);
   if (isErr(result)) {
-    logWarning(params, "verbose", `Could not cache userId: ${formatUserError(result.error)}`);
+    logger.warning("verbose", `Could not cache userId: ${formatUserError(result.error)}`);
     return;
   }
 
   const written = await writeCliConfig({ userId: result.value.userId });
   if (isErr(written)) {
-    logWarning(params, "verbose", `Could not persist userId: ${written.error}`);
+    logger.warning("verbose", `Could not persist userId: ${written.error}`);
   }
 };
 

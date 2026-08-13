@@ -1,23 +1,23 @@
-import chalk from "chalk";
+import type { Writable } from "node:stream";
+import { chalkStderr } from "chalk";
 import type { Argv } from "yargs";
 
-export type LogLevel = "none" | "standard" | "verbose";
+export const allLogLevels = ["none", "standard", "verbose"] as const;
 
-const logLevelsPriority: Readonly<Record<LogLevel, number>> = {
-  none: 0,
-  standard: 10,
-  verbose: 20,
-};
+export type LogLevel = (typeof allLogLevels)[number];
 
-export const allLogLevels = Object.keys(logLevelsPriority);
-
-type LoggableLogLevel = Exclude<LogLevel, "none">;
-
-const defaultLogLevel: LogLevel = "standard";
+export type MessageLevel = Exclude<LogLevel, "none">;
 
 export type LogOptions = Readonly<{
-  logLevel?: string;
+  logLevel?: LogLevel;
   verbose?: boolean;
+}>;
+
+export type Logger = Readonly<{
+  info: (logAtLevel: MessageLevel, ...messages: ReadonlyArray<string>) => void;
+  warning: (logAtLevel: MessageLevel, ...messages: ReadonlyArray<string>) => void;
+  error: (...messages: ReadonlyArray<string>) => void;
+  isVerbose: boolean;
 }>;
 
 export const addLogLevelOptions = <PreviousOptions>(
@@ -36,48 +36,47 @@ export const addLogLevelOptions = <PreviousOptions>(
       conflicts: "logLevel",
     });
 
-export const logError = (options: LogOptions, ...messages: ReadonlyArray<string>) =>
-  logInternal(
-    options,
-    "standard",
-    console.error,
-    ...messages.map((m) => `${chalk.red("Error:")} ${m}\n`),
-  );
+/**
+ * All output goes to stderr: stdout is reserved for command payloads, so a piped
+ * response body never carries diagnostics. `sink` exists so tests can capture
+ * output - it is not a routing knob.
+ */
+export const createLogger = (verbosity: LogLevel, sink: Writable = process.stderr): Logger => {
+  const write = (logAtLevel: MessageLevel, messages: ReadonlyArray<string>): void => {
+    if (logLevelsPriority[verbosity] < logLevelsPriority[logAtLevel]) {
+      return;
+    }
+    sink.write(`${messages.join(" ")}\n`);
+  };
 
-export const logWarning = (
-  options: LogOptions,
-  logAtLevel: LoggableLogLevel,
-  ...messages: ReadonlyArray<string>
-) => logInternal(options, logAtLevel, console.warn, ...messages);
-
-export const logInfo = (
-  options: LogOptions,
-  logAtLevel: LoggableLogLevel,
-  ...messages: ReadonlyArray<string>
-) => logInternal(options, logAtLevel, console.log, ...messages);
-
-const logInternal = (
-  options: LogOptions,
-  thisMessageLogLevel: LoggableLogLevel,
-  logFnc: (...msgs: ReadonlyArray<string>) => void,
-  ...messages: ReadonlyArray<string>
-) => {
-  if (logLevelsPriority[optionsToLogLevel(options)] >= logLevelsPriority[thisMessageLogLevel]) {
-    logFnc(...messages);
-  }
+  return {
+    info: (logAtLevel, ...messages) => write(logAtLevel, messages),
+    warning: (logAtLevel, ...messages) => write(logAtLevel, messages),
+    error: (...messages) =>
+      write(
+        "standard",
+        messages.map((message) => `${chalkStderr.red("Error:")} ${message}`),
+      ),
+    isVerbose: verbosity === "verbose",
+  };
 };
 
-export const isVerbose = (options: LogOptions): boolean => optionsToLogLevel(options) === "verbose";
+export const createLoggerFromArgs = (args: LogOptions, sink?: Writable): Logger =>
+  createLogger(argsToVerbosity(args), sink);
 
-const optionsToLogLevel = (options: LogOptions): LogLevel => {
-  if (options.verbose) {
+const logLevelsPriority: Readonly<Record<LogLevel, number>> = {
+  none: 0,
+  standard: 10,
+  verbose: 20,
+};
+
+const defaultLogLevel: LogLevel = "standard";
+
+// `--verbose` and `--logLevel` are mutually exclusive at the parser level, so the
+// precedence only matters for callers that build LogOptions by hand.
+const argsToVerbosity = (args: LogOptions): LogLevel => {
+  if (args.verbose) {
     return "verbose";
   }
-  const logLevel = options.logLevel ?? defaultLogLevel;
-  if (!isLogLevel(logLevel)) {
-    throw new Error(`CLI argument parsing error: log level "${options.logLevel}" is not valid.`);
-  }
-  return logLevel;
+  return args.logLevel ?? defaultLogLevel;
 };
-
-const isLogLevel = (input: string): input is LogLevel => allLogLevels.includes(input);

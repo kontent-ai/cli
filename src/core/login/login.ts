@@ -10,25 +10,21 @@ import type { AuthError, TokenSet } from "../../lib/auth/types.js";
 import { errorMessage } from "../../lib/error.js";
 import { createIapiClient } from "../../lib/iapi/client.js";
 import { err, isErr, isOk, ok, type Result } from "../../lib/result.js";
-import { type LogOptions, logInfo, logWarning } from "../../log.js";
+import type { Logger } from "../../log.js";
 import { ensureUserIdCached } from "../user/user.js";
-
-export type LoginParams = LogOptions;
 
 export type LoginOutcome = Readonly<{
   isAlreadyAuthenticated: boolean;
   identifier: string | null;
 }>;
 
-export const performLogin = async (
-  params: LoginParams,
-): Promise<Result<LoginOutcome, AuthError>> => {
+export const performLogin = async (logger: Logger): Promise<Result<LoginOutcome, AuthError>> => {
   const config = getAuth0Config();
   const storage = createKeyringStorage();
 
   const stored = await storage.read();
   if (isErr(stored)) {
-    logWarning(params, "verbose", formatAuthError(stored.error));
+    logger.warning("verbose", formatAuthError(stored.error));
   }
   const storedTokens = isOk(stored) ? stored.value : null;
 
@@ -37,7 +33,7 @@ export const performLogin = async (
   return match(decision)
     .with({ type: "use-existing-token" }, async () => {
       if (storedTokens !== null) {
-        await ensureUserIdCached(params, {
+        await ensureUserIdCached(logger, {
           client: createIapiClient({ token: storedTokens.accessToken }),
         });
       }
@@ -51,12 +47,12 @@ export const performLogin = async (
           // at the same place, so surface the error and keep the stored session.
           return err(refreshed.error);
         }
-        logInfo(params, "standard", "Saved session expired, starting a new sign-in.");
-        logWarning(params, "verbose", formatAuthError(refreshed.error));
-        return await runDeviceFlow(params, storage, config);
+        logger.info("standard", "Saved session expired, starting a new sign-in.");
+        logger.warning("verbose", formatAuthError(refreshed.error));
+        return await runDeviceFlow(logger, storage, config);
       }
-      await persistTokens(params, storage, refreshed.value);
-      await ensureUserIdCached(params, {
+      await persistTokens(logger, storage, refreshed.value);
+      await ensureUserIdCached(logger, {
         client: createIapiClient({ token: refreshed.value.accessToken }),
       });
       return ok({
@@ -64,22 +60,22 @@ export const performLogin = async (
         identifier: identifierFromTokens(refreshed.value),
       });
     })
-    .with({ type: "login" }, async () => runDeviceFlow(params, storage, config))
+    .with({ type: "login" }, async () => runDeviceFlow(logger, storage, config))
     .exhaustive();
 };
 
 const runDeviceFlow = async (
-  params: LoginParams,
+  logger: Logger,
   storage: TokenStorage,
   config: Auth0Config,
 ): Promise<Result<LoginOutcome, AuthError>> => {
-  const result = await loginViaDeviceFlow(config, deviceFlowDeps(params));
+  const result = await loginViaDeviceFlow(config, deviceFlowDeps(logger));
   if (isErr(result)) {
     return err(result.error);
   }
-  await persistTokens(params, storage, result.value);
+  await persistTokens(logger, storage, result.value);
   // Fresh login may be a different account, so overwrite the cached userId.
-  await ensureUserIdCached(params, {
+  await ensureUserIdCached(logger, {
     client: createIapiClient({ token: result.value.accessToken }),
     shouldForceRefresh: true,
   });
@@ -90,22 +86,21 @@ const runDeviceFlow = async (
 };
 
 const persistTokens = async (
-  params: LogOptions,
+  logger: Logger,
   storage: TokenStorage,
   tokens: TokenSet,
 ): Promise<void> => {
   const written = await storage.write(tokens);
   if (isErr(written)) {
-    logWarning(params, "standard", formatAuthError(written.error));
+    logger.warning("standard", formatAuthError(written.error));
   }
 };
 
 const identifierFromTokens = (tokens: TokenSet | null): string | null => tokens?.identifier ?? null;
 
-const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
+const deviceFlowDeps = (logger: Logger): DeviceFlowDeps => ({
   onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }, done) => {
-    logInfo(
-      params,
+    logger.info(
       "standard",
       `To sign in, open:\n  ${verificationUriComplete}\n` +
         `Code: ${userCode} (expires in ${formatExpiry(expiresInSeconds)}).\n` +
@@ -113,7 +108,7 @@ const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
     );
 
     if (!process.stdin.isTTY) {
-      await tryOpen(params, verificationUriComplete);
+      await tryOpen(logger, verificationUriComplete);
       return;
     }
 
@@ -121,7 +116,7 @@ const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
       // Re-open the browser on each Enter; once() rejects when `done` aborts (polling settled).
       while (!done.aborted) {
         await once(process.stdin, "data", { signal: done });
-        await tryOpen(params, verificationUriComplete);
+        await tryOpen(logger, verificationUriComplete);
       }
     } catch {
       // `done` aborted (auth done, denied, or expired) — stop re-opening.
@@ -135,14 +130,10 @@ const deviceFlowDeps = (params: LogOptions): DeviceFlowDeps => ({
 const formatExpiry = (seconds: number): string =>
   seconds % 60 === 0 ? `${seconds / 60} minutes` : `${seconds} seconds`;
 
-const tryOpen = async (params: LogOptions, url: string): Promise<void> => {
+const tryOpen = async (logger: Logger, url: string): Promise<void> => {
   try {
     await open(url);
   } catch (cause) {
-    logWarning(
-      params,
-      "verbose",
-      `Could not open the browser automatically: ${errorMessage(cause)}`,
-    );
+    logger.warning("verbose", `Could not open the browser automatically: ${errorMessage(cause)}`);
   }
 };

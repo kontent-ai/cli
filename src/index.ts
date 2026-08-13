@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import chalk from "chalk";
+import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getKontentBaseDomain, validateKontentDomain } from "./lib/config/kontentUrl.js";
@@ -10,7 +10,7 @@ import {
   formatTelemetryMode,
   registerTelemetrySignalFlush,
 } from "./lib/telemetry/tracking.js";
-import { addLogLevelOptions, logInfo } from "./log.js";
+import { addLogLevelOptions, createLoggerFromArgs } from "./log.js";
 import type { CommandDeps, RegisterCommand } from "./types/yargs.js";
 
 const commandsToRegister: ReadonlyArray<RegisterCommand> = [
@@ -50,7 +50,7 @@ const withHiddenEnvOptions = withLogLevel
 
 const kontentDomainResult = validateKontentDomain(getKontentBaseDomain());
 if (isErr(kontentDomainResult)) {
-  console.error(`${chalk.red("Error:")} ${kontentDomainResult.error}`);
+  console.error(`${chalkStderr.red("Error:")} ${kontentDomainResult.error}`);
   process.exit(1);
 }
 
@@ -60,7 +60,7 @@ registerTelemetrySignalFlush(telemetry);
 
 // Runs after parsing (so --verbose is known) and before the command handler.
 const withTelemetryModeLog = withHiddenEnvOptions.middleware((args) => {
-  logInfo(args, "verbose", formatTelemetryMode(mode));
+  createLoggerFromArgs(args).info("verbose", formatTelemetryMode(mode));
 });
 
 await commandsToRegister

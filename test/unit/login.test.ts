@@ -4,6 +4,7 @@ import { loginViaDeviceFlow, refreshTokens } from "../../src/lib/auth/auth0.js";
 import { createKeyringStorage } from "../../src/lib/auth/storage.js";
 import type { TokenSet } from "../../src/lib/auth/types.js";
 import { err, ok } from "../../src/lib/result.js";
+import { createLogger } from "../../src/log.js";
 
 vi.mock("../../src/lib/auth/storage.js", () => ({
   createKeyringStorage: vi.fn(),
@@ -32,6 +33,8 @@ const FRESH_TOKENS: TokenSet = {
   identifier: "new@example.com",
 };
 
+const logger = createLogger("none");
+
 const fakeStorage = (stored: TokenSet | null) => ({
   read: vi.fn(async () => ok(stored)),
   write: vi.fn(async () => ok(undefined)),
@@ -50,7 +53,7 @@ describe("performLogin with a rejected refresh token", () => {
     const storage = fakeStorage(EXPIRED_TOKENS);
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
 
-    const result = await performLogin({});
+    const result = await performLogin(logger);
 
     expect(loginViaDeviceFlow).toHaveBeenCalledOnce();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
@@ -60,7 +63,7 @@ describe("performLogin with a rejected refresh token", () => {
     const storage = fakeStorage(EXPIRED_TOKENS);
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
 
-    await performLogin({});
+    await performLogin(logger);
 
     expect(storage.clear).toHaveBeenCalledOnce();
     expect(storage.write).toHaveBeenCalledWith(FRESH_TOKENS);
@@ -74,7 +77,7 @@ describe("performLogin when the refresh fails transiently", () => {
     const transientError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") } as const;
     vi.mocked(refreshTokens).mockResolvedValue(err(transientError));
 
-    const result = await performLogin({});
+    const result = await performLogin(logger);
 
     expect(loginViaDeviceFlow).not.toHaveBeenCalled();
     expect(storage.clear).not.toHaveBeenCalled();
@@ -88,7 +91,7 @@ describe("performLogin when the refresh succeeds", () => {
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
     vi.mocked(refreshTokens).mockResolvedValue(ok(FRESH_TOKENS));
 
-    const result = await performLogin({});
+    const result = await performLogin(logger);
 
     expect(loginViaDeviceFlow).not.toHaveBeenCalled();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));

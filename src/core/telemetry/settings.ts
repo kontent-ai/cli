@@ -4,11 +4,9 @@ import { isTruthyEnv } from "../../lib/env.js";
 import { isErr } from "../../lib/result.js";
 import { formatTelemetryOffReason, resolveTelemetryConsent } from "../../lib/telemetry/consent.js";
 import { amplitudeApiKey } from "../../lib/telemetry/context.js";
-import { type LogOptions, logError, logInfo, logWarning } from "../../log.js";
+import type { Logger } from "../../log.js";
 
-export type TelemetryCommandParams = LogOptions;
-
-export const showTelemetryStatus = async (params: TelemetryCommandParams): Promise<void> => {
+export const showTelemetryStatus = async (logger: Logger): Promise<void> => {
   const config = await readCliConfig();
   const consent = resolveTelemetryConsent(process.env, config, amplitudeApiKey, isCI);
 
@@ -18,8 +16,7 @@ export const showTelemetryStatus = async (params: TelemetryCommandParams): Promi
       : "Reason: default (no opt-out detected)"
     : `Reason: ${formatTelemetryOffReason(consent.reason)}`;
 
-  logInfo(
-    params,
+  logger.info(
     "standard",
     [
       `Telemetry: ${consent.isEnabled ? "enabled" : "disabled"}`,
@@ -29,36 +26,31 @@ export const showTelemetryStatus = async (params: TelemetryCommandParams): Promi
   );
 };
 
-export const setTelemetryStatus = async (
-  params: TelemetryCommandParams,
-  isEnabled: boolean,
-): Promise<void> => {
+export const setTelemetryStatus = async (logger: Logger, isEnabled: boolean): Promise<void> => {
   const written = await writeCliConfig({
     telemetryEnabled: isEnabled,
     telemetryNoticeShown: true,
   });
   if (isErr(written)) {
-    logError(params, `Failed to update telemetry config: ${written.error}`);
+    logger.error(`Failed to update telemetry config: ${written.error}`);
     process.exitCode = 1;
     return;
   }
-  logInfo(params, "standard", isEnabled ? "Telemetry enabled." : "Telemetry disabled.");
+  logger.info("standard", isEnabled ? "Telemetry enabled." : "Telemetry disabled.");
   if (isEnabled) {
-    warnIfEnvForcesOff(params);
+    warnIfEnvForcesOff(logger);
   }
 };
 
-const warnIfEnvForcesOff = (params: TelemetryCommandParams): void => {
+const warnIfEnvForcesOff = (logger: Logger): void => {
   if (isTruthyEnv(process.env.DO_NOT_TRACK)) {
-    logWarning(
-      params,
+    logger.warning(
       "standard",
       "Note: DO_NOT_TRACK is set, so telemetry stays off in this environment.",
     );
   }
   if (isTruthyEnv(process.env.KONTENT_DO_NOT_TRACK)) {
-    logWarning(
-      params,
+    logger.warning(
       "standard",
       "Note: KONTENT_DO_NOT_TRACK is set, so telemetry stays off in this environment.",
     );
