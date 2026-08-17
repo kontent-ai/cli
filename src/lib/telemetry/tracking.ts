@@ -1,6 +1,6 @@
 import { isCI } from "ci-info";
 import { match } from "ts-pattern";
-import { type LogOptions, logInfo } from "../../log.js";
+import type { Logger } from "../../log.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
 import { isOk } from "../result.js";
 import {
@@ -30,7 +30,7 @@ export type CommandTracker = Readonly<{
 }>;
 
 export type Telemetry = Readonly<{
-  startCommandTracking: (command: string, params: LogOptions) => CommandTracker;
+  startCommandTracking: (command: string, logger: Logger) => CommandTracker;
   flush: () => Promise<void>;
 }>;
 
@@ -64,7 +64,7 @@ export const createTelemetry = async (): Promise<TelemetryInit> => {
     }
 
     const telemetry: Telemetry = {
-      startCommandTracking: (command, params) => {
+      startCommandTracking: (command, logger) => {
         const startedAtMs = Date.now();
         let hasFinished = false;
 
@@ -94,7 +94,7 @@ export const createTelemetry = async (): Promise<TelemetryInit> => {
             )
             .then((trackOutcome) => {
               if (trackOutcome.kind !== "skipped") {
-                logInfo(params, "verbose", formatTrackOutcome(trackOutcome));
+                logger.info("verbose", formatTrackOutcome(trackOutcome));
               }
             })
             .catch(() => {
