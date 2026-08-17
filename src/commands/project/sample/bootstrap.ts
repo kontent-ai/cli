@@ -1,4 +1,3 @@
-import { intro, note, outro } from "@clack/prompts";
 import { match } from "ts-pattern";
 import { getAuthenticatedIapiClient } from "../../../core/iapi/authenticatedClient.js";
 import {
@@ -12,7 +11,8 @@ import { formatIapiError } from "../../../lib/iapi/formatIapiError.js";
 import { createMapiClient } from "../../../lib/mapi/client.js";
 import { isErr } from "../../../lib/result.js";
 import type { Telemetry } from "../../../lib/telemetry/tracking.js";
-import { logError } from "../../../log.js";
+import { intro, note, outro } from "../../../lib/ui/prompts.js";
+import { createLoggerFromArgs, type Logger } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 
 export const register: RegisterCommand = (sub, deps) =>
@@ -31,27 +31,31 @@ export const register: RegisterCommand = (sub, deps) =>
           default: "./karma-nextjs-app",
           describe: "Target directory for the cloned app (must be empty or non-existent)",
         }),
-    handler: async (args) => runBootstrap(args, deps.telemetry),
+    handler: async (args) => runBootstrap(args, createLoggerFromArgs(args), deps.telemetry),
   });
 
-const runBootstrap = async (params: BootstrapParams, telemetry: Telemetry): Promise<void> => {
-  const tracker = telemetry.startCommandTracking("project sample bootstrap", params);
+const runBootstrap = async (
+  params: BootstrapParams,
+  logger: Logger,
+  telemetry: Telemetry,
+): Promise<void> => {
+  const tracker = telemetry.startCommandTracking("project sample bootstrap", logger);
   intro("Bootstrap a Kontent.ai project");
 
-  const clientResult = await getAuthenticatedIapiClient(params);
+  const clientResult = await getAuthenticatedIapiClient(logger);
   if (isErr(clientResult)) {
     tracker.fail(`auth:${clientResult.error.kind}`, { project: params.envId });
-    logError(params, formatAuthError(clientResult.error));
+    logger.error(formatAuthError(clientResult.error));
     process.exitCode = 1;
     return;
   }
   const iapiClient = clientResult.value;
   const mapiClient = createMapiClient({ token: iapiClient.token, envId: params.envId });
 
-  const result = await performBootstrap(params, { iapiClient, mapiClient });
+  const result = await performBootstrap(params, { logger, iapiClient, mapiClient });
   if (isErr(result)) {
     tracker.fail(bootstrapErrorCode(result.error), { project: params.envId });
-    handleBootstrapError(params, result.error);
+    handleBootstrapError(params, logger, result.error);
     return;
   }
 
@@ -76,7 +80,11 @@ const bootstrapErrorCode = (error: BootstrapError): string =>
     .with({ kind: "create-key-failed" }, (e) => `create-key-failed:${e.sdkError.details.reason}`)
     .otherwise((e) => e.kind);
 
-const handleBootstrapError = (params: BootstrapParams, error: BootstrapError): void =>
+const handleBootstrapError = (
+  params: BootstrapParams,
+  logger: Logger,
+  error: BootstrapError,
+): void =>
   match(error)
     // soft exits: the user chose to stop or the environment is not eligible
     .with({ kind: "aborted" }, (e) => {
@@ -88,20 +96,24 @@ const handleBootstrapError = (params: BootstrapParams, error: BootstrapError): v
       );
     })
     .otherwise((hardError) => {
-      logError(params, formatBootstrapError(params, hardError));
+      logger.error(formatBootstrapError(params, logger, hardError));
       process.exitCode = 1;
     });
 
 const formatBootstrapError = (
   params: BootstrapParams,
+  logger: Logger,
   error: Exclude<BootstrapError, { kind: "aborted" } | { kind: "unsupported-sample" }>,
-): string =>
-  match(error)
+): string => {
+  const context = { envId: params.envId, isVerbose: logger.isVerbose };
+
+  return match(error)
     .with({ kind: "target-not-usable" }, (e) => e.message)
     .with({ kind: "clone-failed" }, (e) => e.message)
-    .with({ kind: "project-info-failed" }, (e) => formatIapiError(e.sdkError, params))
-    .with({ kind: "properties-failed" }, (e) => formatIapiError(e.sdkError, params))
-    .with({ kind: "list-keys-failed" }, (e) => formatIapiError(e.sdkError, params))
-    .with({ kind: "key-detail-failed" }, (e) => formatIapiError(e.sdkError, params))
-    .with({ kind: "create-key-failed" }, (e) => formatIapiError(e.sdkError, params))
+    .with({ kind: "project-info-failed" }, (e) => formatIapiError(e.sdkError, context))
+    .with({ kind: "properties-failed" }, (e) => formatIapiError(e.sdkError, context))
+    .with({ kind: "list-keys-failed" }, (e) => formatIapiError(e.sdkError, context))
+    .with({ kind: "key-detail-failed" }, (e) => formatIapiError(e.sdkError, context))
+    .with({ kind: "create-key-failed" }, (e) => formatIapiError(e.sdkError, context))
     .exhaustive();
+};

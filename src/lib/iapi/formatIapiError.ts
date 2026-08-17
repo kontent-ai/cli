@@ -1,9 +1,7 @@
 import { inspect } from "node:util";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 
-import { isVerbose, type LogOptions } from "../../log.js";
-
-export type IapiErrorContext = LogOptions & Readonly<{ envId: string }>;
+export type IapiErrorContext = Readonly<{ envId: string; isVerbose: boolean }>;
 
 const httpStatusOf = (details: KontentSdkError["details"]): number | undefined =>
   "status" in details ? details.status : undefined;
@@ -21,7 +19,7 @@ export const formatIapiError = (error: KontentSdkError, context: IapiErrorContex
   return formatGenericIapiError(error, context);
 };
 
-const formatGenericIapiError = (error: KontentSdkError, options: LogOptions): string => {
+const formatGenericIapiError = (error: KontentSdkError, context: IapiErrorContext): string => {
   const { details } = error;
   const apiResponse = "kontentErrorResponse" in details ? details.kontentErrorResponse : undefined;
 
@@ -31,7 +29,7 @@ const formatGenericIapiError = (error: KontentSdkError, options: LogOptions): st
     apiResponse?.message ? `message: ${apiResponse.message}` : undefined,
     apiResponse?.request_id ? `request-id: ${apiResponse.request_id}` : undefined,
     `url: ${error.url}`,
-    isVerbose(options)
+    context.isVerbose
       ? `details: ${inspect(details, { depth: 5, colors: false, breakLength: 100 })}`
       : undefined,
   ];
