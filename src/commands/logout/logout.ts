@@ -1,7 +1,7 @@
 import { performLogout } from "../../core/logout/logout.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { isErr } from "../../lib/result.js";
-import { logError, logInfo } from "../../log.js";
+import { createLoggerFromArgs } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
 
 export const register: RegisterCommand = (y, deps) =>
@@ -10,16 +10,17 @@ export const register: RegisterCommand = (y, deps) =>
     describe: "Clear stored authentication tokens",
     builder: (b) => b,
     handler: async (args) => {
-      const tracker = deps.telemetry.startCommandTracking("logout", args);
+      const logger = createLoggerFromArgs(args);
+      const tracker = deps.telemetry.startCommandTracking("logout", logger);
 
-      const result = await performLogout(args);
+      const result = await performLogout(logger);
       if (isErr(result)) {
         tracker.fail(result.error.kind);
-        logError(args, formatAuthError(result.error));
+        logger.error(formatAuthError(result.error));
         process.exitCode = 1;
         return;
       }
       tracker.succeed();
-      logInfo(args, "standard", "Logged out.");
+      logger.info("standard", "Logged out.");
     },
   });

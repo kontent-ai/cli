@@ -6,6 +6,7 @@ import { downloadTemplate } from "giget";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { performBootstrap } from "../../src/core/project/bootstrap.js";
 import { createMapiClient } from "../../src/lib/mapi/client.js";
+import { createLogger } from "../../src/log.js";
 import { type IapiRoute, iapiTestClient } from "../helpers/iapiTestClient.js";
 
 vi.mock("@clack/prompts", () => ({
@@ -18,6 +19,8 @@ vi.mock("@clack/prompts", () => ({
   confirm: vi.fn(),
   select: vi.fn(),
   note: vi.fn(),
+  intro: vi.fn(),
+  outro: vi.fn(),
   isCancel: vi.fn(() => false),
 }));
 
@@ -59,7 +62,9 @@ const mapiClient = createMapiClient({ token: "test-token", envId: ENV_ID });
 
 let targetDir = "";
 
-const makeParams = () => ({ logLevel: "none", envId: ENV_ID, path: targetDir }) as const;
+const makeParams = () => ({ envId: ENV_ID, path: targetDir }) as const;
+
+const logger = createLogger("none");
 
 const readEnvLocal = () => readFile(path.join(targetDir, ".env.local"), "utf8");
 
@@ -87,7 +92,7 @@ describe("performBootstrap", () => {
     ]);
     vi.mocked(select).mockResolvedValue("seed-123");
 
-    const result = await performBootstrap(makeParams(), { iapiClient, mapiClient });
+    const result = await performBootstrap(makeParams(), { logger, iapiClient, mapiClient });
 
     expect(result.kind).toBe("ok");
     if (result.kind !== "ok") {
@@ -110,7 +115,7 @@ describe("performBootstrap", () => {
     ]);
     vi.mocked(confirm).mockResolvedValue(true);
 
-    const result = await performBootstrap(makeParams(), { iapiClient, mapiClient });
+    const result = await performBootstrap(makeParams(), { logger, iapiClient, mapiClient });
 
     expect(result.kind).toBe("ok");
     const env = await readEnvLocal();
@@ -126,7 +131,7 @@ describe("performBootstrap", () => {
     vi.mocked(confirm).mockResolvedValue(true);
     vi.mocked(isCancel).mockReturnValue(true);
 
-    const result = await performBootstrap(makeParams(), { iapiClient, mapiClient });
+    const result = await performBootstrap(makeParams(), { logger, iapiClient, mapiClient });
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {
@@ -142,7 +147,7 @@ describe("performBootstrap", () => {
       { method: "GET", path: /\/property$/, reply: [{ key: "SampleProjectType", value: "Nope" }] },
     ]);
 
-    const result = await performBootstrap(makeParams(), { iapiClient, mapiClient });
+    const result = await performBootstrap(makeParams(), { logger, iapiClient, mapiClient });
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {
@@ -157,7 +162,7 @@ describe("performBootstrap", () => {
     // Empty route table: any iapi request would throw, proving none is made.
     const iapiClient = iapiTestClient([]);
 
-    const result = await performBootstrap(makeParams(), { iapiClient, mapiClient });
+    const result = await performBootstrap(makeParams(), { logger, iapiClient, mapiClient });
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {

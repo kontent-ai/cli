@@ -20,7 +20,7 @@ Three layers, dependencies point downward only (`commands → core → lib`):
 
 - `src/index.ts` — composition root. Folds each command's `register` over yargs via `reduce`, wires shared `deps` (telemetry).
 - `src/commands/**` — yargs wiring + presentation only. Register the command, call core, format output, log, set `process.exitCode`, fire the telemetry tracker. No business logic.
-- `src/core/**` — orchestration of business logic. Returns `Result`/`Option`; never writes to the console directly (logs only through passed `LogOptions`). **Exception:** interactive commands may drive their own terminal UI from core — e.g. `src/core/project/bootstrap.ts` uses `@clack/prompts` (spinners, `confirm`/`select`, notes) directly because the flow is inherently interactive. Keep non-interactive core free of direct console writes.
+- `src/core/**` — orchestration of business logic. Returns `Result`/`Option`; never writes to the console directly (logs only through a passed `Logger`). **Exception:** interactive commands may drive their own terminal UI from core — e.g. `src/core/project/bootstrap.ts` uses the prompts of `src/lib/ui/prompts.ts` (spinners, `confirm`/`select`, notes) directly because the flow is inherently interactive. Keep non-interactive core free of direct console writes.
 - `src/lib/**` — reusable primitives: `auth/`, `iapi/`, `mapi/`, `config/`, `telemetry/`, plus `result.ts` and `option.ts`.
 
 Adding a command: export a `register: RegisterCommand` (see `src/commands/login/login.ts`), then add its import to the `register` array in the parent command or `src/index.ts`.
@@ -31,7 +31,14 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 - `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`.
 - `@kontent-ai/core-sdk` — shared HTTP/SDK layer both clients build on.
 
-**Commands build clients; core receives them.** The command builds the `iapiClient`/`mapiClient` and passes them into core (e.g. `performBootstrap(params, { iapiClient, mapiClient })`); core never constructs clients itself. Auth failure is handled in the command, not surfaced as a core `Result` error.
+**Commands build clients; core receives them.** The command builds the `iapiClient`/`mapiClient` and passes them into core (e.g. `performBootstrap(params, { logger, iapiClient, mapiClient })`); core never constructs clients itself. Auth failure is handled in the command, not surfaced as a core `Result` error.
+
+### Output channels
+
+- **stdout** — the data the command exists to produce, and nothing else. It is never level-gated: `--logLevel none` must still print a payload, because a response body is not a log.
+- **stderr** — everything said *about* producing it: progress, warnings, errors, verbose traces. This is the POSIX meaning of stderr (diagnostics, not errors), and how curl, git and npm behave.
+
+Every handler starts with `const logger = createLoggerFromArgs(args)` (`src/log.ts`) and passes that `Logger` down; core takes it as a parameter or inside its `deps` object. `createLoggerFromArgs` is the only place that resolves the `--logLevel`/`--verbose` pair; everything else builds a logger from a single `LogLevel` via `createLogger`. The `sink` parameter is a test seam, not a routing knob — never point a log at stdout.
 
 ## Conventions
 
