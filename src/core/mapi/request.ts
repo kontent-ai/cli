@@ -21,9 +21,11 @@ export type MapiResponse = Readonly<{
 }>;
 
 /**
- * `transport` is reserved for a request that could not be made; every HTTP status
- * the API answers with, including 4xx and 5xx, is an `ok` result. The remaining
- * kinds are raised by the command while it builds the params.
+ * The ways the command ends without an HTTP answer to show the user.
+ *
+ * `transport` is reserved for a request that could not be made; every status the
+ * API answers with, including 4xx and 5xx, is an `ok` result. The remaining kinds
+ * are raised by the command while it builds the params, before anything is sent.
  */
 export type MapiRequestError =
   | Readonly<{ kind: "invalid-endpoint"; message: string }>
@@ -32,7 +34,7 @@ export type MapiRequestError =
   | Readonly<{ kind: "unreadable-input"; message: string }>
   | Readonly<{ kind: "transport"; message: string }>;
 
-export const performMapiRequest = async (
+export const performRawMapiRequest = async (
   params: MapiRequestParams,
   deps: Readonly<{ logger: Logger; client: MapiRawClient }>,
 ): Promise<Result<MapiResponse, MapiRequestError>> => {

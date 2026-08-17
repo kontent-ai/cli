@@ -30,10 +30,28 @@ describe("parseHeaders", () => {
     });
   });
 
-  it.each(["no-separator", ": missing-name", "bad name: value", ""])("rejects %j", (entry) => {
+  it.each(["no-separator", ": missing-name", ""])("rejects %j as a format error", (entry) => {
     const result = parseHeaders([entry]);
 
     expect(result.kind).toBe("err");
+    if (result.kind !== "err") {
+      return;
+    }
+    expect(result.error).toContain('Expected the "Name: value" format');
+  });
+
+  it.each([
+    "bad name: value",
+    "bad(name): value",
+    "naïve: value",
+  ])("rejects %j as a name error", (entry) => {
+    const result = parseHeaders([entry]);
+
+    expect(result.kind).toBe("err");
+    if (result.kind !== "err") {
+      return;
+    }
+    expect(result.error).toContain("Names may contain only letters, digits and");
   });
 
   it("fails on the first malformed entry", () => {

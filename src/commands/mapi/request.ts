@@ -4,7 +4,7 @@ import { match } from "ts-pattern";
 import {
   type MapiRequestError,
   type MapiResponse,
-  performMapiRequest,
+  performRawMapiRequest,
 } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { getValidAccessToken } from "../../lib/auth/tokenAccess.js";
@@ -77,7 +77,16 @@ export const register: RegisterCommand = (sub, deps) =>
         .example("$0 mapi 'types?limit=10' --envId <id>", "List the first 10 content types")
         .example(
           "$0 mapi types --envId <id> --input body.json",
-          "Create a content type from a file",
+          "Create a content type from a file (--input implies POST)",
+        )
+        .example("$0 mapi 'items/<item-id>' -X DELETE --envId <id>", "Delete a content item")
+        .example(
+          "$0 mapi types -H 'X-Foo: 1' -H 'X-Bar: 2' --envId <id>",
+          "Send extra headers (-H is repeatable)",
+        )
+        .example(
+          'echo \'{"name":"Article"}\' | $0 mapi types --envId <id> --input -',
+          "Create a content type from a piped body",
         ),
     handler: async (args) => runRequest(args, createLoggerFromArgs(args), deps.telemetry),
   });
@@ -110,7 +119,7 @@ const runRequest = async (
   const abortRequest = () => controller.abort();
   process.once("SIGINT", abortRequest);
 
-  const result = await performMapiRequest(
+  const result = await performRawMapiRequest(
     {
       ...prepared.value,
       endpoint: args.endpoint,
@@ -190,6 +199,16 @@ const prepareRequest = async (
   });
 };
 
+/**
+ * Two rules, the same ones curl and `gh api` apply:
+ *
+ * - no `-X`: GET, or POST when `--input` supplies a body;
+ * - `-X` given: that method verbatim, body included if there is one - so
+ *   `-X GET --input` sends a GET with a body rather than second-guessing it.
+ *
+ * A yargs `default` would break the first rule: it is indistinguishable from a
+ * typed `-X GET`, which would turn every `--input` into a GET with a body.
+ */
 const resolveMethod = (
   raw: string | undefined,
   hasInput: boolean,

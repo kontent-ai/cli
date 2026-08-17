@@ -105,8 +105,8 @@ export const executeRawRequest = async (
     }
 
     const delayMs = retryAfterMs(response.value.responseHeaders);
-    logger.info(
-      "verbose",
+    logger.warning(
+      "standard",
       `Rate limited (429). Retrying in ${delayMs} ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}).`,
     );
     await delay(delayMs);
@@ -116,27 +116,13 @@ export const executeRawRequest = async (
   return await send(0);
 };
 
-const mergeHeaders = (
-  base: ReadonlyArray<Header>,
-  overrides: ReadonlyArray<Header>,
-): ReadonlyArray<Header> => [
-  ...[...base, ...overrides]
-    .reduce(
-      (merged, header) => merged.set(header.name.toLowerCase(), header),
-      new Map<string, Header>(),
-    )
-    .values(),
-];
-
-const formatTrace = (request: RawRequest, headers: ReadonlyArray<Header>): string => {
-  const headerLines = headers.map(
-    (header) =>
-      `  ${header.name}: ${header.name.toLowerCase() === "authorization" ? "<redacted>" : header.value}`,
-  );
-  return [`${request.method} ${request.url.toString()}`, ...headerLines].join("\n");
-};
-
-const retryAfterMs = (headers: ReadonlyArray<Header>): number => {
+/**
+ * `Retry-After` comes in two legal forms: delta-seconds or an HTTP-date. Both are
+ * honored; anything absent or unparseable falls back to a second rather than
+ * retrying immediately. The clamp matters because a date already in the past - a
+ * slow hop, a skewed clock - would otherwise produce a negative delay.
+ */
+export const retryAfterMs = (headers: ReadonlyArray<Header>): number => {
   const raw = headers.find((header) => header.name.toLowerCase() === "retry-after")?.value.trim();
   if (raw === undefined) {
     return DEFAULT_RETRY_DELAY_MS;
@@ -152,6 +138,28 @@ const retryAfterMs = (headers: ReadonlyArray<Header>): number => {
     return DEFAULT_RETRY_DELAY_MS;
   }
   return Math.max(0, dateMs - Date.now());
+};
+
+// Names are canonicalized to lowercase - what fetch (and HTTP/2) put on the wire
+// anyway - so the merged set is deterministic regardless of the caller's casing.
+const mergeHeaders = (
+  base: ReadonlyArray<Header>,
+  overrides: ReadonlyArray<Header>,
+): ReadonlyArray<Header> => [
+  ...[...base, ...overrides]
+    .reduce((merged, header) => {
+      const name = header.name.toLowerCase();
+      return merged.set(name, { name, value: header.value });
+    }, new Map<string, Header>())
+    .values(),
+];
+
+const formatTrace = (request: RawRequest, headers: ReadonlyArray<Header>): string => {
+  const headerLines = headers.map(
+    (header) =>
+      `  ${header.name}: ${header.name.toLowerCase() === "authorization" ? "<redacted>" : header.value}`,
+  );
+  return [`${request.method} ${request.url.toString()}`, ...headerLines].join("\n");
 };
 
 const describeTransportError = (cause: unknown): string => {

@@ -34,6 +34,10 @@ describe("resolveEndpoint", () => {
     if (result.kind !== "ok") {
       return;
     }
+    expect(result.value.toString()).toBe(
+      `https://manage.kontent.ai/v2/projects/${ENV_ID}/types?limit=10`,
+    );
+    expect(result.value.pathname).toBe(`/v2/projects/${ENV_ID}/types`);
     expect(result.value.search).toBe("?limit=10");
   });
 
@@ -44,6 +48,7 @@ describe("resolveEndpoint", () => {
     if (result.kind !== "ok") {
       return;
     }
+    expect(result.value.toString()).toBe(`https://manage.kontent.ai/v2/projects/${ENV_ID}/types`);
     expect(result.value.pathname).toBe(`/v2/projects/${ENV_ID}/types`);
   });
 
@@ -54,6 +59,7 @@ describe("resolveEndpoint", () => {
     if (result.kind !== "ok") {
       return;
     }
+    expect(result.value.toString()).toBe("https://manage.kontent.ai/v2/projects/a%20b%2Fc/types");
     expect(result.value.pathname).toBe("/v2/projects/a%20b%2Fc/types");
   });
 

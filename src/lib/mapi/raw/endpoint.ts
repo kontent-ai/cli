@@ -27,6 +27,8 @@ export const resolveEndpoint = (
     });
   }
 
+  // Strip leading slashes so "/types" and "types" resolve identically - the base
+  // URL already carries the "/v2" prefix the path is appended to.
   const relative = trimmed.replace(/^\/+/, "");
 
   if (hasTraversal(relative)) {

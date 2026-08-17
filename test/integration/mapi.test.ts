@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { type MapiRequestParams, performMapiRequest } from "../../src/core/mapi/request.js";
+import { type MapiRequestParams, performRawMapiRequest } from "../../src/core/mapi/request.js";
 import { createMapiRawClient } from "../../src/lib/mapi/raw/client.js";
 import { createLogger } from "../../src/log.js";
+import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type MapiRoute, mapiTestAdapter } from "../helpers/mapiTestAdapter.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
@@ -18,10 +19,20 @@ const makeParams = (overrides: Partial<MapiRequestParams> = {}): MapiRequestPara
   ...overrides,
 });
 
-const run = async (routes: ReadonlyArray<MapiRoute>, overrides?: Partial<MapiRequestParams>) => {
+type RunOptions = Readonly<{
+  params?: Partial<MapiRequestParams>;
+  token?: string | undefined;
+}>;
+
+const run = async (routes: ReadonlyArray<MapiRoute>, options: RunOptions = {}) => {
   const { adapter, requests } = mapiTestAdapter(routes);
-  const client = createMapiRawClient({ token: "secret-token", baseUrl: BASE_URL, adapter });
-  const result = await performMapiRequest(makeParams(overrides), { logger, client });
+  const client = createMapiRawClient({
+    // `token: undefined` means an explicitly tokenless client, distinct from omitting it.
+    token: "token" in options ? options.token : "secret-token",
+    baseUrl: BASE_URL,
+    adapter,
+  });
+  const result = await performRawMapiRequest(makeParams(options.params), { logger, client });
   return { result, requests };
 };
 
@@ -31,7 +42,7 @@ const typesRoute: MapiRoute = {
   replies: [{ payload: { types: [] } }],
 };
 
-describe("performMapiRequest", () => {
+describe("performRawMapiRequest", () => {
   it("sends an authenticated GET to the environment-scoped endpoint", async () => {
     const { result, requests } = await run([typesRoute]);
 
@@ -42,52 +53,48 @@ describe("performMapiRequest", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url.toString()).toBe(`${BASE_URL}/projects/${ENV_ID}/types`);
     expect(requests[0]?.requestHeaders).toContainEqual({
-      name: "Authorization",
+      name: "authorization",
       value: "Bearer secret-token",
     });
-    expect(requests[0]?.requestHeaders?.map((header) => header.name)).toContain("X-KC-SDKID");
+    expect(requests[0]?.requestHeaders?.map((header) => header.name)).toContain("x-kc-sdkid");
   });
 
   it("sends one header per name, the last occurrence winning", async () => {
     const { requests } = await run([typesRoute], {
-      headers: [
-        { name: "Content-Type", value: "application/json" },
-        { name: "content-type", value: "text/plain" },
-      ],
+      params: {
+        headers: [
+          { name: "Content-Type", value: "application/json" },
+          { name: "content-type", value: "text/plain" },
+        ],
+      },
     });
 
     const contentTypes = (requests[0]?.requestHeaders ?? []).filter(
-      (header) => header.name.toLowerCase() === "content-type",
+      (header) => header.name === "content-type",
     );
-    expect(contentTypes).toEqual([{ name: "content-type", value: "text/plain" }]);
+    expect(contentTypes.map((header) => header.value)).toEqual(["text/plain"]);
   });
 
   it("adds no Authorization of its own when the client has no token", async () => {
-    const { adapter, requests } = mapiTestAdapter([typesRoute]);
-    const client = createMapiRawClient({ baseUrl: BASE_URL, adapter });
-
-    await performMapiRequest(
-      makeParams({ headers: [{ name: "Authorization", value: "Bearer caller-token" }] }),
-      { logger, client },
-    );
-
-    expect(requests[0]?.requestHeaders).toContainEqual({
-      name: "Authorization",
-      value: "Bearer caller-token",
+    const { requests } = await run([typesRoute], {
+      token: undefined,
+      params: { headers: [{ name: "Authorization", value: "Bearer caller-token" }] },
     });
-    expect(
-      (requests[0]?.requestHeaders ?? []).filter(
-        (header) => header.name.toLowerCase() === "authorization",
-      ),
-    ).toHaveLength(1);
+
+    const authorizations = (requests[0]?.requestHeaders ?? []).filter(
+      (header) => header.name === "authorization",
+    );
+    expect(authorizations.map((header) => header.value)).toEqual(["Bearer caller-token"]);
   });
 
   it("passes the body through untouched", async () => {
     const { requests } = await run(
       [{ method: "POST", path: /\/types$/, replies: [{ status: 201 }] }],
       {
-        method: "POST",
-        body: '{"codename":"x"}',
+        params: {
+          method: "POST",
+          body: '{"codename":"x"}',
+        },
       },
     );
 
@@ -109,10 +116,7 @@ describe("performMapiRequest", () => {
       },
     ]);
 
-    expect(result.kind).toBe("ok");
-    if (result.kind !== "ok") {
-      return;
-    }
+    assertOk(result);
     expect(result.value.statusCode).toBe(404);
     expect(result.value.payload).toEqual({
       message: "The requested content type was not found.",
@@ -136,10 +140,7 @@ describe("performMapiRequest", () => {
     ]);
 
     expect(requests).toHaveLength(2);
-    expect(result.kind).toBe("ok");
-    if (result.kind !== "ok") {
-      return;
-    }
+    assertOk(result);
     expect(result.value.statusCode).toBe(200);
   });
 
@@ -159,11 +160,26 @@ describe("performMapiRequest", () => {
     ]);
 
     expect(requests).toHaveLength(4);
-    expect(result.kind).toBe("ok");
-    if (result.kind !== "ok") {
-      return;
-    }
+    assertOk(result);
     expect(result.value.statusCode).toBe(429);
+  });
+
+  it("does not retry a non-429 failure", async () => {
+    // If retrying ever leaks past 429, the second reply answers 201 and both asserts fail.
+    const { result, requests } = await run(
+      [
+        {
+          method: "POST",
+          path: /\/types$/,
+          replies: [{ status: 503, statusText: "Service Unavailable" }, { status: 201 }],
+        },
+      ],
+      { params: { method: "POST", body: "{}" } },
+    );
+
+    expect(requests).toHaveLength(1);
+    assertOk(result);
+    expect(result.value.statusCode).toBe(503);
   });
 
   it("reports a failed request as a transport error", async () => {
@@ -183,14 +199,11 @@ describe("performMapiRequest", () => {
 
   it("rejects an absolute endpoint before any request is made", async () => {
     const { result, requests } = await run([typesRoute], {
-      endpoint: "https://evil.example.com/types",
+      params: { endpoint: "https://evil.example.com/types" },
     });
 
     expect(requests).toHaveLength(0);
-    expect(result.kind).toBe("err");
-    if (result.kind !== "err") {
-      return;
-    }
+    assertErr(result);
     expect(result.error.kind).toBe("invalid-endpoint");
   });
 });

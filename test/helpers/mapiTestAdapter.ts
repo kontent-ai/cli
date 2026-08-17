@@ -40,7 +40,10 @@ export const mapiTestAdapter = (routes: ReadonlyArray<MapiRoute>): MapiTestAdapt
 
       const callCount = callCounts.get(route) ?? 0;
       callCounts.set(route, callCount + 1);
-      const reply = route.replies[Math.min(callCount, route.replies.length - 1)] ?? {};
+      const reply = route.replies[Math.min(callCount, route.replies.length - 1)];
+      if (reply === undefined) {
+        throw new Error(`Route ${route.method} ${route.path} has no replies`);
+      }
 
       if (reply.throws !== undefined) {
         throw reply.throws;
