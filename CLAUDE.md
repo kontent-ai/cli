@@ -18,12 +18,12 @@ Autofix is available: `pnpm lint:fix`, `pnpm biome:fix`. Build with `pnpm build`
 
 Three layers, dependencies point downward only (`commands → core → lib`):
 
-- `src/index.ts` — composition root. Folds each command's `register` over yargs via `reduce`, wires shared `deps` (telemetry).
+- `src/index.ts` — composition root. Folds each command's `register` (from `src/commands/registry.ts`) over yargs via `reduce`, wires shared `deps` (telemetry).
 - `src/commands/**` — yargs wiring + presentation only. Register the command, call core, format output, log, set `process.exitCode`, fire the telemetry tracker. No business logic.
 - `src/core/**` — orchestration of business logic. Returns `Result`/`Option`; never writes to the console directly (logs only through a passed `Logger`). **Exception:** interactive commands may drive their own terminal UI from core — e.g. `src/core/project/bootstrap.ts` uses the prompts of `src/lib/ui/prompts.ts` (spinners, `confirm`/`select`, notes) directly because the flow is inherently interactive. Keep non-interactive core free of direct console writes.
 - `src/lib/**` — reusable primitives: `auth/`, `iapi/`, `mapi/`, `config/`, `telemetry/`, plus `result.ts` and `option.ts`.
 
-Adding a command: export a `register: RegisterCommand` (see `src/commands/login/login.ts`), then add its import to the `register` array in the parent command or `src/index.ts`.
+Adding a command: export a `register: RegisterCommand` (see `src/commands/login/login.ts`), then add its import to the `register` array in the parent command or `src/commands/registry.ts`. Then run `pnpm docs:generate` (`scripts/generateCommandDocs.ts`) — it replays the registrations against a recording proxy and rewrites the generated docs: the marker-fenced command table in the root `README.md`, and the `<!-- reference:start/end -->` block in each command folder's `README.md` (created as a skeleton when missing). Prose outside the markers is handwritten — write command docs there, never inside the block. Two opt-out sets in the script: `commandsWithoutPage` (no colocated README) and `commandsWithoutIndexEntry` (no root-README table row; telemetry is there). The generator errors on a command-folder README with markers but no matching command (stale after rename/removal) — resolve by hand; it never deletes pages.
 
 ### API clients
 
