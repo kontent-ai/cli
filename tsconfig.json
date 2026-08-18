@@ -11,6 +11,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
+  "include": ["src/**/*", "test/**/*", "scripts/**/*", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
