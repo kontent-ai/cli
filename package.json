@@ -31,6 +31,7 @@
     "dev": "tsdown --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "pnpm build && vitest run --config vitest.e2e.config.ts",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
