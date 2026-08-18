@@ -53,6 +53,15 @@ kontent logout
 Run `kontent --help` for the full, always-current list.
 Each command supports `--help` for its own options.
 
+<!-- commands:start -->
+| Command | Description |
+| --- | --- |
+| [`kontent login`](src/commands/login/README.md) | Authenticate with Kontent.ai via Auth0 device flow |
+| [`kontent logout`](src/commands/logout/README.md) | Clear stored authentication tokens |
+| [`kontent mapi <endpoint>`](src/commands/mapi/README.md) | Send an authenticated request to the Management API |
+| [`kontent project sample bootstrap`](src/commands/project/sample/README.md) | Clone a sample app for an environment and wire its .env |
+<!-- commands:end -->
+
 ## Global options
 
 - `--logLevel`, `-ll` — detail level: `none`, `standard` (default), `verbose`

@@ -3,6 +3,7 @@
 import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { commandsToRegister } from "./commands/registry.js";
 import { getKontentBaseDomain, validateKontentDomain } from "./lib/config/kontentUrl.js";
 import { isErr } from "./lib/result.js";
 import {
@@ -11,15 +12,7 @@ import {
   registerTelemetrySignalFlush,
 } from "./lib/telemetry/tracking.js";
 import { addLogLevelOptions, createLoggerFromArgs } from "./log.js";
-import type { CommandDeps, RegisterCommand } from "./types/yargs.js";
-
-const commandsToRegister: ReadonlyArray<RegisterCommand> = [
-  (await import("./commands/login/login.js")).register,
-  (await import("./commands/logout/logout.js")).register,
-  (await import("./commands/mapi/mapi.js")).register,
-  (await import("./commands/project/project.js")).register,
-  (await import("./commands/telemetry/telemetry.js")).register,
-];
+import type { CommandDeps } from "./types/yargs.js";
 
 const emptyYargs = yargs(hideBin(process.argv));
 
