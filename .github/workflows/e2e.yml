@@ -21,10 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       E2E_MAPI_KEY: ${{ secrets.E2E_MAPI_KEY }}
-      E2E_SOURCE_ENV_ID: ${{ vars.E2E_SOURCE_ENV_ID }}
+      E2E_SOURCE_ENV_ID: ${{ secrets.E2E_SOURCE_ENV_ID }}
       # Empty is fine: vitest.e2e.config.ts falls back to production kontent.ai.
       E2E_KONTENT_URL: ${{ vars.E2E_KONTENT_URL }}
-      E2E_ENV_ID_FILE: ${{ runner.temp }}/e2e-env-id
     steps:
       - uses: actions/checkout@v6
         with:
@@ -39,11 +38,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: E2E tests
+        # The runner context is unavailable in job-level env, so the file path
+        # is set per step.
+        env:
+          E2E_ENV_ID_FILE: ${{ runner.temp }}/e2e-env-id
         run: pnpm test:e2e
       # Deletes the cloned environment when the job died before afterAll could
       # (cancellation, timeout). A normal run deletes it itself; the 404 here is fine.
       - name: Delete leaked test environment
         if: always()
+        env:
+          E2E_ENV_ID_FILE: ${{ runner.temp }}/e2e-env-id
         run: |
           if [ -s "$E2E_ENV_ID_FILE" ]; then
             curl -s -X DELETE "https://manage.${E2E_KONTENT_URL:-kontent.ai}/v2/projects/$(cat "$E2E_ENV_ID_FILE")" \
