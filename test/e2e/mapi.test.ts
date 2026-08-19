@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { isNone } from "../../src/lib/option.js";
-import { type E2eConfig, readE2eConfig } from "./helpers/config.js";
+import { requireE2eConfig } from "./helpers/config.js";
 import {
   cloneTestEnvironment,
   deleteTestEnvironment,
@@ -14,7 +13,7 @@ import {
 import { randomSuffix } from "./helpers/random.js";
 import { type CliRunOptions, parseStdout, runCli } from "./helpers/runCli.js";
 
-const config = readE2eConfig();
+const config = requireE2eConfig();
 
 const runSuffix = randomSuffix();
 const taxonomyCodename = `colors_${runSuffix}`;
@@ -23,19 +22,10 @@ const itemCodename = `hello_${runSuffix}`;
 
 const imageFixturePath = fileURLToPath(new URL("./fixtures/kailogo.png", import.meta.url));
 
-describe.skipIf(isNone(config))("kontent mapi e2e", () => {
+describe("kontent mapi e2e", () => {
   let env: TestEnvironment | undefined;
   let itemId: string;
   let assetId: string;
-
-  // The describe body runs at collection time even when the suite is skipped,
-  // so the config unwrap has to wait until the hooks.
-  const requireConfig = (): E2eConfig => {
-    if (isNone(config)) {
-      throw new Error("E2E config missing despite the skipIf gate.");
-    }
-    return config.value;
-  };
 
   const requireEnv = (): TestEnvironment => {
     if (env === undefined) {
@@ -46,26 +36,18 @@ describe.skipIf(isNone(config))("kontent mapi e2e", () => {
 
   const mapi = (endpoint: string, extraArgs: ReadonlyArray<string> = [], options?: CliRunOptions) =>
     runCli(
-      [
-        "mapi",
-        endpoint,
-        "--envId",
-        requireEnv().envId,
-        "--mapiKey",
-        requireConfig().mapiKey,
-        ...extraArgs,
-      ],
+      ["mapi", endpoint, "--envId", requireEnv().envId, "--mapiKey", config.mapiKey, ...extraArgs],
       options,
     );
 
   beforeAll(async () => {
-    env = await cloneTestEnvironment(requireConfig());
+    env = await cloneTestEnvironment(config);
     await recordEnvironmentId(env.envId);
   });
 
   afterAll(async () => {
     if (env !== undefined) {
-      await deleteTestEnvironment(requireConfig(), env.envId);
+      await deleteTestEnvironment(config, env.envId);
     }
   });
 
