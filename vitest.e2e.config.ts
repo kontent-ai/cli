@@ -1,7 +1,9 @@
 import { defineConfig } from "vitest/config";
 
 // Local runs read the E2E_* gate variables from .env; CI sets real env vars,
-// which take precedence. A missing .env is fine - the suite then skips.
+// which take precedence. A missing .env is fine when the shell provides the
+// variables; test/e2e/globalSetup.ts fails the run when they are missing
+// everywhere.
 try {
   process.loadEnvFile();
 } catch {
@@ -20,6 +22,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/e2e/**/*.test.ts"],
+    globalSetup: ["test/e2e/globalSetup.ts"],
     fileParallelism: false,
     testTimeout: 30_000,
     // Covers environment cloning, which the API performs asynchronously.
