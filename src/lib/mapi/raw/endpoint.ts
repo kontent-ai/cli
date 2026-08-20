@@ -50,8 +50,14 @@ export const resolveEndpoint = (
 const isAbsolute = (endpoint: string): boolean =>
   /^[a-z][a-z\d+\-.]*:/i.test(endpoint) || endpoint.startsWith("//");
 
+// Split on backslashes too: WHATWG treats them as separators in an https URL, so
+// "types\..\..\secret" collapses out of the projects/{environment_id} scope
+// exactly like the forward-slash form. Percent-encoded separators (%2f, %5c) stay
+// encoded in the path and cannot traverse, so only literal ones matter here.
 const hasTraversal = (relative: string): boolean =>
-  (relative.split("?")[0] ?? relative).split("/").some((segment) => decodeSafely(segment) === "..");
+  (relative.split("?")[0] ?? relative)
+    .split(/[/\\]/)
+    .some((segment) => decodeSafely(segment) === "..");
 
 // A malformed percent-escape is not traversal; keep the raw segment and let the URL carry it.
 const decodeSafely = (segment: string): string => {
