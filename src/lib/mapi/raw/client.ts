@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import {
   AdapterAbortError,
   AdapterParseError,
@@ -19,6 +20,9 @@ import { err, isErr, type Result, tryAsync } from "../../result.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 1000;
+// Past this the API is rationing quota, not smoothing a burst; a one-shot command
+// has no business sleeping that long, so the 429 goes back to the caller instead.
+const MAX_RETRY_DELAY_MS = 60_000;
 const TOO_MANY_REQUESTS = 429;
 
 const mapiSdkInfo: SdkInfo = {
@@ -105,11 +109,31 @@ export const executeRawRequest = async (
     }
 
     const delayMs = retryAfterMs(response.value.responseHeaders);
+    if (delayMs > MAX_RETRY_DELAY_MS) {
+      logger.warning(
+        "standard",
+        `Rate limited (429). The API asked for ${Math.round(delayMs / 1000)} s, beyond the ${
+          MAX_RETRY_DELAY_MS / 1000
+        } s retry limit - not retrying.`,
+      );
+      return response;
+    }
+
     logger.warning(
       "standard",
       `Rate limited (429). Retrying in ${delayMs} ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS}).`,
     );
-    await delay(delayMs);
+
+    // A bare setTimeout would ignore Ctrl+C: the command installs a SIGINT handler,
+    // which suppresses the default kill, so an unabortable sleep swallows the signal.
+    const waited = await tryAsync(
+      async () => await sleep(delayMs, undefined, { signal: request.abortSignal }),
+      () => "The request was aborted.",
+    );
+    if (isErr(waited)) {
+      return waited;
+    }
+
     return await send(attempt + 1);
   };
 
@@ -128,9 +152,15 @@ export const retryAfterMs = (headers: ReadonlyArray<Header>): number => {
     return DEFAULT_RETRY_DELAY_MS;
   }
 
-  const seconds = Number(raw);
-  if (Number.isFinite(seconds)) {
-    return Math.max(0, seconds * 1000);
+  if (deltaSecondsPattern.test(raw)) {
+    return Number(raw) * 1000;
+  }
+
+  // Date.parse is lenient enough to read "-5" and "1.5" as years, which would turn
+  // a malformed delay into a past date and so into an immediate retry. Every legal
+  // HTTP-date carries a weekday and month name, so require a letter before trying.
+  if (!/[a-z]/i.test(raw)) {
+    return DEFAULT_RETRY_DELAY_MS;
   }
 
   const dateMs = Date.parse(raw);
@@ -139,6 +169,9 @@ export const retryAfterMs = (headers: ReadonlyArray<Header>): number => {
   }
   return Math.max(0, dateMs - Date.now());
 };
+
+// RFC 9110 delta-seconds: 1*DIGIT. Number() would also swallow "", "1e3" and "0x10".
+const deltaSecondsPattern = /^\d+$/;
 
 // Names are canonicalized to lowercase - what fetch (and HTTP/2) put on the wire
 // anyway - so the merged set is deterministic regardless of the caller's casing.
@@ -174,8 +207,3 @@ const describeTransportError = (cause: unknown): string => {
   }
   return String(cause);
 };
-
-const delay = async (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });

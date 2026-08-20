@@ -14,12 +14,24 @@ describe("retryAfterMs", () => {
     expect(retryAfterMs([{ name: "retry-after", value: "3" }])).toBe(3000);
   });
 
-  it("clamps a negative delay to zero", () => {
-    expect(retryAfterMs([{ name: "Retry-After", value: "-5" }])).toBe(0);
+  it.each([
+    ["garbage", "not a number or a date"],
+    ["", "an empty value - Number() would read it as 0 and retry immediately"],
+    ["   ", "a blank value"],
+    ["-5", "a negative delay - Date.parse would read it as the year 2001"],
+    ["1.5", "a fractional delay - Date.parse would read it as January 2001"],
+    ["1e3", "exponent notation, which delta-seconds does not allow"],
+    ["0x10", "hex notation, which delta-seconds does not allow"],
+  ])("falls back to the default for %j (%s)", (value) => {
+    expect(retryAfterMs([{ name: "Retry-After", value }])).toBe(1000);
   });
 
-  it("falls back to the default for an unparsable value", () => {
-    expect(retryAfterMs([{ name: "Retry-After", value: "garbage" }])).toBe(1000);
+  it("reads a zero delay as an immediate retry", () => {
+    expect(retryAfterMs([{ name: "Retry-After", value: "0" }])).toBe(0);
+  });
+
+  it("passes a delay beyond the retry limit through unclamped, for the caller to reject", () => {
+    expect(retryAfterMs([{ name: "Retry-After", value: "3600" }])).toBe(3_600_000);
   });
 
   describe("with an HTTP-date value", () => {

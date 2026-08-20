@@ -164,6 +164,56 @@ describe("performRawMapiRequest", () => {
     expect(result.value.statusCode).toBe(429);
   });
 
+  it("does not retry when Retry-After asks for longer than the retry limit", async () => {
+    const { result, requests } = await run([
+      {
+        method: "GET",
+        path: /\/types$/,
+        replies: [
+          {
+            status: 429,
+            statusText: "Too Many Requests",
+            headers: [{ name: "Retry-After", value: "3600" }],
+          },
+          { payload: { types: [] } },
+        ],
+      },
+    ]);
+
+    expect(requests).toHaveLength(1);
+    assertOk(result);
+    expect(result.value.statusCode).toBe(429);
+  });
+
+  it("abandons the backoff when the request is aborted mid-wait", async () => {
+    const controller = new AbortController();
+    const pending = run(
+      [
+        {
+          method: "GET",
+          path: /\/types$/,
+          replies: [
+            {
+              status: 429,
+              statusText: "Too Many Requests",
+              // Long enough that only the abort can end the wait.
+              headers: [{ name: "Retry-After", value: "30" }],
+            },
+            { payload: { types: [] } },
+          ],
+        },
+      ],
+      { params: { abortSignal: controller.signal } },
+    );
+    setTimeout(() => controller.abort(), 20);
+
+    const { result, requests } = await pending;
+
+    expect(requests).toHaveLength(1);
+    assertErr(result);
+    expect(result.error).toEqual({ kind: "transport", message: "The request was aborted." });
+  });
+
   it("does not retry a non-429 failure", async () => {
     // If retrying ever leaks past 429, the second reply answers 201 and both asserts fail.
     const { result, requests } = await run(
