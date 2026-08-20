@@ -7,11 +7,10 @@ import {
   performRawMapiRequest,
 } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
-import { getValidAccessToken } from "../../lib/auth/tokenAccess.js";
-import type { AuthError } from "../../lib/auth/types.js";
+import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
-import { err, isErr, map, ok, type Result, tryAsync } from "../../lib/result.js";
+import { err, fromThrowable, isErr, isOk, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
@@ -96,29 +95,6 @@ export const register: RegisterCommand = (sub, deps) =>
     handler: async (args) => runRequest(args, createLoggerFromArgs(args), deps.telemetry),
   });
 
-/**
- * Each source suppresses the ones below it, so a supplied credential never triggers
- * a keychain read that could fail on a machine that never ran `kontent login`.
- *
- * `KONTENT_MAPI_KEY` is read here rather than through a yargs option: the CLI does
- * not map env vars onto flags (see `src/index.ts`). It keeps the key off argv, so
- * CI and shared shells do not leak it through `ps` or shell history.
- */
-export const resolveCredential = async (
-  headers: ReadonlyArray<Header>,
-  mapiKey: string | undefined,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<Result<Credential, AuthError>> => {
-  if (headers.some((header) => header.name.toLowerCase() === "authorization")) {
-    return ok({ source: "header" });
-  }
-  const suppliedKey = mapiKey ?? env.KONTENT_MAPI_KEY;
-  if (suppliedKey !== undefined && suppliedKey !== "") {
-    return ok({ token: suppliedKey, source: "mapi-key" });
-  }
-  return map(await getValidAccessToken(), (token) => ({ token, source: "login" }) as const);
-};
-
 const runRequest = async (
   args: RequestArgs,
   logger: Logger,
@@ -134,7 +110,7 @@ const runRequest = async (
     return;
   }
 
-  const credential = await resolveCredential(prepared.value.headers, args.mapiKey);
+  const credential = await resolveMapiCredential(prepared.value.headers, args.mapiKey);
   if (isErr(credential)) {
     tracker.fail(`auth:${credential.error.kind}`);
     logger.error(formatAuthError(credential.error));
@@ -167,16 +143,6 @@ const runRequest = async (
 
   writeResponse(result.value, args.include === true);
 
-  // The adapter only parses application/json, so any other body is dropped on the
-  // floor. On a failure the summary says so; on a success stdout would otherwise be
-  // silently empty, which reads as "no content" rather than "not shown".
-  if (result.value.statusCode < 400 && hasOmittedBody(result.value)) {
-    logger.warning(
-      "standard",
-      `The response body is ${contentType(result.value) ?? "not JSON"} and is not shown.`,
-    );
-  }
-
   if (result.value.statusCode >= 400) {
     tracker.fail(`http-${result.value.statusCode}`, {
       "status-code": result.value.statusCode,
@@ -195,10 +161,6 @@ type PreparedRequest = Readonly<{
   headers: ReadonlyArray<Header>;
   body: string | Blob | null;
 }>;
-
-type AuthSource = "login" | "mapi-key" | "header";
-
-type Credential = Readonly<{ token?: string | undefined; source: AuthSource }>;
 
 const httpMethods = [
   "GET",
@@ -323,15 +285,30 @@ const writeResponse = (response: MapiResponse, shouldIncludeHeaders: boolean): v
     );
   }
 
-  if (response.payload !== null) {
-    process.stdout.write(`${JSON.stringify(response.payload, null, 2)}\n`);
+  if (response.body.length > 0) {
+    process.stdout.write(formatBody(response));
   }
 };
 
-// A null payload means either a non-JSON body the adapter dropped or no body at
-// all; only the former is worth reporting, and the content type distinguishes them.
-const hasOmittedBody = (response: MapiResponse): boolean =>
-  response.payload === null && contentType(response) !== undefined;
+/**
+ * JSON is re-indented, because a response body is the thing the user reads. Every
+ * other type goes out byte for byte - a passthrough that reformatted a PNG or a
+ * CSV would be lying about what the API returned.
+ */
+const formatBody = (response: MapiResponse): string | Uint8Array => {
+  if (contentType(response) !== "application/json") {
+    return response.body;
+  }
+
+  const text = new TextDecoder().decode(response.body);
+  const indented = fromThrowable(
+    () => JSON.stringify(JSON.parse(text) as unknown, null, 2),
+    () => text,
+  );
+  // A body that claims to be JSON but does not parse is still shown, unchanged:
+  // malformed output is a clue, and swallowing it would hide the real answer.
+  return isOk(indented) ? `${indented.value}\n` : text;
+};
 
 const contentType = (response: MapiResponse): string | undefined =>
   response.headers
@@ -340,9 +317,7 @@ const contentType = (response: MapiResponse): string | undefined =>
     ?.trim();
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
-  const summary = `HTTP ${response.statusCode} ${response.statusText}${
-    hasOmittedBody(response) ? " (non-JSON response body omitted)" : ""
-  }`;
+  const summary = `HTTP ${response.statusCode} ${response.statusText}`;
 
   if (response.statusCode !== 401) {
     return summary;

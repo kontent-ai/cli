@@ -8,7 +8,7 @@ import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/mapi/request.js", () => ({
   performRawMapiRequest: vi.fn(async () =>
-    ok({ statusCode: 200, statusText: "OK", headers: [], payload: null }),
+    ok({ statusCode: 200, statusText: "OK", headers: [], body: new Uint8Array() }),
   ),
 }));
 
@@ -38,14 +38,18 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
   }
 };
 
-const captureStderr = () => {
+const captureStream = (stream: "stdout" | "stderr") => {
   const chunks: string[] = [];
-  const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
-    chunks.push(String(chunk));
+  const spy = vi.spyOn(process[stream], "write").mockImplementation((chunk) => {
+    chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
     return true;
   });
   return { text: () => chunks.join(""), restore: () => spy.mockRestore() };
 };
+
+const captureStderr = () => captureStream("stderr");
+
+const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 const lastParams = (): MapiRequestParams =>
   vi.mocked(performRawMapiRequest).mock.calls.at(-1)?.[0] as MapiRequestParams;
@@ -80,34 +84,75 @@ describe("kontent mapi argument handling", () => {
     ]);
   });
 
-  it("notes a non-JSON body on a success, where stdout would otherwise be empty", async () => {
+  it("prints a non-JSON body verbatim rather than dropping it", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({
         statusCode: 200,
         statusText: "OK",
         headers: [{ name: "Content-Type", value: "text/csv; charset=utf-8" }],
-        payload: null,
+        body: encode("a,b\n1,2\n"),
       }),
     );
-    const captured = captureStderr();
+    const stdout = captureStream("stdout");
+    const stderr = captureStderr();
 
     await runCommand(["export", "--envId", ENV_ID]);
-    captured.restore();
+    stdout.restore();
+    stderr.restore();
 
-    expect(captured.text()).toContain("The response body is text/csv and is not shown.");
+    expect(stdout.text()).toBe("a,b\n1,2\n");
+    expect(stderr.text()).toBe("");
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it("re-indents a JSON body", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "content-type", value: "application/json" }],
+        body: encode('{"name":"Article"}'),
+      }),
+    );
+    const stdout = captureStream("stdout");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    stdout.restore();
+
+    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
+  });
+
+  // A body that claims JSON but does not parse is a clue, so it survives unchanged.
+  it("prints a malformed JSON body as it arrived", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "content-type", value: "application/json" }],
+        body: encode("{not json"),
+      }),
+    );
+    const stdout = captureStream("stdout");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    stdout.restore();
+
+    expect(stdout.text()).toBe("{not json");
   });
 
   it("stays quiet when a success simply has no body", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({ statusCode: 204, statusText: "No Content", headers: [], payload: null }),
+      ok({ statusCode: 204, statusText: "No Content", headers: [], body: encode("") }),
     );
-    const captured = captureStderr();
+    const stdout = captureStream("stdout");
+    const stderr = captureStderr();
 
     await runCommand(["items/x", "-X", "DELETE", "--envId", ENV_ID]);
-    captured.restore();
+    stdout.restore();
+    stderr.restore();
 
-    expect(captured.text()).toBe("");
+    expect(stdout.text()).toBe("");
+    expect(stderr.text()).toBe("");
   });
 
   it("rejects a body on GET instead of letting the transport throw", async () => {

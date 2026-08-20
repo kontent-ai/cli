@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveCredential } from "../../src/commands/mapi/request.js";
+import { resolveMapiCredential } from "../../src/lib/auth/mapiCredential.js";
 import { ok } from "../../src/lib/result.js";
 import { assertOk } from "../helpers/assertResult.js";
 
@@ -9,9 +9,9 @@ vi.mock("../../src/lib/auth/tokenAccess.js", () => ({
 
 const authorization = [{ name: "Authorization", value: "Bearer supplied" }];
 
-describe("resolveCredential", () => {
+describe("resolveMapiCredential", () => {
   it("prefers an Authorization header and adds no token of its own", async () => {
-    const result = await resolveCredential(authorization, "flag-key", {
+    const result = await resolveMapiCredential(authorization, "flag-key", {
       KONTENT_MAPI_KEY: "env-key",
     });
 
@@ -20,7 +20,7 @@ describe("resolveCredential", () => {
   });
 
   it("matches the Authorization header case-insensitively", async () => {
-    const result = await resolveCredential(
+    const result = await resolveMapiCredential(
       [{ name: "authorization", value: "Bearer x" }],
       undefined,
       {},
@@ -31,21 +31,21 @@ describe("resolveCredential", () => {
   });
 
   it("prefers --mapiKey over the environment variable", async () => {
-    const result = await resolveCredential([], "flag-key", { KONTENT_MAPI_KEY: "env-key" });
+    const result = await resolveMapiCredential([], "flag-key", { KONTENT_MAPI_KEY: "env-key" });
 
     assertOk(result);
     expect(result.value).toEqual({ token: "flag-key", source: "mapi-key" });
   });
 
   it("falls back to KONTENT_MAPI_KEY when --mapiKey is absent", async () => {
-    const result = await resolveCredential([], undefined, { KONTENT_MAPI_KEY: "env-key" });
+    const result = await resolveMapiCredential([], undefined, { KONTENT_MAPI_KEY: "env-key" });
 
     assertOk(result);
     expect(result.value).toEqual({ token: "env-key", source: "mapi-key" });
   });
 
   it("falls back to the stored login token when nothing is supplied", async () => {
-    const result = await resolveCredential([], undefined, {});
+    const result = await resolveMapiCredential([], undefined, {});
 
     assertOk(result);
     expect(result.value).toEqual({ token: "stored-login-token", source: "login" });
@@ -53,7 +53,7 @@ describe("resolveCredential", () => {
 
   // An exported-but-empty variable is how a CI runner spells "unset".
   it("treats an empty KONTENT_MAPI_KEY as unset", async () => {
-    const result = await resolveCredential([], undefined, { KONTENT_MAPI_KEY: "" });
+    const result = await resolveMapiCredential([], undefined, { KONTENT_MAPI_KEY: "" });
 
     assertOk(result);
     expect(result.value).toEqual({ token: "stored-login-token", source: "login" });

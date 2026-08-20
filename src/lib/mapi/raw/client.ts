@@ -1,14 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import {
-  AdapterAbortError,
-  AdapterParseError,
-  type AdapterResponse,
   createSdkIdHeader,
-  getDefaultHttpAdapter,
   type Header,
-  type HttpAdapter,
   type HttpMethod,
-  type JsonValue,
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
 
@@ -16,7 +10,13 @@ import {
 import pkg from "../../../../package.json" with { type: "json" };
 import type { Logger } from "../../../log.js";
 import { kontentManagementUrl } from "../../config/kontentUrl.js";
-import { err, isErr, type Result, tryAsync } from "../../result.js";
+import { isErr, type Result, tryAsync } from "../../result.js";
+import {
+  fetchTransport,
+  isAbortError,
+  type RawTransport,
+  type RawTransportResponse,
+} from "./transport.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 1000;
@@ -39,7 +39,7 @@ export type MapiRawClient = Readonly<{
   baseUrl: string;
   // Absent when the caller carries its own Authorization header; the client then adds none.
   token?: string | undefined;
-  adapter: HttpAdapter;
+  transport: RawTransport;
   sdkInfo: SdkInfo;
 }>;
 
@@ -52,11 +52,11 @@ export type RawRequest = Readonly<{
 }>;
 
 export const createMapiRawClient = (
-  params: Readonly<{ token?: string | undefined; baseUrl?: string; adapter?: HttpAdapter }>,
+  params: Readonly<{ token?: string | undefined; baseUrl?: string; transport?: RawTransport }>,
 ): MapiRawClient => ({
   baseUrl: params.baseUrl ?? kontentManagementUrl(),
   token: params.token,
-  adapter: params.adapter ?? getDefaultHttpAdapter(),
+  transport: params.transport ?? fetchTransport,
   sdkInfo: mapiSdkInfo,
 });
 
@@ -70,12 +70,7 @@ export const executeRawRequest = async (
   client: MapiRawClient,
   request: RawRequest,
   logger: Logger,
-): Promise<Result<AdapterResponse<JsonValue>, string>> => {
-  const executeRequest = client.adapter.executeRequest;
-  if (executeRequest === undefined) {
-    return err("The configured HTTP adapter cannot execute requests.");
-  }
-
+): Promise<Result<RawTransportResponse, string>> => {
   const requestHeaders = mergeHeaders(
     client.token === undefined
       ? [createSdkIdHeader(client.sdkInfo)]
@@ -87,10 +82,10 @@ export const executeRawRequest = async (
   );
   logger.info("verbose", formatTrace(request, requestHeaders));
 
-  const send = async (attempt: number): Promise<Result<AdapterResponse<JsonValue>, string>> => {
+  const send = async (attempt: number): Promise<Result<RawTransportResponse, string>> => {
     const response = await tryAsync(
       async () =>
-        executeRequest({
+        client.transport({
           url: request.url,
           method: request.method,
           body: request.body,
@@ -196,11 +191,8 @@ const formatTrace = (request: RawRequest, headers: ReadonlyArray<Header>): strin
 };
 
 const describeTransportError = (cause: unknown): string => {
-  if (cause instanceof AdapterAbortError) {
+  if (isAbortError(cause)) {
     return "The request was aborted.";
-  }
-  if (cause instanceof AdapterParseError) {
-    return "The response could not be parsed as JSON.";
   }
   if (cause instanceof Error) {
     return cause.message;

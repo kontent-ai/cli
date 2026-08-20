@@ -1,4 +1,4 @@
-import type { Header, HttpMethod, JsonValue } from "@kontent-ai/core-sdk";
+import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { executeRawRequest, type MapiRawClient } from "../../lib/mapi/raw/client.js";
 import { resolveEndpoint } from "../../lib/mapi/raw/endpoint.js";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
@@ -17,7 +17,9 @@ export type MapiResponse = Readonly<{
   statusCode: number;
   statusText: string;
   headers: ReadonlyArray<Header>;
-  payload: JsonValue;
+  // The bytes exactly as they came off the wire. Nothing here decides what they
+  // mean; the command formats them once, on its way to stdout.
+  body: Uint8Array;
 }>;
 
 /**
@@ -65,6 +67,6 @@ export const performRawMapiRequest = async (
     statusCode: response.value.status,
     statusText: response.value.statusText,
     headers: response.value.responseHeaders,
-    payload: response.value.payload,
+    body: response.value.body,
   });
 };
