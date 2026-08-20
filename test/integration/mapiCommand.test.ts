@@ -38,12 +38,22 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
   }
 };
 
+const captureStderr = () => {
+  const chunks: string[] = [];
+  const spy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+    chunks.push(String(chunk));
+    return true;
+  });
+  return { text: () => chunks.join(""), restore: () => spy.mockRestore() };
+};
+
 const lastParams = (): MapiRequestParams =>
   vi.mocked(performRawMapiRequest).mock.calls.at(-1)?.[0] as MapiRequestParams;
 
 describe("kontent mapi argument handling", () => {
   beforeEach(() => {
     process.exitCode = undefined;
+    vi.mocked(performRawMapiRequest).mockClear();
   });
 
   it("keeps -H from swallowing the endpoint positional", async () => {
@@ -70,17 +80,43 @@ describe("kontent mapi argument handling", () => {
     ]);
   });
 
+  it("notes a non-JSON body on a success, where stdout would otherwise be empty", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "Content-Type", value: "text/csv; charset=utf-8" }],
+        payload: null,
+      }),
+    );
+    const captured = captureStderr();
+
+    await runCommand(["export", "--envId", ENV_ID]);
+    captured.restore();
+
+    expect(captured.text()).toContain("The response body is text/csv and is not shown.");
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("stays quiet when a success simply has no body", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 204, statusText: "No Content", headers: [], payload: null }),
+    );
+    const captured = captureStderr();
+
+    await runCommand(["items/x", "-X", "DELETE", "--envId", ENV_ID]);
+    captured.restore();
+
+    expect(captured.text()).toBe("");
+  });
+
   it("rejects a body on GET instead of letting the transport throw", async () => {
-    const errors: string[] = [];
-    vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
-      errors.push(String(chunk));
-      return true;
-    });
+    const captured = captureStderr();
 
     await runCommand(["types", "-X", "GET", "--input", "body.json", "--envId", ENV_ID]);
-    vi.mocked(process.stderr.write).mockRestore();
+    captured.restore();
 
-    expect(errors.join("")).toContain("A GET request cannot carry a body");
+    expect(captured.text()).toContain("A GET request cannot carry a body");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });

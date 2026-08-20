@@ -167,6 +167,16 @@ const runRequest = async (
 
   writeResponse(result.value, args.include === true);
 
+  // The adapter only parses application/json, so any other body is dropped on the
+  // floor. On a failure the summary says so; on a success stdout would otherwise be
+  // silently empty, which reads as "no content" rather than "not shown".
+  if (result.value.statusCode < 400 && hasOmittedBody(result.value)) {
+    logger.warning(
+      "standard",
+      `The response body is ${contentType(result.value) ?? "not JSON"} and is not shown.`,
+    );
+  }
+
   if (result.value.statusCode >= 400) {
     tracker.fail(`http-${result.value.statusCode}`, {
       "status-code": result.value.statusCode,
@@ -318,9 +328,20 @@ const writeResponse = (response: MapiResponse, shouldIncludeHeaders: boolean): v
   }
 };
 
+// A null payload means either a non-JSON body the adapter dropped or no body at
+// all; only the former is worth reporting, and the content type distinguishes them.
+const hasOmittedBody = (response: MapiResponse): boolean =>
+  response.payload === null && contentType(response) !== undefined;
+
+const contentType = (response: MapiResponse): string | undefined =>
+  response.headers
+    .find((header) => header.name.toLowerCase() === "content-type")
+    ?.value.split(";")[0]
+    ?.trim();
+
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}${
-    response.payload === null ? " (non-JSON response body omitted)" : ""
+    hasOmittedBody(response) ? " (non-JSON response body omitted)" : ""
   }`;
 
   if (response.statusCode !== 401) {

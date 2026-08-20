@@ -38,7 +38,8 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 - **stdout** — the data the command exists to produce, and nothing else. It is never level-gated: `--logLevel none` must still print a payload, because a response body is not a log.
 - **stderr** — everything said *about* producing it: progress, warnings, errors, verbose traces. This is the POSIX meaning of stderr (diagnostics, not errors), and how curl, git and npm behave.
 
-Every handler starts with `const logger = createLoggerFromArgs(args)` (`src/log.ts`) and passes that `Logger` down; core takes it as a parameter or inside its `deps` object. `createLoggerFromArgs` is the only place that resolves the `--logLevel`/`--verbose` pair; everything else builds a logger from a single `LogLevel` via `createLogger`. The `sink` parameter is a test seam, not a routing knob — never point a log at stdout.
+A handler that logs starts with `const logger = createLoggerFromArgs(args)` (`src/log.ts`) and passes that `Logger` down; one that only emits a payload takes no logger at all (`src/commands/telemetry/status.ts`).
+Core takes the logger as a parameter or inside its `deps` object; `createLoggerFromArgs` is the only place that resolves the `--logLevel`/`--verbose` pair; everything else builds a logger from a single `LogLevel` via `createLogger`. The `sink` parameter is a test seam, not a routing knob — never point a log at stdout.
 
 ## Conventions
 
@@ -56,7 +57,7 @@ Every handler starts with `const logger = createLoggerFromArgs(args)` (`src/log.
 
 ## Testing
 
-Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
+Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Command-level behavior (argument parsing, exit codes, which stream a message lands on) is tested by folding a command's `register` over a real yargs instance and faking only the core call underneath — see `test/integration/mapiCommand.test.ts`. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
 
 `test/e2e/` runs the built binary against a real Kontent.ai project (clone-per-run from an empty template env). Gated on `E2E_MAPI_KEY`/`E2E_SOURCE_ENV_ID` (fails fast with an error when unset). Run with `pnpm test:e2e` (own `vitest.e2e.config.ts`, loads `.env`); excluded from `pnpm test` and the before-halting gate. CI: `.github/workflows/e2e.yml` (master push, PRs, manual; fork PRs are skipped at the job level — no secret access).
 
