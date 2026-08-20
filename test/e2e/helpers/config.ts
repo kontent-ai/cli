@@ -3,8 +3,8 @@ export type E2eConfig = Readonly<{
   sourceEnvId: string;
 }>;
 
-// The E2E_* names deliberately avoid the KONTENT_ prefix: yargs maps every
-// KONTENT_* env var to a CLI argument and .strict() rejects unknown ones.
+// The E2E_* names keep the suite's own credentials distinct from the KONTENT_*
+// ones the CLI reads, so a run never picks up a developer's working environment.
 export const requireE2eConfig = (): E2eConfig => {
   const mapiKey = readVar("E2E_MAPI_KEY");
   const sourceEnvId = readVar("E2E_SOURCE_ENV_ID");

@@ -58,10 +58,10 @@ Every handler starts with `const logger = createLoggerFromArgs(args)` (`src/log.
 
 Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
 
-`test/e2e/` runs the built binary against a real Kontent.ai project (clone-per-run from an empty template env). Gated on `E2E_MAPI_KEY`/`E2E_SOURCE_ENV_ID` (fails fast with an error when unset; deliberately not `KONTENT_`-prefixed — yargs `.env("KONTENT")` + `.strict()` would reject them). Run with `pnpm test:e2e` (own `vitest.e2e.config.ts`, loads `.env`); excluded from `pnpm test` and the before-halting gate. CI: `.github/workflows/e2e.yml` (master push, PRs, manual; fork PRs are skipped at the job level — no secret access).
+`test/e2e/` runs the built binary against a real Kontent.ai project (clone-per-run from an empty template env). Gated on `E2E_MAPI_KEY`/`E2E_SOURCE_ENV_ID` (fails fast with an error when unset). Run with `pnpm test:e2e` (own `vitest.e2e.config.ts`, loads `.env`); excluded from `pnpm test` and the before-halting gate. CI: `.github/workflows/e2e.yml` (master push, PRs, manual; fork PRs are skipped at the job level — no secret access).
 
 ## Telemetry
 
-Amplitude-based, see `TELEMETRY.md`. New `KONTENT_*` env vars need a hidden yargs option registered in `src/index.ts` — `.strict()` + `.env("KONTENT")` rejects unknown env vars otherwise.
+Amplitude-based, see `TELEMETRY.md`. Env vars are read from `process.env` where they apply, never mapped onto yargs options — `src/index.ts` deliberately does not call `.env()`, so a stray `KONTENT_*` var cannot break an unrelated command.
 
 Event names and the custom event-property keys we set are kebab-case (`cli__some-command`, `error-code`, `sample-project-type`); single words stay bare (`outcome`). Amplitude's built-in fields (`device_id`, `user_id`, `platform`, `app_version`, `os_name`, `os_version`) are the exception and keep `snake_case`.

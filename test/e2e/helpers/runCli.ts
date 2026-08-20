@@ -13,9 +13,9 @@ export type CliRunOptions = Readonly<{
   env?: Readonly<Record<string, string>>;
 }>;
 
-// Spawns the built binary with a curated environment: no stray KONTENT_* vars
-// (yargs would map them to CLI arguments), telemetry off. Resolves on any exit
-// code - a non-zero exit is a result the tests assert on, not a failure.
+// Spawns the built binary with a curated environment: only the vars the CLI
+// actually reads, telemetry off, so a developer's shell cannot steer a run.
+// Resolves on any exit code - a non-zero exit is a result the tests assert on.
 export const runCli = (
   args: ReadonlyArray<string>,
   options: CliRunOptions = {},

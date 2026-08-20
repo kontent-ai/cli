@@ -16,9 +16,13 @@ import type { CommandDeps } from "./types/yargs.js";
 
 const emptyYargs = yargs(hideBin(process.argv));
 
+// Deliberately no .env() prefix mapping: it turns every KONTENT_* variable in
+// the shell into a flag, and .strict() then rejects the ones a given command
+// does not declare - an unrelated KONTENT_PROJECT_ID would break the whole CLI.
+// Each variable is read where it is used instead (lib/config/kontentUrl.ts,
+// lib/auth/config.ts, lib/telemetry/consent.ts, commands/mapi/request.ts).
 const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
-  .env("KONTENT")
   .scriptName("kontent")
   .epilogue("Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai")
   .demandCommand(1, chalk.red("You need to provide a command to run."))
@@ -29,18 +33,6 @@ const initialYargs = emptyYargs
   .alias("v", "version");
 
 const withLogLevel = addLogLevelOptions(initialYargs);
-
-// Hidden options exist only so .strict() + .env("KONTENT") accept the
-// KONTENT_* env vars; the resolvers read process.env directly. The auth0* ones
-// are a developer escape hatch for pointing the CLI at a non-default tenant
-// (e.g. QA) via KONTENT_AUTH0_* env vars.
-const withHiddenEnvOptions = withLogLevel
-  .option("doNotTrack", { type: "boolean", hidden: true })
-  .option("telemetryDebug", { type: "boolean", hidden: true })
-  .option("url", { type: "string", hidden: true })
-  .option("auth0Domain", { type: "string", hidden: true })
-  .option("auth0ClientId", { type: "string", hidden: true })
-  .option("auth0Audience", { type: "string", hidden: true });
 
 const kontentDomainResult = validateKontentDomain(getKontentBaseDomain());
 if (isErr(kontentDomainResult)) {
@@ -53,7 +45,7 @@ const deps: CommandDeps = { telemetry };
 registerTelemetrySignalFlush(telemetry);
 
 // Runs after parsing (so --verbose is known) and before the command handler.
-const withTelemetryModeLog = withHiddenEnvOptions.middleware((args) => {
+const withTelemetryModeLog = withLogLevel.middleware((args) => {
   createLoggerFromArgs(args).info("verbose", formatTelemetryMode(mode));
 });
 
