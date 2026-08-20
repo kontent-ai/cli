@@ -40,6 +40,9 @@ export const runCli = (
       });
     });
 
+    // The CLI may exit before reading stdin (a rejected argument, say). Without a
+    // listener the resulting EPIPE would take down the test worker.
+    child.stdin.on("error", () => {});
     if (options.stdin !== undefined) {
       child.stdin.write(options.stdin);
     }

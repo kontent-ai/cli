@@ -61,9 +61,13 @@ export const register: RegisterCommand = (sub, deps) =>
           describe:
             'Request header in the "Name: value" format. Repeatable. An Authorization header takes precedence over --mapiKey and the stored login token',
         })
+        // Without nargs the array is greedy, so `-H 'X-Foo: 1' types` swallows the
+        // endpoint and yargs then reports it as a missing positional.
+        .nargs("header", 1)
         .option("input", {
           type: "string",
-          describe: 'File with the request body, or "-" to read stdin',
+          describe:
+            'File with the request body, or "-" to read stdin. Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset\'s MIME type',
         })
         // Without nargs, yargs-parser reads the lone "-" of `--input -` as a
         // positional and .strict() then rejects it as an unknown argument.
@@ -202,6 +206,16 @@ const prepareRequest = async (
     return method;
   }
 
+  // Checked before the input is read: there is no point opening a file the
+  // request can never carry. Only an explicit `-X GET` reaches this.
+  if (args.input !== undefined && method.value === "GET") {
+    return err({
+      kind: "invalid-method",
+      message:
+        "A GET request cannot carry a body. Use -X POST, PUT or PATCH with --input, or drop --input.",
+    });
+  }
+
   const headers = parseHeaders(args.header ?? []);
   if (isErr(headers)) {
     return err({ kind: "invalid-header", message: headers.error });
@@ -227,11 +241,15 @@ const prepareRequest = async (
  * Two rules, the same ones curl and `gh api` apply:
  *
  * - no `-X`: GET, or POST when `--input` supplies a body;
- * - `-X` given: that method verbatim, body included if there is one - so
- *   `-X GET --input` sends a GET with a body rather than second-guessing it.
+ * - `-X` given: that method verbatim.
  *
  * A yargs `default` would break the first rule: it is indistinguishable from a
  * typed `-X GET`, which would turn every `--input` into a GET with a body.
+ *
+ * Where curl parity stops: curl does send `-X GET` with a body, we cannot. The
+ * fetch spec forbids one on GET, and undici throws before the request leaves, so
+ * `prepareRequest` rejects the pair with an explanation instead of surfacing a
+ * raw transport error.
  */
 const resolveMethod = (
   raw: string | undefined,
