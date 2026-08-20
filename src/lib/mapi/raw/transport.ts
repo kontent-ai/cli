@@ -39,7 +39,8 @@ export const fetchTransport: RawTransport = async (options) => {
     statusText: response.statusText,
     // Names arrive lowercased from fetch, matching how the request headers merge.
     responseHeaders: [...response.headers].map(([name, value]) => ({ name, value })),
-    body: await response.bytes(),
+    // Not response.bytes(): that arrived in Node 22.3, past the >=22 floor in package.json.
+    body: new Uint8Array(await response.arrayBuffer()),
   };
 };
 

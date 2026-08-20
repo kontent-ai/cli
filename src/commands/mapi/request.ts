@@ -302,19 +302,20 @@ const formatBody = (response: MapiResponse): string | Uint8Array => {
 
   const text = new TextDecoder().decode(response.body);
   const indented = fromThrowable(
-    () => JSON.stringify(JSON.parse(text) as unknown, null, 2),
+    () => `${JSON.stringify(JSON.parse(text) as unknown, null, 2)}\n`,
     () => text,
   );
   // A body that claims to be JSON but does not parse is still shown, unchanged:
   // malformed output is a clue, and swallowing it would hide the real answer.
-  return isOk(indented) ? `${indented.value}\n` : text;
+  return isOk(indented) ? indented.value : indented.error;
 };
 
 const contentType = (response: MapiResponse): string | undefined =>
   response.headers
     .find((header) => header.name.toLowerCase() === "content-type")
     ?.value.split(";")[0]
-    ?.trim();
+    ?.trim()
+    .toLowerCase();
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}`;

@@ -6,7 +6,7 @@ import type { AuthError } from "./types.js";
 /** Which of the three credentials a request ended up authenticating with. */
 export type AuthSource = "login" | "mapi-key" | "header";
 
-export type Credential = Readonly<{ token?: string | undefined; source: AuthSource }>;
+export type MapiCredential = Readonly<{ token?: string | undefined; source: AuthSource }>;
 
 /**
  * Each source suppresses the ones below it, so a supplied credential never triggers
@@ -20,7 +20,7 @@ export const resolveMapiCredential = async (
   headers: ReadonlyArray<Header>,
   mapiKey: string | undefined,
   env: NodeJS.ProcessEnv = process.env,
-): Promise<Result<Credential, AuthError>> => {
+): Promise<Result<MapiCredential, AuthError>> => {
   if (headers.some((header) => header.name.toLowerCase() === "authorization")) {
     return ok({ source: "header" });
   }

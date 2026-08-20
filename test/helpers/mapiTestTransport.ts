@@ -5,10 +5,8 @@ export type MapiReply = Readonly<{
   status?: number;
   statusText?: string;
   headers?: ReadonlyArray<Header>;
-  // Convenience for the common case: encoded as JSON, with the matching content type.
+  // Encoded as JSON, with the matching content type.
   payload?: JsonValue;
-  // The raw alternative, for asserting on bodies a JSON payload cannot express.
-  body?: string;
   throws?: Error;
 }>;
 
@@ -56,24 +54,18 @@ export const mapiTestTransport = (routes: ReadonlyArray<MapiRoute>): MapiTestTra
       status: reply.status ?? 200,
       statusText: reply.statusText ?? "OK",
       responseHeaders: replyHeaders(reply),
-      body: new TextEncoder().encode(replyBody(reply)),
+      body: new TextEncoder().encode(
+        reply.payload === undefined ? "" : JSON.stringify(reply.payload),
+      ),
     });
   };
 
   return { transport, requests };
 };
 
-/** Decodes a response body the way the command does, for assertions. */
-export const decodeBody = (body: Uint8Array): string => new TextDecoder().decode(body);
-
-export const parseJsonBody = (body: Uint8Array): unknown => JSON.parse(decodeBody(body));
-
-const replyBody = (reply: MapiReply): string => {
-  if (reply.body !== undefined) {
-    return reply.body;
-  }
-  return reply.payload === undefined ? "" : JSON.stringify(reply.payload);
-};
+/** Reads a response body the way the command does, for assertions. */
+export const parseJsonBody = (body: Uint8Array): unknown =>
+  JSON.parse(new TextDecoder().decode(body));
 
 // A JSON payload implies the content type, so routes do not have to repeat it;
 // an explicitly supplied header still wins.

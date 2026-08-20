@@ -38,16 +38,20 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
   }
 };
 
+// Chunks are kept as bytes, not text: a body that is not valid UTF-8 must survive
+// the capture unchanged, or a passthrough test cannot tell mangling from fidelity.
 const captureStream = (stream: "stdout" | "stderr") => {
-  const chunks: string[] = [];
+  const chunks: Uint8Array[] = [];
   const spy = vi.spyOn(process[stream], "write").mockImplementation((chunk) => {
-    chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
+    chunks.push(typeof chunk === "string" ? encode(chunk) : chunk);
     return true;
   });
-  return { text: () => chunks.join(""), restore: () => spy.mockRestore() };
+  return {
+    text: () => new TextDecoder().decode(Buffer.concat(chunks)),
+    bytes: () => Buffer.concat(chunks),
+    restore: () => spy.mockRestore(),
+  };
 };
-
-const captureStderr = () => captureStream("stderr");
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -94,7 +98,7 @@ describe("kontent mapi argument handling", () => {
       }),
     );
     const stdout = captureStream("stdout");
-    const stderr = captureStderr();
+    const stderr = captureStream("stderr");
 
     await runCommand(["export", "--envId", ENV_ID]);
     stdout.restore();
@@ -140,12 +144,51 @@ describe("kontent mapi argument handling", () => {
     expect(stdout.text()).toBe("{not json");
   });
 
+  // Media types are case-insensitive (RFC 9110), and the API sends a charset
+  // parameter, so neither may decide whether the body is treated as JSON.
+  it("re-indents a JSON body whose media type is not lowercase", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "Content-Type", value: "Application/JSON; charset=utf-8" }],
+        body: encode('{"name":"Article"}'),
+      }),
+    );
+    const stdout = captureStream("stdout");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    stdout.restore();
+
+    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
+  });
+
+  // The reason the body is carried as bytes: a string round-trip would replace
+  // every byte that is not valid UTF-8 with U+FFFD and corrupt the download.
+  it("passes a binary body through byte for byte", async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe, 0x00]);
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "content-type", value: "image/png" }],
+        body: png,
+      }),
+    );
+    const stdout = captureStream("stdout");
+
+    await runCommand(["assets/x", "--envId", ENV_ID]);
+    stdout.restore();
+
+    expect(Buffer.compare(stdout.bytes(), Buffer.from(png))).toBe(0);
+  });
+
   it("stays quiet when a success simply has no body", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({ statusCode: 204, statusText: "No Content", headers: [], body: encode("") }),
     );
     const stdout = captureStream("stdout");
-    const stderr = captureStderr();
+    const stderr = captureStream("stderr");
 
     await runCommand(["items/x", "-X", "DELETE", "--envId", ENV_ID]);
     stdout.restore();
@@ -156,7 +199,7 @@ describe("kontent mapi argument handling", () => {
   });
 
   it("rejects a body on GET instead of letting the transport throw", async () => {
-    const captured = captureStderr();
+    const captured = captureStream("stderr");
 
     await runCommand(["types", "-X", "GET", "--input", "body.json", "--envId", ENV_ID]);
     captured.restore();

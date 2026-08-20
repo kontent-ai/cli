@@ -28,7 +28,7 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 ### API clients
 
 - `iapi` (`src/lib/iapi`) — internal Kontent.ai API; hand-rolled client, one file per endpoint, over `@kontent-ai/core-sdk`. Endpoint validators (the `schema` field) must be **`zod/mini`** (`import * as z from "zod/mini"`) — classic `zod` won't infer the payload.
-- `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`. `src/lib/mapi/raw` is the deliberate opposite: an adapter-backed passthrough (no schema, no response interpretation) behind `kontent mapi`, where a 4xx/5xx is a result, not an error.
+- `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`. `src/lib/mapi/raw` is the deliberate opposite: a transport-backed passthrough (no schema, no response interpretation) behind `kontent mapi`, where a 4xx/5xx is a result, not an error.
 - `@kontent-ai/core-sdk` — shared HTTP/SDK layer both clients build on.
 
 **Commands build clients; core receives them.** The command builds the `iapiClient`/`mapiClient` and passes them into core (e.g. `performBootstrap(params, { logger, iapiClient, mapiClient })`); core never constructs clients itself. Auth failure is handled in the command, not surfaced as a core `Result` error.
