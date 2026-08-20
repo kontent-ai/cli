@@ -72,6 +72,9 @@ describe("resolveEndpoint", () => {
     ["../../admin", "traversal"],
     ["types/../../admin", "traversal"],
     ["types/%2e%2e/admin", "traversal"],
+    ["types\\..\\..\\secret", "traversal"],
+    ["..\\..\\admin", "traversal"],
+    ["types/..\\admin", "traversal"],
   ])("rejects %j as %s", (endpoint, kind) => {
     const result = resolve(endpoint);
 

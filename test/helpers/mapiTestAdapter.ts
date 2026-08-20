@@ -4,6 +4,7 @@ export type MapiReply = Readonly<{
   status?: number;
   statusText?: string;
   headers?: ReadonlyArray<Header>;
+  // Implies the JSON content type unless the route sets one of its own.
   payload?: JsonValue;
   throws?: Error;
 }>;
@@ -51,7 +52,7 @@ export const mapiTestAdapter = (routes: ReadonlyArray<MapiRoute>): MapiTestAdapt
 
       return Promise.resolve({
         payload: reply.payload ?? null,
-        responseHeaders: reply.headers ?? [],
+        responseHeaders: replyHeaders(reply),
         status: reply.status ?? 200,
         statusText: reply.statusText ?? "OK",
         url: options.url,
@@ -60,4 +61,16 @@ export const mapiTestAdapter = (routes: ReadonlyArray<MapiRoute>): MapiTestAdapt
   };
 
   return { adapter, requests };
+};
+
+// A JSON payload implies the content type, so routes do not have to repeat it;
+// an explicitly supplied header still wins.
+const replyHeaders = (reply: MapiReply): ReadonlyArray<Header> => {
+  const supplied = reply.headers ?? [];
+  const hasContentType = supplied.some((header) => header.name.toLowerCase() === "content-type");
+  if (reply.payload === undefined || hasContentType) {
+    return supplied;
+  }
+
+  return [{ name: "content-type", value: "application/json" }, ...supplied];
 };

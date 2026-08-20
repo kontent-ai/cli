@@ -22,10 +22,10 @@ kontent mapi <endpoint> [options]
 | Option | Type | Description |
 | --- | --- | --- |
 | `--envId` | string | **Required.** Environment ID (Guid) |
-| `--mapiKey` | string | Management API key. Defaults to the logged-in user's token |
+| `--mapiKey` | string | Management API key. Falls back to the KONTENT_MAPI_KEY environment variable, then to the logged-in user's token |
 | `--method`, `-X` | string | HTTP method. (default: GET, or POST with --input) |
 | `--header`, `-H` | string[] | Request header in the "Name: value" format. Repeatable. An Authorization header takes precedence over --mapiKey and the stored login token |
-| `--input` | string | File with the request body, or "-" to read stdin |
+| `--input` | string | File with the request body, or "-" to read stdin. Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset's MIME type |
 | `--include`, `-i` | boolean | Print the status line and response headers before the body |
 
 ## Examples
@@ -47,3 +47,20 @@ kontent mapi types -H 'X-Foo: 1' -H 'X-Bar: 2' --envId <id>
 echo '{"name":"Article"}' | kontent mapi types --envId <id> --input -
 ```
 <!-- reference:end -->
+
+## Response output
+
+The response body is the only thing on stdout; everything said about the request
+goes to stderr. `kontent mapi types --envId <id> | jq` works, and `--logLevel none`
+still prints the payload.
+
+- A JSON body is re-indented and printed. The Management API answers JSON on
+  every status, error responses included, so this is the normal case.
+- A body of any other content type is **not** printed. It is reported on stderr
+  with its byte count instead, because the underlying HTTP adapter parses JSON
+  and nothing else. In practice this means an error page served by the edge in
+  front of the API (`text/html` from a gateway or a WAF) rather than anything the
+  API itself returns; to capture such a body, repeat the request with `curl`.
+- `-i` prepends the status line and the response headers to stdout.
+- A 4xx or 5xx sets the exit code to 1 and prints `HTTP <status>` on stderr. The
+  response body still goes to stdout, so a failing request stays scriptable.
