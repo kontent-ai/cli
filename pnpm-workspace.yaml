@@ -1,3 +1,5 @@
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@kontent-ai/*'
 verifyDepsBeforeRun: error

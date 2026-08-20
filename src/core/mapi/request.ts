@@ -9,7 +9,9 @@ export type MapiRequestParams = Readonly<{
   envId: string;
   method: HttpMethod;
   headers: ReadonlyArray<Header>;
-  body: string | Blob | null;
+  body: Blob | null;
+  // No production caller: the telemetry SIGINT handler exits before an abort could
+  // land. Kept for the abort test and a handler that cooperates.
   abortSignal?: AbortSignal;
 }>;
 
@@ -17,21 +19,21 @@ export type MapiResponse = Readonly<{
   statusCode: number;
   statusText: string;
   headers: ReadonlyArray<Header>;
-  payload: JsonValue;
+  // Null for a body that was absent, for one core-sdk skipped as non-JSON, and for
+  // a literal JSON null alike, so it cannot say whether the response carried
+  // anything. The command reads the headers instead: the content type decides
+  // whether to print, the content length whether something was dropped.
+  body: JsonValue;
 }>;
 
 /**
- * The ways the command ends without an HTTP answer to show the user.
- *
- * `transport` is reserved for a request that could not be made; every status the
- * API answers with, including 4xx and 5xx, is an `ok` result. The remaining kinds
- * are raised by the command while it builds the params, before anything is sent.
+ * The ways a request ends without an HTTP answer to show the user. `transport` is
+ * reserved for a request that could not be made: every status the API answers
+ * with, including 4xx and 5xx, is an `ok` result. Whatever goes wrong while the
+ * command reads its own arguments never reaches here.
  */
 export type MapiRequestError =
   | Readonly<{ kind: "invalid-endpoint"; message: string }>
-  | Readonly<{ kind: "invalid-header"; message: string }>
-  | Readonly<{ kind: "invalid-method"; message: string }>
-  | Readonly<{ kind: "unreadable-input"; message: string }>
   | Readonly<{ kind: "transport"; message: string }>;
 
 export const performRawMapiRequest = async (
@@ -65,6 +67,6 @@ export const performRawMapiRequest = async (
     statusCode: response.value.status,
     statusText: response.value.statusText,
     headers: response.value.responseHeaders,
-    payload: response.value.payload,
+    body: response.value.payload,
   });
 };

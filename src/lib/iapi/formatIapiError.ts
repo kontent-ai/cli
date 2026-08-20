@@ -28,7 +28,8 @@ const formatGenericIapiError = (error: KontentSdkError, context: IapiErrorContex
     "status" in details ? `status: ${details.status} ${details.statusText}` : undefined,
     apiResponse?.message ? `message: ${apiResponse.message}` : undefined,
     apiResponse?.request_id ? `request-id: ${apiResponse.request_id}` : undefined,
-    `url: ${error.url}`,
+    // String(): Node's URL declares no toString of its own, unlike the DOM interface.
+    `url: ${String(error.url)}`,
     context.isVerbose
       ? `details: ${inspect(details, { depth: 5, colors: false, breakLength: 100 })}`
       : undefined,

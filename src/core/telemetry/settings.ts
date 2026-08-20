@@ -6,7 +6,11 @@ import { formatTelemetryOffReason, resolveTelemetryConsent } from "../../lib/tel
 import { amplitudeApiKey } from "../../lib/telemetry/context.js";
 import type { Logger } from "../../log.js";
 
-export const showTelemetryStatus = async (logger: Logger): Promise<void> => {
+/**
+ * Returns the report rather than logging it: it is the payload the command
+ * exists to produce, so it belongs on stdout, ungated by --logLevel.
+ */
+export const buildTelemetryStatusReport = async (): Promise<string> => {
   const config = await readCliConfig();
   const consent = resolveTelemetryConsent(process.env, config, amplitudeApiKey, isCI);
 
@@ -16,14 +20,11 @@ export const showTelemetryStatus = async (logger: Logger): Promise<void> => {
       : "Reason: default (no opt-out detected)"
     : `Reason: ${formatTelemetryOffReason(consent.reason)}`;
 
-  logger.info(
-    "standard",
-    [
-      `Telemetry: ${consent.isEnabled ? "enabled" : "disabled"}`,
-      reasonLine,
-      `Config file: ${getCliConfigPath()}`,
-    ].join("\n"),
-  );
+  return [
+    `Telemetry: ${consent.isEnabled ? "enabled" : "disabled"}`,
+    reasonLine,
+    `Config file: ${getCliConfigPath()}`,
+  ].join("\n");
 };
 
 export const setTelemetryStatus = async (logger: Logger, isEnabled: boolean): Promise<void> => {

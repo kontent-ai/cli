@@ -1,20 +1,17 @@
-import { readFile } from "node:fs/promises";
+import { openAsBlob } from "node:fs";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
-import {
-  type MapiRequestError,
-  type MapiResponse,
-  performRawMapiRequest,
-} from "../../core/mapi/request.js";
+import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
-import { getValidAccessToken } from "../../lib/auth/tokenAccess.js";
-import type { AuthError } from "../../lib/auth/types.js";
+import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
-import { err, isErr, map, ok, type Result, tryAsync } from "../../lib/result.js";
+import { parseMethod } from "../../lib/mapi/raw/method.js";
+import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
+import { presentResponse } from "./presentResponse.js";
 
 type RequestArgs = LogOptions &
   Readonly<{
@@ -46,7 +43,8 @@ export const register: RegisterCommand = (sub, deps) =>
         })
         .option("mapiKey", {
           type: "string",
-          describe: "Management API key. Defaults to the logged-in user's token",
+          describe:
+            "Management API key. Falls back to the KONTENT_MAPI_KEY environment variable, then to the logged-in user's token",
         })
         .option("method", {
           type: "string",
@@ -60,9 +58,13 @@ export const register: RegisterCommand = (sub, deps) =>
           describe:
             'Request header in the "Name: value" format. Repeatable. An Authorization header takes precedence over --mapiKey and the stored login token',
         })
+        // Without nargs the array is greedy, so `-H 'X-Foo: 1' types` swallows the
+        // endpoint and yargs then reports it as a missing positional.
+        .nargs("header", 1)
         .option("input", {
           type: "string",
-          describe: 'File with the request body, or "-" to read stdin',
+          describe:
+            'File with the request body, or "-" to read stdin. Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset\'s MIME type',
         })
         // Without nargs, yargs-parser reads the lone "-" of `--input -` as a
         // positional and .strict() then rejects it as an unknown argument.
@@ -106,7 +108,7 @@ const runRequest = async (
     return;
   }
 
-  const credential = await resolveCredential(prepared.value.headers, args.mapiKey);
+  const credential = await resolveMapiCredential(prepared.value.headers, args.mapiKey);
   if (isErr(credential)) {
     tracker.fail(`auth:${credential.error.kind}`);
     logger.error(formatAuthError(credential.error));
@@ -115,20 +117,14 @@ const runRequest = async (
   }
   const { token, source } = credential.value;
 
-  const controller = new AbortController();
-  const abortRequest = () => controller.abort();
-  process.once("SIGINT", abortRequest);
-
   const result = await performRawMapiRequest(
     {
       ...prepared.value,
       endpoint: args.endpoint,
       envId: args.envId,
-      abortSignal: controller.signal,
     },
-    { logger, client: createMapiRawClient({ token }) },
+    { logger, client: createMapiRawClient({ token, logger }) },
   );
-  process.off("SIGINT", abortRequest);
 
   if (isErr(result)) {
     tracker.fail(result.error.kind, { "auth-source": source });
@@ -137,7 +133,13 @@ const runRequest = async (
     return;
   }
 
-  writeResponse(result.value, args.include === true);
+  const presented = presentResponse(result.value, args.include === true);
+  if (presented.payload !== "") {
+    process.stdout.write(presented.payload);
+  }
+  if (presented.droppedBodyWarning !== undefined) {
+    logger.warning("standard", presented.droppedBodyWarning);
+  }
 
   if (result.value.statusCode >= 400) {
     tracker.fail(`http-${result.value.statusCode}`, {
@@ -155,27 +157,32 @@ const runRequest = async (
 type PreparedRequest = Readonly<{
   method: HttpMethod;
   headers: ReadonlyArray<Header>;
-  body: string | Blob | null;
+  body: Blob | null;
 }>;
 
-type AuthSource = "login" | "mapi-key" | "header";
-
-type Credential = Readonly<{ token?: string | undefined; source: AuthSource }>;
-
-const httpMethods = [
-  "GET",
-  "POST",
-  "PUT",
-  "DELETE",
-  "PATCH",
-] as const satisfies ReadonlyArray<HttpMethod>;
+type RequestArgsError = Readonly<{
+  kind: "invalid-method" | "invalid-header" | "unreadable-input";
+  message: string;
+}>;
 
 const prepareRequest = async (
   args: RequestArgs,
-): Promise<Result<PreparedRequest, MapiRequestError>> => {
-  const method = resolveMethod(args.method, args.input !== undefined);
+): Promise<Result<PreparedRequest, RequestArgsError>> => {
+  const method = parseMethod(args.method, args.input !== undefined);
   if (isErr(method)) {
-    return method;
+    return err({ kind: "invalid-method", message: method.error });
+  }
+
+  // Where curl parity stops: curl does send `-X GET` with a body, we cannot - the
+  // fetch spec forbids one on GET and undici throws before the request leaves.
+  // Checked before the input is read: there is no point opening a file the
+  // request can never carry. Only an explicit `-X GET` reaches this.
+  if (args.input !== undefined && method.value === "GET") {
+    return err({
+      kind: "invalid-method",
+      message:
+        "A GET request cannot carry a body. Use -X POST, PUT or PATCH with --input, or drop --input.",
+    });
   }
 
   const headers = parseHeaders(args.header ?? []);
@@ -199,38 +206,10 @@ const prepareRequest = async (
   });
 };
 
-/**
- * Two rules, the same ones curl and `gh api` apply:
- *
- * - no `-X`: GET, or POST when `--input` supplies a body;
- * - `-X` given: that method verbatim, body included if there is one - so
- *   `-X GET --input` sends a GET with a body rather than second-guessing it.
- *
- * A yargs `default` would break the first rule: it is indistinguishable from a
- * typed `-X GET`, which would turn every `--input` into a GET with a body.
- */
-const resolveMethod = (
-  raw: string | undefined,
-  hasInput: boolean,
-): Result<HttpMethod, MapiRequestError> => {
-  if (raw === undefined) {
-    return ok(hasInput ? "POST" : "GET");
-  }
-
-  const method = httpMethods.find((known) => known === raw.toUpperCase());
-  if (method === undefined) {
-    return err({
-      kind: "invalid-method",
-      message: `Unsupported HTTP method "${raw}". Use one of ${httpMethods.join(", ")}.`,
-    });
-  }
-  return ok(method);
-};
-
-const readInput = async (input: string): Promise<Result<Blob, MapiRequestError>> => {
+const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
   if (input !== "-") {
     return await tryAsync(
-      async () => new Blob([Uint8Array.from(await readFile(input))]),
+      async () => await openAsBlob(input),
       (cause) => ({
         kind: "unreadable-input" as const,
         message: `Failed to read "${input}": ${describeCause(cause)}`,
@@ -255,46 +234,16 @@ const readInput = async (input: string): Promise<Result<Blob, MapiRequestError>>
   );
 };
 
-const readStdin = async (): Promise<Uint8Array<ArrayBuffer>> => {
+const readStdin = async (): Promise<Buffer> => {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk as Buffer);
   }
-  return Uint8Array.from(Buffer.concat(chunks));
-};
-
-// Each source suppresses the ones below it, so a supplied credential never triggers
-// a keychain read that could fail on a machine that never ran `kontent login`.
-const resolveCredential = async (
-  headers: ReadonlyArray<Header>,
-  mapiKey: string | undefined,
-): Promise<Result<Credential, AuthError>> => {
-  if (headers.some((header) => header.name.toLowerCase() === "authorization")) {
-    return ok({ source: "header" });
-  }
-  if (mapiKey !== undefined) {
-    return ok({ token: mapiKey, source: "mapi-key" });
-  }
-  return map(await getValidAccessToken(), (token) => ({ token, source: "login" }) as const);
-};
-
-const writeResponse = (response: MapiResponse, shouldIncludeHeaders: boolean): void => {
-  if (shouldIncludeHeaders) {
-    const headerLines = response.headers.map((header) => `${header.name}: ${header.value}`);
-    process.stdout.write(
-      [`HTTP/1.1 ${response.statusCode} ${response.statusText}`, ...headerLines, "", ""].join("\n"),
-    );
-  }
-
-  if (response.payload !== null) {
-    process.stdout.write(`${JSON.stringify(response.payload, null, 2)}\n`);
-  }
+  return Buffer.concat(chunks);
 };
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
-  const summary = `HTTP ${response.statusCode} ${response.statusText}${
-    response.payload === null ? " (non-JSON response body omitted)" : ""
-  }`;
+  const summary = `HTTP ${response.statusCode} ${response.statusText}`;
 
   if (response.statusCode !== 401) {
     return summary;
