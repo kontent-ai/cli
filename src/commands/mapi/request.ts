@@ -128,7 +128,7 @@ const runRequest = async (
       envId: args.envId,
       abortSignal: controller.signal,
     },
-    { logger, client: createMapiRawClient({ token }) },
+    { logger, client: createMapiRawClient({ token, logger }) },
   );
   process.off("SIGINT", abortRequest);
 
@@ -163,7 +163,7 @@ const runRequest = async (
 type PreparedRequest = Readonly<{
   method: HttpMethod;
   headers: ReadonlyArray<Header>;
-  body: string | Blob | null;
+  body: Blob | null;
 }>;
 
 type RequestArgsError = Readonly<{

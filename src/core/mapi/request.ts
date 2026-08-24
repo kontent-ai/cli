@@ -9,7 +9,7 @@ export type MapiRequestParams = Readonly<{
   envId: string;
   method: HttpMethod;
   headers: ReadonlyArray<Header>;
-  body: string | Blob | null;
+  body: Blob | null;
   abortSignal?: AbortSignal;
 }>;
 

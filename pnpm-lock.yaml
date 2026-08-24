@@ -15,8 +15,8 @@ importers:
         specifier: ^1.2.0
         version: 1.6.0
       '@kontent-ai/core-sdk':
-        specifier: 12.0.0-preview.40
-        version: 12.0.0-preview.40(ts-pattern@5.9.0)(zod@4.4.3)
+        specifier: 12.0.0-preview.43
+        version: 12.0.0-preview.43(ts-pattern@5.9.0)(zod@4.4.3)
       '@kontent-ai/core-sdk-v10':
         specifier: npm:@kontent-ai/core-sdk@10.12.8
         version: '@kontent-ai/core-sdk@10.12.8'
@@ -440,8 +440,8 @@ packages:
     resolution: {integrity: sha512-xf0/xFoFETcXk0GLmUng04Nn0UuAWBaR13G5jKrYYHi82tTZ7gRDtPXt+msBxX/HgOQDm10g1KRExd/MiS69Tg==}
     engines: {node: '>= 20'}
 
-  '@kontent-ai/core-sdk@12.0.0-preview.40':
-    resolution: {integrity: sha512-W8k5iijCvknnzHGX7q7VD0zzk2dh7W5elml2P76iroPj48OvxZuscR9Fzyg2W/Scefpe5Yy70ek4k/uw+RN77A==}
+  '@kontent-ai/core-sdk@12.0.0-preview.43':
+    resolution: {integrity: sha512-Ex/RkNNsZY+8RRUEvBV6VM4e4WE2pun0CWd9khSL3IfKT99JzWF8oS9mNo9VwfxVG/HDcHFvAV+6su8/VZG/hQ==}
     engines: {node: '>=22'}
     peerDependencies:
       ts-pattern: ^5
@@ -1201,6 +1201,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -2550,7 +2551,7 @@ snapshots:
       - debug
       - supports-color
 
-  '@kontent-ai/core-sdk@12.0.0-preview.40(ts-pattern@5.9.0)(zod@4.4.3)':
+  '@kontent-ai/core-sdk@12.0.0-preview.43(ts-pattern@5.9.0)(zod@4.4.3)':
     dependencies:
       ts-pattern: 5.9.0
       zod: 4.4.3

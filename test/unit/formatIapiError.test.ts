@@ -24,6 +24,7 @@ const httpError = (
       statusText,
       responseHeaders: [{ name: NOISE_HEADER, value: "cache-vie6340-VIE" }],
       kontentErrorResponse,
+      adapterResponse: undefined,
     },
   });
 

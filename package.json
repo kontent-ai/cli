@@ -67,7 +67,7 @@
   "dependencies": {
     "@amplitude/analytics-node": "^1.5.59",
     "@clack/prompts": "^1.2.0",
-    "@kontent-ai/core-sdk": "12.0.0-preview.40",
+    "@kontent-ai/core-sdk": "12.0.0-preview.43",
     "@kontent-ai/core-sdk-v10": "npm:@kontent-ai/core-sdk@10.12.8",
     "@kontent-ai/management-sdk": "^8.5.4",
     "@napi-rs/keyring": "^1.2.0",
