@@ -9,6 +9,7 @@ import {
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
+import { isJsonContentType } from "../../lib/mapi/raw/contentType.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
@@ -244,7 +245,7 @@ const resolveMethod = (
 const readInput = async (input: string): Promise<Result<Blob, MapiRequestError>> => {
   if (input !== "-") {
     return await tryAsync(
-      async () => new Blob([Uint8Array.from(await readFile(input))]),
+      async () => new Blob([await readFile(input)]),
       (cause) => ({
         kind: "unreadable-input" as const,
         message: `Failed to read "${input}": ${describeCause(cause)}`,
@@ -269,12 +270,12 @@ const readInput = async (input: string): Promise<Result<Blob, MapiRequestError>>
   );
 };
 
-const readStdin = async (): Promise<Uint8Array<ArrayBuffer>> => {
+const readStdin = async (): Promise<Buffer> => {
   const chunks: Buffer[] = [];
   for await (const chunk of process.stdin) {
     chunks.push(chunk as Buffer);
   }
-  return Uint8Array.from(Buffer.concat(chunks));
+  return Buffer.concat(chunks);
 };
 
 /**
@@ -294,7 +295,7 @@ const writeResponse = (
     );
   }
 
-  if (contentType(response) === "application/json") {
+  if (isJsonContentType(rawContentType(response))) {
     process.stdout.write(`${JSON.stringify(response.body, null, 2)}\n`);
     return;
   }
@@ -320,12 +321,13 @@ const contentLength = (response: MapiResponse): number => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
+const rawContentType = (response: MapiResponse): string | undefined =>
+  response.headers.find((header) => header.name.toLowerCase() === "content-type")?.value;
+
+// The media type alone, for a message a human reads; the decision to print uses
+// the raw value, because that is what the adapter parsed by.
 const contentType = (response: MapiResponse): string | undefined =>
-  response.headers
-    .find((header) => header.name.toLowerCase() === "content-type")
-    ?.value.split(";")[0]
-    ?.trim()
-    .toLowerCase();
+  rawContentType(response)?.split(";")[0]?.trim().toLowerCase();
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}`;

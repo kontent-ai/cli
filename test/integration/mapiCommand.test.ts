@@ -162,6 +162,32 @@ describe("kontent mapi argument handling", () => {
     expect(stderr.text()).toBe("");
   });
 
+  // A proxy that joins two Content-Type headers produces one comma-separated
+  // value. core-sdk parses that body, so the command has to print it rather than
+  // report it as a type it could not show.
+  it("prints a JSON body whose content type arrived duplicated", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [
+          { name: "content-type", value: "application/json, application/json" },
+          { name: "content-length", value: "21" },
+        ],
+        body: { name: "Article" },
+      }),
+    );
+    const stdout = captureStream("stdout");
+    const stderr = captureStream("stderr");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    stdout.restore();
+    stderr.restore();
+
+    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
+    expect(stderr.text()).toBe("");
+  });
+
   it("rejects a body on GET instead of letting the transport throw", async () => {
     const captured = captureStream("stderr");
 

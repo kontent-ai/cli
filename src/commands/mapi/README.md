@@ -47,3 +47,20 @@ kontent mapi types -H 'X-Foo: 1' -H 'X-Bar: 2' --envId <id>
 echo '{"name":"Article"}' | kontent mapi types --envId <id> --input -
 ```
 <!-- reference:end -->
+
+## Response output
+
+The response body is the only thing on stdout; everything said about the request
+goes to stderr. `kontent mapi types --envId <id> | jq` works, and `--logLevel none`
+still prints the payload.
+
+- A JSON body is re-indented and printed. The Management API answers JSON on
+  every status, error responses included, so this is the normal case.
+- A body of any other content type is **not** printed. It is reported on stderr
+  with its byte count instead, because the underlying HTTP adapter parses JSON
+  and nothing else. In practice this means an error page served by the edge in
+  front of the API (`text/html` from a gateway or a WAF) rather than anything the
+  API itself returns; to capture such a body, repeat the request with `curl`.
+- `-i` prepends the status line and the response headers to stdout.
+- A 4xx or 5xx sets the exit code to 1 and prints `HTTP <status>` on stderr. The
+  response body still goes to stdout, so a failing request stays scriptable.
