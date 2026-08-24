@@ -5,13 +5,13 @@ import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/reques
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
-import { isJsonContentType } from "../../lib/mapi/raw/contentType.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { parseMethod } from "../../lib/mapi/raw/method.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
+import { presentResponse } from "./presentResponse.js";
 
 type RequestArgs = LogOptions &
   Readonly<{
@@ -139,7 +139,13 @@ const runRequest = async (
     return;
   }
 
-  writeResponse(result.value, args.include === true, logger);
+  const presented = presentResponse(result.value, args.include === true);
+  if (presented.payload !== "") {
+    process.stdout.write(presented.payload);
+  }
+  if (presented.droppedBodyWarning !== undefined) {
+    logger.warning("standard", presented.droppedBodyWarning);
+  }
 
   if (result.value.statusCode >= 400) {
     tracker.fail(`http-${result.value.statusCode}`, {
@@ -159,7 +165,6 @@ type PreparedRequest = Readonly<{
   headers: ReadonlyArray<Header>;
   body: string | Blob | null;
 }>;
-
 
 type RequestArgsError = Readonly<{
   kind: "invalid-method" | "invalid-header" | "unreadable-input";
@@ -242,65 +247,6 @@ const readStdin = async (): Promise<Buffer> => {
   }
   return Buffer.concat(chunks);
 };
-
-/**
- * A body of a type core-sdk skipped never reached this point, so the content type
- * is the only trace left that there was one - report it on stderr rather than
- * leave stdout silently empty. Not the content length: a chunked response sends
- * none, and the body would then vanish without a word.
- */
-const writeResponse = (
-  response: MapiResponse,
-  shouldIncludeHeaders: boolean,
-  logger: Logger,
-): void => {
-  if (shouldIncludeHeaders) {
-    const headerLines = response.headers.map((header) => `${header.name}: ${header.value}`);
-    process.stdout.write(
-      [`HTTP/1.1 ${response.statusCode} ${response.statusText}`, ...headerLines, "", ""].join("\n"),
-    );
-  }
-
-  if (isJsonContentType(rawContentType(response))) {
-    process.stdout.write(`${JSON.stringify(response.body, null, 2)}\n`);
-    return;
-  }
-
-  // A response that carried nothing at all - a 204, say - sends no content type
-  // either, and there is nothing to report.
-  const mediaType = contentType(response);
-  if (mediaType === undefined) {
-    return;
-  }
-
-  const droppedBytes = contentLength(response);
-  const carried =
-    droppedBytes === undefined ? `a ${mediaType} body` : `${droppedBytes} bytes of ${mediaType}`;
-  logger.warning(
-    "standard",
-    `The response carried ${carried}, which is not JSON and was not shown.`,
-  );
-};
-
-const contentLength = (response: MapiResponse): number | undefined => {
-  const raw = response.headers.find(
-    (header) => header.name.toLowerCase() === "content-length",
-  )?.value;
-  if (raw === undefined) {
-    return undefined;
-  }
-
-  const parsed = Number(raw);
-  return Number.isNaN(parsed) ? undefined : parsed;
-};
-
-const rawContentType = (response: MapiResponse): string | undefined =>
-  response.headers.find((header) => header.name.toLowerCase() === "content-type")?.value;
-
-// The media type alone, for a message a human reads; the decision to print uses
-// the raw value, because that is what the adapter parsed by.
-const contentType = (response: MapiResponse): string | undefined =>
-  rawContentType(response)?.split(";")[0]?.trim().toLowerCase();
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}`;

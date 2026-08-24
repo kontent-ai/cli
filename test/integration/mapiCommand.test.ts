@@ -83,9 +83,9 @@ describe("kontent mapi argument handling", () => {
     ]);
   });
 
-  // core-sdk drops a body it does not recognize as JSON, so the only honest thing
-  // left to do is say on stderr that something was there.
-  it("reports a non-JSON body on stderr instead of printing nothing at all", async () => {
+  // presentResponse decides the wording; what matters here is that its two halves
+  // reach different streams and that the command still fails.
+  it("keeps a dropped-body warning off stdout", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({
         statusCode: 502,
@@ -109,105 +109,26 @@ describe("kontent mapi argument handling", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  // A chunked response sends no Content-Length, so the content type is the only
-  // signal left that a body existed and was dropped.
-  it("reports a dropped body that came without a content length", async () => {
+  it("prints a 4xx body on stdout and its diagnosis on stderr", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [{ name: "Content-Type", value: "text/csv" }],
-        body: null,
-      }),
-    );
-    const stdout = captureStream("stdout");
-    const stderr = captureStream("stderr");
-
-    await runCommand(["types", "--envId", ENV_ID]);
-    stdout.restore();
-    stderr.restore();
-
-    expect(stdout.text()).toBe("");
-    expect(stderr.text()).toContain("a text/csv body");
-  });
-
-  it("re-indents a JSON body", async () => {
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({
-        statusCode: 200,
-        statusText: "OK",
+        statusCode: 404,
+        statusText: "Not Found",
         headers: [{ name: "content-type", value: "application/json" }],
-        body: { name: "Article" },
-      }),
-    );
-    const stdout = captureStream("stdout");
-
-    await runCommand(["types", "--envId", ENV_ID]);
-    stdout.restore();
-
-    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
-  });
-
-  // Media types are case-insensitive (RFC 9110), and the API sends a charset
-  // parameter, so neither may decide whether the body is treated as JSON.
-  it("re-indents a JSON body whose media type is not lowercase", async () => {
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [{ name: "Content-Type", value: "Application/JSON; charset=utf-8" }],
-        body: { name: "Article" },
-      }),
-    );
-    const stdout = captureStream("stdout");
-
-    await runCommand(["types", "--envId", ENV_ID]);
-    stdout.restore();
-
-    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
-  });
-
-  // A 204 carries no content type, which is the same signal as a body that was
-  // dropped - only the absent Content-Length separates the two.
-  it("stays quiet when a success simply has no body", async () => {
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({ statusCode: 204, statusText: "No Content", headers: [], body: null }),
-    );
-    const stdout = captureStream("stdout");
-    const stderr = captureStream("stderr");
-
-    await runCommand(["items/x", "-X", "DELETE", "--envId", ENV_ID]);
-    stdout.restore();
-    stderr.restore();
-
-    expect(stdout.text()).toBe("");
-    expect(stderr.text()).toBe("");
-  });
-
-  // A proxy that joins two Content-Type headers produces one comma-separated
-  // value. core-sdk parses that body, so the command has to print it rather than
-  // report it as a type it could not show.
-  it("prints a JSON body whose content type arrived duplicated", async () => {
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [
-          { name: "content-type", value: "application/json, application/json" },
-          { name: "content-length", value: "21" },
-        ],
-        body: { name: "Article" },
+        body: { message: "The requested content type was not found." },
       }),
     );
     const stdout = captureStream("stdout");
     const stderr = captureStream("stderr");
 
-    await runCommand(["types", "--envId", ENV_ID]);
+    await runCommand(["types/missing", "--envId", ENV_ID]);
     stdout.restore();
     stderr.restore();
 
-    expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
-    expect(stderr.text()).toBe("");
+    expect(stdout.text()).toContain("The requested content type was not found.");
+    expect(stderr.text()).toContain("HTTP 404 Not Found");
+    expect(stderr.text()).not.toContain("The requested content type was not found.");
+    expect(process.exitCode).toBe(1);
   });
 
   it("rejects a body on GET instead of letting the transport throw", async () => {
