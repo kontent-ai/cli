@@ -109,6 +109,28 @@ describe("kontent mapi argument handling", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  // A chunked response sends no Content-Length, so the content type is the only
+  // signal left that a body existed and was dropped.
+  it("reports a dropped body that came without a content length", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({
+        statusCode: 200,
+        statusText: "OK",
+        headers: [{ name: "Content-Type", value: "text/csv" }],
+        body: null,
+      }),
+    );
+    const stdout = captureStream("stdout");
+    const stderr = captureStream("stderr");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    stdout.restore();
+    stderr.restore();
+
+    expect(stdout.text()).toBe("");
+    expect(stderr.text()).toContain("a text/csv body");
+  });
+
   it("re-indents a JSON body", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({

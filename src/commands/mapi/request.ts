@@ -279,9 +279,10 @@ const readStdin = async (): Promise<Buffer> => {
 };
 
 /**
- * A body of a type core-sdk skipped never reached this point, so a non-zero
- * content length is the only trace left that there was one - report it on stderr
- * rather than leave stdout silently empty.
+ * A body of a type core-sdk skipped never reached this point, so the content type
+ * is the only trace left that there was one - report it on stderr rather than
+ * leave stdout silently empty. Not the content length: a chunked response sends
+ * none, and the body would then vanish without a word.
  */
 const writeResponse = (
   response: MapiResponse,
@@ -300,25 +301,32 @@ const writeResponse = (
     return;
   }
 
-  const droppedBytes = contentLength(response);
-  if (droppedBytes > 0) {
-    logger.warning(
-      "standard",
-      `The response carried ${droppedBytes} bytes of ${contentType(response) ?? "an unknown type"}, which is not JSON and was not shown.`,
-    );
+  // A response that carried nothing at all - a 204, say - sends no content type
+  // either, and there is nothing to report.
+  const mediaType = contentType(response);
+  if (mediaType === undefined) {
+    return;
   }
+
+  const droppedBytes = contentLength(response);
+  const carried =
+    droppedBytes === undefined ? `a ${mediaType} body` : `${droppedBytes} bytes of ${mediaType}`;
+  logger.warning(
+    "standard",
+    `The response carried ${carried}, which is not JSON and was not shown.`,
+  );
 };
 
-const contentLength = (response: MapiResponse): number => {
+const contentLength = (response: MapiResponse): number | undefined => {
   const raw = response.headers.find(
     (header) => header.name.toLowerCase() === "content-length",
   )?.value;
   if (raw === undefined) {
-    return 0;
+    return undefined;
   }
 
   const parsed = Number(raw);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return Number.isNaN(parsed) ? undefined : parsed;
 };
 
 const rawContentType = (response: MapiResponse): string | undefined =>
