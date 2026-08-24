@@ -10,7 +10,7 @@ import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
-import { err, fromThrowable, isErr, isOk, ok, type Result, tryAsync } from "../../lib/result.js";
+import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
@@ -141,7 +141,7 @@ const runRequest = async (
     return;
   }
 
-  writeResponse(result.value, args.include === true);
+  writeResponse(result.value, args.include === true, logger);
 
   if (result.value.statusCode >= 400) {
     tracker.fail(`http-${result.value.statusCode}`, {
@@ -277,7 +277,16 @@ const readStdin = async (): Promise<Uint8Array<ArrayBuffer>> => {
   return Uint8Array.from(Buffer.concat(chunks));
 };
 
-const writeResponse = (response: MapiResponse, shouldIncludeHeaders: boolean): void => {
+/**
+ * A body of a type core-sdk skipped never reached this point, so a non-zero
+ * content length is the only trace left that there was one - report it on stderr
+ * rather than leave stdout silently empty.
+ */
+const writeResponse = (
+  response: MapiResponse,
+  shouldIncludeHeaders: boolean,
+  logger: Logger,
+): void => {
   if (shouldIncludeHeaders) {
     const headerLines = response.headers.map((header) => `${header.name}: ${header.value}`);
     process.stdout.write(
@@ -285,29 +294,30 @@ const writeResponse = (response: MapiResponse, shouldIncludeHeaders: boolean): v
     );
   }
 
-  if (response.body.length > 0) {
-    process.stdout.write(formatBody(response));
+  if (contentType(response) === "application/json") {
+    process.stdout.write(`${JSON.stringify(response.body, null, 2)}\n`);
+    return;
+  }
+
+  const droppedBytes = contentLength(response);
+  if (droppedBytes > 0) {
+    logger.warning(
+      "standard",
+      `The response carried ${droppedBytes} bytes of ${contentType(response) ?? "an unknown type"}, which is not JSON and was not shown.`,
+    );
   }
 };
 
-/**
- * JSON is re-indented, because a response body is the thing the user reads. Every
- * other type goes out byte for byte - a passthrough that reformatted a PNG or a
- * CSV would be lying about what the API returned.
- */
-const formatBody = (response: MapiResponse): string | Uint8Array => {
-  if (contentType(response) !== "application/json") {
-    return response.body;
+const contentLength = (response: MapiResponse): number => {
+  const raw = response.headers.find(
+    (header) => header.name.toLowerCase() === "content-length",
+  )?.value;
+  if (raw === undefined) {
+    return 0;
   }
 
-  const text = new TextDecoder().decode(response.body);
-  const indented = fromThrowable(
-    () => `${JSON.stringify(JSON.parse(text) as unknown, null, 2)}\n`,
-    () => text,
-  );
-  // A body that claims to be JSON but does not parse is still shown, unchanged:
-  // malformed output is a clue, and swallowing it would hide the real answer.
-  return isOk(indented) ? indented.value : indented.error;
+  const parsed = Number(raw);
+  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 const contentType = (response: MapiResponse): string | undefined =>

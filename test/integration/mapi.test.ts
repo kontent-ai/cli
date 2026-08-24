@@ -3,7 +3,7 @@ import { type MapiRequestParams, performRawMapiRequest } from "../../src/core/ma
 import { createMapiRawClient } from "../../src/lib/mapi/raw/client.js";
 import { createLogger } from "../../src/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
-import { type MapiRoute, mapiTestTransport, parseJsonBody } from "../helpers/mapiTestTransport.js";
+import { type MapiRoute, mapiTestAdapter } from "../helpers/mapiTestAdapter.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const BASE_URL = "https://manage.test/v2";
@@ -25,12 +25,12 @@ type RunOptions = Readonly<{
 }>;
 
 const run = async (routes: ReadonlyArray<MapiRoute>, options: RunOptions = {}) => {
-  const { transport, requests } = mapiTestTransport(routes);
+  const { adapter, requests } = mapiTestAdapter(routes);
   const client = createMapiRawClient({
     // `token: undefined` means an explicitly tokenless client, distinct from omitting it.
     token: "token" in options ? options.token : "secret-token",
     baseUrl: BASE_URL,
-    transport,
+    adapter,
   });
   const result = await performRawMapiRequest(makeParams(options.params), { logger, client });
   return { result, requests };
@@ -49,7 +49,7 @@ describe("performRawMapiRequest", () => {
     assertOk(result);
     expect(result.value.statusCode).toBe(200);
     expect(result.value.statusText).toBe("OK");
-    expect(parseJsonBody(result.value.body)).toEqual({ types: [] });
+    expect(result.value.body).toEqual({ types: [] });
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url.toString()).toBe(`${BASE_URL}/projects/${ENV_ID}/types`);
     expect(requests[0]?.requestHeaders).toContainEqual({
@@ -118,7 +118,7 @@ describe("performRawMapiRequest", () => {
 
     assertOk(result);
     expect(result.value.statusCode).toBe(404);
-    expect(parseJsonBody(result.value.body)).toEqual({
+    expect(result.value.body).toEqual({
       message: "The requested content type was not found.",
     });
   });

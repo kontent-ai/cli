@@ -1,4 +1,4 @@
-import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
+import type { Header, HttpMethod, JsonValue } from "@kontent-ai/core-sdk";
 import { executeRawRequest, type MapiRawClient } from "../../lib/mapi/raw/client.js";
 import { resolveEndpoint } from "../../lib/mapi/raw/endpoint.js";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
@@ -17,9 +17,11 @@ export type MapiResponse = Readonly<{
   statusCode: number;
   statusText: string;
   headers: ReadonlyArray<Header>;
-  // The bytes exactly as they came off the wire. Nothing here decides what they
-  // mean; the command formats them once, on its way to stdout.
-  body: Uint8Array;
+  // Null for a body that was absent, for one core-sdk skipped as non-JSON, and for
+  // a literal JSON null alike, so it cannot say whether the response carried
+  // anything. The command reads the headers instead: the content type decides
+  // whether to print, the content length whether something was dropped.
+  body: JsonValue;
 }>;
 
 /**
@@ -67,6 +69,6 @@ export const performRawMapiRequest = async (
     statusCode: response.value.status,
     statusText: response.value.statusText,
     headers: response.value.responseHeaders,
-    body: response.value.body,
+    body: response.value.payload,
   });
 };

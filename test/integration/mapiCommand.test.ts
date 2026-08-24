@@ -8,7 +8,7 @@ import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/mapi/request.js", () => ({
   performRawMapiRequest: vi.fn(async () =>
-    ok({ statusCode: 200, statusText: "OK", headers: [], body: new Uint8Array() }),
+    ok({ statusCode: 200, statusText: "OK", headers: [], body: null }),
   ),
 }));
 
@@ -38,22 +38,17 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
   }
 };
 
-// Chunks are kept as bytes, not text: a body that is not valid UTF-8 must survive
-// the capture unchanged, or a passthrough test cannot tell mangling from fidelity.
 const captureStream = (stream: "stdout" | "stderr") => {
-  const chunks: Uint8Array[] = [];
+  const chunks: string[] = [];
   const spy = vi.spyOn(process[stream], "write").mockImplementation((chunk) => {
-    chunks.push(typeof chunk === "string" ? encode(chunk) : chunk);
+    chunks.push(typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk));
     return true;
   });
   return {
-    text: () => new TextDecoder().decode(Buffer.concat(chunks)),
-    bytes: () => Buffer.concat(chunks),
+    text: () => chunks.join(""),
     restore: () => spy.mockRestore(),
   };
 };
-
-const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 const lastParams = (): MapiRequestParams =>
   vi.mocked(performRawMapiRequest).mock.calls.at(-1)?.[0] as MapiRequestParams;
@@ -88,25 +83,30 @@ describe("kontent mapi argument handling", () => {
     ]);
   });
 
-  it("prints a non-JSON body verbatim rather than dropping it", async () => {
+  // core-sdk drops a body it does not recognize as JSON, so the only honest thing
+  // left to do is say on stderr that something was there.
+  it("reports a non-JSON body on stderr instead of printing nothing at all", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
       ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [{ name: "Content-Type", value: "text/csv; charset=utf-8" }],
-        body: encode("a,b\n1,2\n"),
+        statusCode: 502,
+        statusText: "Bad Gateway",
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Content-Length", value: "137" },
+        ],
+        body: null,
       }),
     );
     const stdout = captureStream("stdout");
     const stderr = captureStream("stderr");
 
-    await runCommand(["export", "--envId", ENV_ID]);
+    await runCommand(["types", "--envId", ENV_ID]);
     stdout.restore();
     stderr.restore();
 
-    expect(stdout.text()).toBe("a,b\n1,2\n");
-    expect(stderr.text()).toBe("");
-    expect(process.exitCode).toBeUndefined();
+    expect(stdout.text()).toBe("");
+    expect(stderr.text()).toContain("137 bytes of text/html");
+    expect(process.exitCode).toBe(1);
   });
 
   it("re-indents a JSON body", async () => {
@@ -115,7 +115,7 @@ describe("kontent mapi argument handling", () => {
         statusCode: 200,
         statusText: "OK",
         headers: [{ name: "content-type", value: "application/json" }],
-        body: encode('{"name":"Article"}'),
+        body: { name: "Article" },
       }),
     );
     const stdout = captureStream("stdout");
@@ -124,24 +124,6 @@ describe("kontent mapi argument handling", () => {
     stdout.restore();
 
     expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
-  });
-
-  // A body that claims JSON but does not parse is a clue, so it survives unchanged.
-  it("prints a malformed JSON body as it arrived", async () => {
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [{ name: "content-type", value: "application/json" }],
-        body: encode("{not json"),
-      }),
-    );
-    const stdout = captureStream("stdout");
-
-    await runCommand(["types", "--envId", ENV_ID]);
-    stdout.restore();
-
-    expect(stdout.text()).toBe("{not json");
   });
 
   // Media types are case-insensitive (RFC 9110), and the API sends a charset
@@ -152,7 +134,7 @@ describe("kontent mapi argument handling", () => {
         statusCode: 200,
         statusText: "OK",
         headers: [{ name: "Content-Type", value: "Application/JSON; charset=utf-8" }],
-        body: encode('{"name":"Article"}'),
+        body: { name: "Article" },
       }),
     );
     const stdout = captureStream("stdout");
@@ -163,29 +145,11 @@ describe("kontent mapi argument handling", () => {
     expect(stdout.text()).toBe('{\n  "name": "Article"\n}\n');
   });
 
-  // The reason the body is carried as bytes: a string round-trip would replace
-  // every byte that is not valid UTF-8 with U+FFFD and corrupt the download.
-  it("passes a binary body through byte for byte", async () => {
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xff, 0xfe, 0x00]);
-    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({
-        statusCode: 200,
-        statusText: "OK",
-        headers: [{ name: "content-type", value: "image/png" }],
-        body: png,
-      }),
-    );
-    const stdout = captureStream("stdout");
-
-    await runCommand(["assets/x", "--envId", ENV_ID]);
-    stdout.restore();
-
-    expect(Buffer.compare(stdout.bytes(), Buffer.from(png))).toBe(0);
-  });
-
+  // A 204 carries no content type, which is the same signal as a body that was
+  // dropped - only the absent Content-Length separates the two.
   it("stays quiet when a success simply has no body", async () => {
     vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
-      ok({ statusCode: 204, statusText: "No Content", headers: [], body: encode("") }),
+      ok({ statusCode: 204, statusText: "No Content", headers: [], body: null }),
     );
     const stdout = captureStream("stdout");
     const stderr = captureStream("stderr");

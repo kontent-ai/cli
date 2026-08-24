@@ -1,8 +1,14 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import {
+  AdapterAbortError,
+  AdapterParseError,
+  type AdapterResponse,
   createSdkIdHeader,
+  getDefaultHttpAdapter,
   type Header,
+  type HttpAdapter,
   type HttpMethod,
+  type JsonValue,
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
 
@@ -10,13 +16,7 @@ import {
 import pkg from "../../../../package.json" with { type: "json" };
 import type { Logger } from "../../../log.js";
 import { kontentManagementUrl } from "../../config/kontentUrl.js";
-import { isErr, type Result, tryAsync } from "../../result.js";
-import {
-  fetchTransport,
-  isAbortError,
-  type RawTransport,
-  type RawTransportResponse,
-} from "./transport.js";
+import { err, isErr, type Result, tryAsync } from "../../result.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 const DEFAULT_RETRY_DELAY_MS = 1000;
@@ -32,14 +32,18 @@ const mapiSdkInfo: SdkInfo = {
 };
 
 /**
- * A passthrough transport for the Management API: no schema, no response
+ * A passthrough client for the Management API: no schema, no response
  * interpretation. The typed, validated counterpart is `src/lib/mapi/client.ts`.
+ *
+ * core-sdk's adapter parses `application/json` and hands back a null payload for
+ * anything else, which is all this needs: the Management API answers JSON on
+ * every status, and binary only ever travels request-side, on an asset upload.
  */
 export type MapiRawClient = Readonly<{
   baseUrl: string;
   // Absent when the caller carries its own Authorization header; the client then adds none.
   token?: string | undefined;
-  transport: RawTransport;
+  adapter: HttpAdapter;
   sdkInfo: SdkInfo;
 }>;
 
@@ -52,11 +56,11 @@ export type RawRequest = Readonly<{
 }>;
 
 export const createMapiRawClient = (
-  params: Readonly<{ token?: string | undefined; baseUrl?: string; transport?: RawTransport }>,
+  params: Readonly<{ token?: string | undefined; baseUrl?: string; adapter?: HttpAdapter }>,
 ): MapiRawClient => ({
   baseUrl: params.baseUrl ?? kontentManagementUrl(),
   token: params.token,
-  transport: params.transport ?? fetchTransport,
+  adapter: params.adapter ?? getDefaultHttpAdapter(),
   sdkInfo: mapiSdkInfo,
 });
 
@@ -70,7 +74,12 @@ export const executeRawRequest = async (
   client: MapiRawClient,
   request: RawRequest,
   logger: Logger,
-): Promise<Result<RawTransportResponse, string>> => {
+): Promise<Result<AdapterResponse<JsonValue>, string>> => {
+  const executeRequest = client.adapter.executeRequest;
+  if (executeRequest === undefined) {
+    return err("The configured HTTP adapter cannot execute requests.");
+  }
+
   const requestHeaders = mergeHeaders(
     client.token === undefined
       ? [createSdkIdHeader(client.sdkInfo)]
@@ -82,10 +91,10 @@ export const executeRawRequest = async (
   );
   logger.info("verbose", formatTrace(request, requestHeaders));
 
-  const send = async (attempt: number): Promise<Result<RawTransportResponse, string>> => {
+  const send = async (attempt: number): Promise<Result<AdapterResponse<JsonValue>, string>> => {
     const response = await tryAsync(
       async () =>
-        client.transport({
+        executeRequest({
           url: request.url,
           method: request.method,
           body: request.body,
@@ -191,8 +200,11 @@ const formatTrace = (request: RawRequest, headers: ReadonlyArray<Header>): strin
 };
 
 const describeTransportError = (cause: unknown): string => {
-  if (isAbortError(cause)) {
+  if (cause instanceof AdapterAbortError) {
     return "The request was aborted.";
+  }
+  if (cause instanceof AdapterParseError) {
+    return "The response could not be parsed as JSON.";
   }
   if (cause instanceof Error) {
     return cause.message;
