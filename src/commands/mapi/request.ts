@@ -1,16 +1,13 @@
 import { readFile } from "node:fs/promises";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
-import {
-  type MapiRequestError,
-  type MapiResponse,
-  performRawMapiRequest,
-} from "../../core/mapi/request.js";
+import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { isJsonContentType } from "../../lib/mapi/raw/contentType.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
+import { parseMethod } from "../../lib/mapi/raw/method.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
@@ -163,22 +160,22 @@ type PreparedRequest = Readonly<{
   body: string | Blob | null;
 }>;
 
-const httpMethods = [
-  "GET",
-  "POST",
-  "PUT",
-  "DELETE",
-  "PATCH",
-] as const satisfies ReadonlyArray<HttpMethod>;
+
+type RequestArgsError = Readonly<{
+  kind: "invalid-method" | "invalid-header" | "unreadable-input";
+  message: string;
+}>;
 
 const prepareRequest = async (
   args: RequestArgs,
-): Promise<Result<PreparedRequest, MapiRequestError>> => {
-  const method = resolveMethod(args.method, args.input !== undefined);
+): Promise<Result<PreparedRequest, RequestArgsError>> => {
+  const method = parseMethod(args.method, args.input !== undefined);
   if (isErr(method)) {
-    return method;
+    return err({ kind: "invalid-method", message: method.error });
   }
 
+  // Where curl parity stops: curl does send `-X GET` with a body, we cannot - the
+  // fetch spec forbids one on GET and undici throws before the request leaves.
   // Checked before the input is read: there is no point opening a file the
   // request can never carry. Only an explicit `-X GET` reaches this.
   if (args.input !== undefined && method.value === "GET") {
@@ -210,39 +207,7 @@ const prepareRequest = async (
   });
 };
 
-/**
- * Two rules, the same ones curl and `gh api` apply:
- *
- * - no `-X`: GET, or POST when `--input` supplies a body;
- * - `-X` given: that method verbatim.
- *
- * A yargs `default` would break the first rule: it is indistinguishable from a
- * typed `-X GET`, which would turn every `--input` into a GET with a body.
- *
- * Where curl parity stops: curl does send `-X GET` with a body, we cannot. The
- * fetch spec forbids one on GET, and undici throws before the request leaves, so
- * `prepareRequest` rejects the pair with an explanation instead of surfacing a
- * raw transport error.
- */
-const resolveMethod = (
-  raw: string | undefined,
-  hasInput: boolean,
-): Result<HttpMethod, MapiRequestError> => {
-  if (raw === undefined) {
-    return ok(hasInput ? "POST" : "GET");
-  }
-
-  const method = httpMethods.find((known) => known === raw.toUpperCase());
-  if (method === undefined) {
-    return err({
-      kind: "invalid-method",
-      message: `Unsupported HTTP method "${raw}". Use one of ${httpMethods.join(", ")}.`,
-    });
-  }
-  return ok(method);
-};
-
-const readInput = async (input: string): Promise<Result<Blob, MapiRequestError>> => {
+const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
   if (input !== "-") {
     return await tryAsync(
       async () => new Blob([await readFile(input)]),
