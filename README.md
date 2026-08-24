@@ -69,6 +69,11 @@ Each command supports `--help` for its own options.
 - `--configFile` — path to a JSON file with CLI parameters
 - `--help`, `-h` / `--version`, `-v`
 
+Everything the log level governs goes to stderr, and `none` silences errors along
+with progress — a failed command is then visible only through its exit code. What
+a command was asked to produce goes to stdout and is never gated by the log
+level.
+
 ## Environment variables
 
 Environment variables are read individually where they apply — they are not
