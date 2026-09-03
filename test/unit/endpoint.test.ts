@@ -84,4 +84,16 @@ describe("resolveEndpoint", () => {
     }
     expect(result.error.kind).toBe(kind);
   });
+
+  // The id is substituted after the path is checked, so it needs its own guard:
+  // "projects/../types" normalizes to "/v2/types", out of the environment scope.
+  it("rejects a traversal in the environment id", () => {
+    const result = resolveEndpoint("types", { ...params, envId: ".." });
+
+    expect(result.kind).toBe("err");
+    if (result.kind !== "err") {
+      return;
+    }
+    expect(result.error.kind).toBe("traversal");
+  });
 });

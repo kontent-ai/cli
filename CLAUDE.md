@@ -12,7 +12,7 @@ Run and pass these (same gate as CI, in order):
 pnpm typecheck && pnpm lint && pnpm biome:check && pnpm test
 ```
 
-Autofix is available: `pnpm lint:fix`, `pnpm biome:fix`. Build with `pnpm build` (tsdown). Node version is `.nvmrc` (`lts/*`). Always use pnpm, never npm/yarn.
+Autofix is available: `pnpm lint:fix`, `pnpm biome:fix`. Build with `pnpm build` (tsdown). Node is `lts` — CI pins it through `pnpm/setup`'s `runtime:` input in each workflow, `.nvmrc` covers local `nvm use`; keep the two in step. Always use pnpm, never npm/yarn.
 
 ## Architecture
 

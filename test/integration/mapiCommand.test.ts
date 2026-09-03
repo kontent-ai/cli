@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -170,6 +170,44 @@ describe("kontent mapi argument handling", () => {
     captured.restore();
 
     expect(captured.text()).toContain(path);
+    // The reason, not just the path: openAsBlob alone reports every unopenable
+    // file as "Unable to open file as blob", losing the errno.
+    expect(captured.text()).toContain("ENOENT");
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  // openAsBlob accepts an unreadable file and fails only once the body is read, so
+  // the probe has to open it. Root ignores the mode bits and would pass either way.
+  it.skipIf(process.getuid?.() === 0)(
+    "rejects an unreadable --input file before the request goes out",
+    async () => {
+      const path = join(tempDir, "noperm.json");
+      await writeFile(path, "{}");
+      await chmod(path, 0o000);
+      const captured = captureStream("stderr");
+
+      try {
+        await runCommand(["types", "--input", path, "--envId", ENV_ID]);
+      } finally {
+        captured.restore();
+        // Back to readable so the suite's rm of the temp dir cannot trip on it.
+        await chmod(path, 0o644);
+      }
+
+      expect(captured.text()).toContain("EACCES");
+      expect(process.exitCode).toBe(1);
+      expect(performRawMapiRequest).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a directory at --input before the request goes out", async () => {
+    const captured = captureStream("stderr");
+
+    await runCommand(["types", "--input", tempDir, "--envId", ENV_ID]);
+    captured.restore();
+
+    expect(captured.text()).toContain("not a file");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });

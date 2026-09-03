@@ -1,9 +1,11 @@
 import { openAsBlob } from "node:fs";
+import { open, stat } from "node:fs/promises";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
+import { errorMessage } from "../../lib/error.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { parseMethod } from "../../lib/mapi/raw/method.js";
@@ -208,13 +210,7 @@ const prepareRequest = async (
 
 const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
   if (input !== "-") {
-    return await tryAsync(
-      async () => await openAsBlob(input),
-      (cause) => ({
-        kind: "unreadable-input" as const,
-        message: `Failed to read "${input}": ${describeCause(cause)}`,
-      }),
-    );
+    return await readFileInput(input);
   }
 
   // Without this guard the command would wait forever for input nobody is piping.
@@ -229,9 +225,41 @@ const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>>
     async () => new Blob([await readStdin()]),
     (cause) => ({
       kind: "unreadable-input" as const,
-      message: `Failed to read stdin: ${describeCause(cause)}`,
+      message: `Failed to read stdin: ${errorMessage(cause)}`,
     }),
   );
+};
+
+// openAsBlob only stats the path: a directory or an unreadable file succeeds here
+// and fails only once the body is read, after the request has gone out. A missing
+// path throws, but as a bare "Unable to open file as blob" with no errno.
+// stat goes first because it never blocks; open on a FIFO with no writer would.
+const readFileInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
+  const unreadable = (cause: unknown): RequestArgsError => ({
+    kind: "unreadable-input",
+    message: `Failed to read "${input}": ${errorMessage(cause)}`,
+  });
+
+  const stats = await tryAsync(async () => await stat(input), unreadable);
+  if (isErr(stats)) {
+    return stats;
+  }
+
+  if (!stats.value.isFile()) {
+    return err({
+      kind: "unreadable-input",
+      message: `Failed to read "${input}": not a file.`,
+    });
+  }
+
+  const readable = await tryAsync(async () => {
+    await (await open(input, "r")).close();
+  }, unreadable);
+  if (isErr(readable)) {
+    return readable;
+  }
+
+  return await tryAsync(async () => await openAsBlob(input), unreadable);
 };
 
 const readStdin = async (): Promise<Buffer> => {
@@ -257,6 +285,3 @@ const formatFailure = (response: MapiResponse, source: AuthSource): string => {
 
   return `${summary}\n${hint}`;
 };
-
-const describeCause = (cause: unknown): string =>
-  cause instanceof Error ? cause.message : String(cause);

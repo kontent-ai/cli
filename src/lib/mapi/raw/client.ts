@@ -17,6 +17,7 @@ import { match, P } from "ts-pattern";
 import pkg from "../../../../package.json" with { type: "json" };
 import type { Logger } from "../../../log.js";
 import { kontentManagementUrl } from "../../config/kontentUrl.js";
+import { errorMessage } from "../../error.js";
 import { err, ok, type Result } from "../../result.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
@@ -141,11 +142,8 @@ const fromSdkError = (error: KontentSdkError): Result<RawResponse, string> =>
     .with({ reason: "aborted" }, () => err("The request was aborted."))
     .with({ reason: "parseError" }, () => err("The response could not be parsed as JSON."))
     // core-sdk's own message only points at the wrapped error; the cause is what the user can act on.
-    .with({ reason: "adapterError" }, ({ originalError }) => err(describeCause(originalError)))
+    .with({ reason: "adapterError" }, ({ originalError }) => err(errorMessage(originalError)))
     .otherwise(() => err(error.message));
-
-const describeCause = (cause: unknown): string =>
-  cause instanceof Error ? cause.message : String(cause);
 
 // A Blob payload is unreachable here - only `downloadFile` produces one, and it
 // widens the shared response type - but narrowing beats asserting it away.
