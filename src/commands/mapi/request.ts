@@ -1,9 +1,14 @@
 import { openAsBlob } from "node:fs";
+import { type FileHandle, open } from "node:fs/promises";
+import type { Readable } from "node:stream";
+import { blob } from "node:stream/consumers";
+import { isatty } from "node:tty";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
+import { errorMessage } from "../../lib/error.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { parseMethod } from "../../lib/mapi/raw/method.js";
@@ -64,7 +69,7 @@ export const register: RegisterCommand = (sub, deps) =>
         .option("input", {
           type: "string",
           describe:
-            'File with the request body, or "-" to read stdin. Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset\'s MIME type',
+            'Path to the request body, or "-" to read stdin. A pipe works too - /dev/stdin or <(cmd). Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset\'s MIME type',
         })
         // Without nargs, yargs-parser reads the lone "-" of `--input -` as a
         // positional and .strict() then rejects it as an unknown argument.
@@ -208,13 +213,7 @@ const prepareRequest = async (
 
 const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
   if (input !== "-") {
-    return await tryAsync(
-      async () => await openAsBlob(input),
-      (cause) => ({
-        kind: "unreadable-input" as const,
-        message: `Failed to read "${input}": ${describeCause(cause)}`,
-      }),
-    );
+    return await readFileInput(input);
   }
 
   // Without this guard the command would wait forever for input nobody is piping.
@@ -225,22 +224,68 @@ const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>>
     });
   }
 
-  return await tryAsync(
-    async () => new Blob([await readStdin()]),
-    (cause) => ({
-      kind: "unreadable-input" as const,
-      message: `Failed to read stdin: ${describeCause(cause)}`,
-    }),
-  );
+  return await drain(process.stdin, "stdin");
 };
 
-const readStdin = async (): Promise<Buffer> => {
-  const chunks: Buffer[] = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(chunk as Buffer);
+// A Blob has to know its length up front, so a regular file is the only source that can
+// be handed to openAsBlob unread and streamed from disk at send time; everything else is
+// drained into memory first. openAsBlob only stats the path it takes, reporting a missing
+// one as a bare "Unable to open file as blob" and an unreadable one only once the body is
+// read, with the request already out - opening the path first is what turns either into a
+// real errno. openAsBlob takes a path, not a descriptor, so the probe handle is closed and
+// the path is opened a second time; a swap or chmod between the two opens is accepted.
+const readFileInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
+  const label = `"${input}"`;
+  const toError = unreadable(label);
+
+  const opened = await tryAsync(async () => await open(input, "r"), toError);
+  if (isErr(opened)) {
+    return opened;
   }
-  return Buffer.concat(chunks);
+  const handle = opened.value;
+
+  const stats = await tryAsync(async () => await handle.stat(), toError);
+  if (isErr(stats)) {
+    await closeQuietly(handle);
+    return stats;
+  }
+
+  // A directory opens fine read-only on POSIX, so only the stat rules it out.
+  if (stats.value.isDirectory()) {
+    await closeQuietly(handle);
+    return err({ kind: "unreadable-input", message: `Failed to read ${label}: is a directory.` });
+  }
+
+  if (isatty(handle.fd)) {
+    await closeQuietly(handle);
+    return err({
+      kind: "unreadable-input",
+      message: `Failed to read ${label}: it is a terminal, nothing will arrive.`,
+    });
+  }
+
+  if (stats.value.isFile()) {
+    await closeQuietly(handle);
+    return await tryAsync(async () => await openAsBlob(input), toError);
+  }
+
+  // createReadStream defaults to autoClose, closing the handle on the stream's end or error.
+  return await drain(handle.createReadStream(), label);
 };
+
+// A failed close cannot make the input any less readable, so it is not a result.
+const closeQuietly = async (handle: FileHandle): Promise<void> =>
+  await handle.close().catch(() => undefined);
+
+const drain = async (source: Readable, label: string): Promise<Result<Blob, RequestArgsError>> =>
+  await tryAsync(async () => await blob(source), unreadable(label));
+
+const unreadable =
+  (label: string) =>
+  (cause: unknown): RequestArgsError => ({
+    kind: "unreadable-input",
+    message: `Failed to read ${label}: ${errorMessage(cause)}`,
+  });
 
 const formatFailure = (response: MapiResponse, source: AuthSource): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}`;
@@ -257,6 +302,3 @@ const formatFailure = (response: MapiResponse, source: AuthSource): string => {
 
   return `${summary}\n${hint}`;
 };
-
-const describeCause = (cause: unknown): string =>
-  cause instanceof Error ? cause.message : String(cause);
