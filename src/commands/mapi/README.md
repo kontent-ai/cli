@@ -25,7 +25,7 @@ kontent mapi <endpoint> [options]
 | `--mapiKey` | string | Management API key. Falls back to the KONTENT_MAPI_KEY environment variable, then to the logged-in user's token |
 | `--method`, `-X` | string | HTTP method. (default: GET, or POST with --input) |
 | `--header`, `-H` | string[] | Request header in the "Name: value" format. Repeatable. An Authorization header takes precedence over --mapiKey and the stored login token |
-| `--input` | string | File with the request body, or "-" to read stdin. Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset's MIME type |
+| `--input` | string | Path to the request body, or "-" to read stdin. A pipe works too - /dev/stdin or <(cmd). Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset's MIME type |
 | `--include`, `-i` | boolean | Print the status line and response headers before the body |
 
 ## Examples

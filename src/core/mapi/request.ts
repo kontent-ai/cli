@@ -10,7 +10,7 @@ export type MapiRequestParams = Readonly<{
   method: HttpMethod;
   headers: ReadonlyArray<Header>;
   body: Blob | null;
-  // No production caller: the telemetry SIGINT handler exits before an abort could
+  // No production caller: the telemetry SIGINT handler terminates before an abort could
   // land. Kept for the abort test and a handler that cooperates.
   abortSignal?: AbortSignal;
 }>;

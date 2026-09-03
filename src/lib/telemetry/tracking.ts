@@ -179,13 +179,18 @@ const formatTrackOutcome = (outcome: Exclude<TrackOutcome, { kind: "skipped" }>)
     .exhaustive();
 
 export const registerTelemetrySignalFlush = (telemetry: Telemetry): void => {
-  const signalExitCodes: ReadonlyArray<readonly [NodeJS.Signals, number]> = [
-    ["SIGINT", 130],
-    ["SIGTERM", 143],
-  ];
-  for (const [signal, exitCode] of signalExitCodes) {
+  const signals: ReadonlyArray<NodeJS.Signals> = ["SIGINT", "SIGTERM"];
+  for (const signal of signals) {
     process.on(signal, () => {
-      void telemetry.flush().finally(() => process.exit(exitCode));
+      // process.exit joins the libuv threadpool and never returns while an fs call is blocked
+      // there (a FIFO open waiting for a writer), so the signal is re-raised for the kernel to
+      // terminate us. Every listener has to go: @clack/prompts holds its own while a spinner
+      // runs, and with any left Node keeps catching the signal and the re-raise only re-emits.
+      // Dropped before the flush so a second signal kills at once.
+      process.removeAllListeners(signal);
+      void telemetry.flush().finally(() => {
+        process.kill(process.pid, signal);
+      });
     });
   }
 };

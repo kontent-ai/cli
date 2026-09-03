@@ -38,6 +38,13 @@ export const resolveEndpoint = (
     });
   }
 
+  if (hasTraversal(params.envId)) {
+    return err({
+      kind: "traversal",
+      message: `The environment id "${params.envId}" must not contain ".." path segments.`,
+    });
+  }
+
   const encodedEnvId = encodeURIComponent(params.envId);
   const withEnvId = relative.replaceAll("{environment_id}", encodedEnvId);
   const path = withEnvId.startsWith("projects/")
