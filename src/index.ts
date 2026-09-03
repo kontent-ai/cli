@@ -6,6 +6,7 @@ import { hideBin } from "yargs/helpers";
 import { commandsToRegister } from "./commands/registry.js";
 import { getKontentBaseDomain, validateKontentDomain } from "./lib/config/kontentUrl.js";
 import { isErr } from "./lib/result.js";
+import { cliVersion } from "./lib/telemetry/context.js";
 import {
   createTelemetry,
   formatTelemetryMode,
@@ -51,6 +52,7 @@ const initialYargs = emptyYargs
   .config("configFile", "Path to a JSON file with CLI parameters.")
   .help("h")
   .alias("h", "help")
+  .version(cliVersion)
   .alias("v", "version");
 
 const withLogLevel = addLogLevelOptions(initialYargs);
