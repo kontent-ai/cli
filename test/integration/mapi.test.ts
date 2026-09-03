@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+// biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
+import pkg from "../../package.json" with { type: "json" };
 import { type MapiRequestParams, performRawMapiRequest } from "../../src/core/mapi/request.js";
 import { createMapiRawClient } from "../../src/lib/mapi/raw/client.js";
 import { createLogger } from "../../src/log.js";
@@ -59,7 +61,10 @@ describe("performRawMapiRequest", () => {
       name: "Authorization",
       value: "Bearer secret-token",
     });
-    expect(requests[0]?.requestHeaders?.map((header) => header.name)).toContain("X-KC-SDKID");
+    expect(requests[0]?.requestHeaders).toContainEqual({
+      name: "X-KC-SDKID",
+      value: `npmjs.com;${pkg.name};${pkg.version}`,
+    });
   });
 
   it("sends one header per name, the last occurrence winning", async () => {

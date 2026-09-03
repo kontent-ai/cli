@@ -14,6 +14,27 @@ import {
 import { addLogLevelOptions, createLoggerFromArgs } from "./log.js";
 import type { CommandDeps } from "./types/yargs.js";
 
+// A reader that stops early (`... | head`) exits and takes the read end of the
+// pipe with it, while we are still writing. The write then fails with EPIPE and
+// process.stdout emits 'error' - and an 'error' event with no listener is thrown
+// by EventEmitter, so the CLI dies with a stack trace instead of the payload.
+// Attaching any listener is the fix; the code check only keeps real failures
+// loud. process.exitCode stays the command's to set.
+const ignoreClosedPipe = (stream: NodeJS.WriteStream): void => {
+  stream.on("error", (error: NodeJS.ErrnoException) => {
+    // Same closed pipe, one step later: once the stream is torn down the write is
+    // rejected rather than attempted.
+    if (error.code !== "EPIPE" && error.code !== "ERR_STREAM_DESTROYED") {
+      // Node prints the resulting uncaught exception to stderr - visible when stdout
+      // broke, lost when stderr is the stream that broke.
+      throw error;
+    }
+  });
+};
+
+ignoreClosedPipe(process.stdout);
+ignoreClosedPipe(process.stderr);
+
 const emptyYargs = yargs(hideBin(process.argv));
 
 // Deliberately no .env() prefix mapping: it turns every KONTENT_* variable in

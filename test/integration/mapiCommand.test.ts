@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
 import { register } from "../../src/commands/mapi/request.js";
 import type { MapiRequestParams } from "../../src/core/mapi/request.js";
@@ -54,6 +57,16 @@ const lastParams = (): MapiRequestParams =>
   vi.mocked(performRawMapiRequest).mock.calls.at(-1)?.[0] as MapiRequestParams;
 
 describe("kontent mapi argument handling", () => {
+  let tempDir: string;
+
+  beforeAll(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "kontent-mapi-"));
+  });
+
+  afterAll(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
     process.exitCode = undefined;
     vi.mocked(performRawMapiRequest).mockClear();
@@ -129,6 +142,36 @@ describe("kontent mapi argument handling", () => {
     expect(stderr.text()).toContain("HTTP 404 Not Found");
     expect(stderr.text()).not.toContain("The requested content type was not found.");
     expect(process.exitCode).toBe(1);
+  });
+
+  it("sends the file at --input as the request body", async () => {
+    const path = join(tempDir, "body.json");
+    await writeFile(path, '{"name":"Article"}');
+
+    await runCommand(["types", "--input", path, "--envId", ENV_ID]);
+
+    const params = lastParams();
+    expect(params.method).toBe("POST");
+    expect(await params.body?.text()).toBe('{"name":"Article"}');
+  });
+
+  it("wires no abort of its own, leaving SIGINT to the telemetry handler", async () => {
+    await runCommand(["types", "--envId", ENV_ID]);
+
+    expect(lastParams().abortSignal).toBeUndefined();
+  });
+
+  it("reports an unreadable --input file without calling the API", async () => {
+    // Inside the suite's temp dir, so "missing" is a fact rather than a guess about /tmp.
+    const path = join(tempDir, "absent", "body.json");
+    const captured = captureStream("stderr");
+
+    await runCommand(["types", "--input", path, "--envId", ENV_ID]);
+    captured.restore();
+
+    expect(captured.text()).toContain(path);
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 
   it("rejects a body on GET instead of letting the transport throw", async () => {

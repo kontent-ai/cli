@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { openAsBlob } from "node:fs";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
@@ -117,20 +117,14 @@ const runRequest = async (
   }
   const { token, source } = credential.value;
 
-  const controller = new AbortController();
-  const abortRequest = () => controller.abort();
-  process.once("SIGINT", abortRequest);
-
   const result = await performRawMapiRequest(
     {
       ...prepared.value,
       endpoint: args.endpoint,
       envId: args.envId,
-      abortSignal: controller.signal,
     },
     { logger, client: createMapiRawClient({ token, logger }) },
   );
-  process.off("SIGINT", abortRequest);
 
   if (isErr(result)) {
     tracker.fail(result.error.kind, { "auth-source": source });
@@ -215,7 +209,7 @@ const prepareRequest = async (
 const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
   if (input !== "-") {
     return await tryAsync(
-      async () => new Blob([await readFile(input)]),
+      async () => await openAsBlob(input),
       (cause) => ({
         kind: "unreadable-input" as const,
         message: `Failed to read "${input}": ${describeCause(cause)}`,

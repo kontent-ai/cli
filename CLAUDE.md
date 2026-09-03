@@ -38,6 +38,8 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 - **stdout** — the data the command exists to produce, and nothing else. It is never level-gated: `--logLevel none` must still print a payload, because a response body is not a log.
 - **stderr** — everything said *about* producing it: progress, warnings, errors, verbose traces. This is the POSIX meaning of stderr (diagnostics, not errors), and how curl, git and npm behave.
 
+A reader closing the pipe early (`| head`) is that reader exiting normally, not a write failure: `src/index.ts` swallows `EPIPE` on both streams so it never becomes a stack trace, and leaves `process.exitCode` to the command.
+
 A handler that logs starts with `const logger = createLoggerFromArgs(args)` (`src/log.ts`) and passes that `Logger` down; one that only emits a payload takes no logger at all (`src/commands/telemetry/status.ts`).
 Core takes the logger as a parameter or inside its `deps` object; `createLoggerFromArgs` is the only place that resolves the `--logLevel`/`--verbose` pair; everything else builds a logger from a single `LogLevel` via `createLogger`. The `sink` parameter is a test seam, not a routing knob — never point a log at stdout.
 
