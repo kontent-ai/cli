@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process";
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
 import { register } from "../../src/commands/mapi/request.js";
@@ -155,6 +157,30 @@ describe("kontent mapi argument handling", () => {
     expect(await params.body?.text()).toBe('{"name":"Article"}');
   });
 
+  it.skipIf(process.platform === "win32")("drains a pipe at --input", async () => {
+    const path = join(tempDir, "body.pipe");
+    await promisify(execFile)("mkfifo", [path]);
+
+    // The writer's open blocks until the command opens the read end, so both run at once.
+    await Promise.all([
+      writeFile(path, '{"name":"Article"}'),
+      runCommand(["types", "--input", path, "--envId", ENV_ID]),
+    ]);
+
+    expect(lastParams().method).toBe("POST");
+    expect(await lastParams().body?.text()).toBe('{"name":"Article"}');
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "sends an empty body for a character device with nothing in it",
+    async () => {
+      await runCommand(["types", "--input", "/dev/null", "--envId", ENV_ID]);
+
+      expect(await lastParams().body?.text()).toBe("");
+      expect(process.exitCode).toBeUndefined();
+    },
+  );
+
   it("wires no abort of its own, leaving SIGINT to the telemetry handler", async () => {
     await runCommand(["types", "--envId", ENV_ID]);
 
@@ -170,15 +196,12 @@ describe("kontent mapi argument handling", () => {
     captured.restore();
 
     expect(captured.text()).toContain(path);
-    // The reason, not just the path: openAsBlob alone reports every unopenable
-    // file as "Unable to open file as blob", losing the errno.
     expect(captured.text()).toContain("ENOENT");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 
-  // openAsBlob accepts an unreadable file and fails only once the body is read, so
-  // the probe has to open it. Root ignores the mode bits and would pass either way.
+  // Root ignores the mode bits, so the file would open either way.
   it.skipIf(process.getuid?.() === 0)(
     "rejects an unreadable --input file before the request goes out",
     async () => {
@@ -207,7 +230,7 @@ describe("kontent mapi argument handling", () => {
     await runCommand(["types", "--input", tempDir, "--envId", ENV_ID]);
     captured.restore();
 
-    expect(captured.text()).toContain("not a file");
+    expect(captured.text()).toContain("is a directory");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
