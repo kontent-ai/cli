@@ -53,6 +53,15 @@ kontent logout
 Run `kontent --help` for the full, always-current list.
 Each command supports `--help` for its own options.
 
+<!-- commands:start -->
+| Command | Description |
+| --- | --- |
+| [`kontent login`](src/commands/login/README.md) | Authenticate with Kontent.ai via Auth0 device flow |
+| [`kontent logout`](src/commands/logout/README.md) | Clear stored authentication tokens |
+| [`kontent mapi <endpoint>`](src/commands/mapi/README.md) | Send an authenticated request to the Management API |
+| [`kontent project sample bootstrap`](src/commands/project/sample/README.md) | Clone a sample app for an environment and wire its .env |
+<!-- commands:end -->
+
 ## Global options
 
 - `--logLevel`, `-ll` — detail level: `none`, `standard` (default), `verbose`
@@ -60,7 +69,19 @@ Each command supports `--help` for its own options.
 - `--configFile` — path to a JSON file with CLI parameters
 - `--help`, `-h` / `--version`, `-v`
 
-Options can also be supplied via `KONTENT_*` environment variables.
+Everything the log level governs goes to stderr, and `none` silences errors along
+with progress — a failed command is then visible only through its exit code. What
+a command was asked to produce goes to stdout and is never gated by the log
+level.
+
+## Environment variables
+
+Environment variables are read individually where they apply — they are not
+mapped onto option names, so an unrelated `KONTENT_*` variable in your shell
+never reaches the parser.
+
+- `KONTENT_MAPI_KEY` — Management API key for [`kontent mapi`](src/commands/mapi/README.md), used when `--mapiKey` is absent
+- `DO_NOT_TRACK`, `KONTENT_DO_NOT_TRACK`, `KONTENT_TELEMETRY_DEBUG` — see [TELEMETRY.md](./TELEMETRY.md)
 
 ## Telemetry
 

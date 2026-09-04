@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
+    "lib": ["ESNext"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
@@ -11,6 +12,6 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
+  "include": ["src/**/*", "test/**/*", "scripts/**/*", "vitest.config.ts", "vitest.e2e.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

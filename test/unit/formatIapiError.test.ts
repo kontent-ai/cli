@@ -24,10 +24,11 @@ const httpError = (
       statusText,
       responseHeaders: [{ name: NOISE_HEADER, value: "cache-vie6340-VIE" }],
       kontentErrorResponse,
+      adapterResponse: undefined,
     },
   });
 
-const context = { envId: ENV_ID };
+const context = { envId: ENV_ID, isVerbose: false };
 
 describe("formatIapiError", () => {
   it("maps 401 to a re-login hint without dumping transport detail", () => {
@@ -63,7 +64,7 @@ describe("formatIapiError", () => {
     const error = httpError(500, "Internal Server Error", "invalidResponse");
 
     expect(formatIapiError(error, context)).not.toContain(NOISE_HEADER);
-    expect(formatIapiError(error, { ...context, verbose: true })).toContain(NOISE_HEADER);
+    expect(formatIapiError(error, { ...context, isVerbose: true })).toContain(NOISE_HEADER);
   });
 
   it("summarizes non-HTTP failures without a status line", () => {

@@ -12,21 +12,25 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-      - name: Use Node.js from .nvmrc file
-        uses: actions/setup-node@v6
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v2
         with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          runtime: node@lts
+          cache: true
+          require-lockfile: true
       - name: Typecheck
         run: pnpm typecheck
       - name: ESLint
         run: pnpm lint
       - name: Biome
         run: pnpm biome:check
+      # git add -A first: a brand-new README the generator creates is untracked,
+      # and plain `git diff --exit-code` would not see it.
+      - name: Docs freshness
+        run: |
+          pnpm docs:generate
+          git add -A
+          git diff --cached --exit-code
       - name: Test
         run: pnpm test
       - name: Build

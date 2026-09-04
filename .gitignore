@@ -12,3 +12,6 @@ my-kickstart/
 # Claude Code local state; plans are carried into worktrees via .worktreeinclude
 .claude/worktrees/
 .claude/plans/
+
+# pnpm pack output
+*.tgz

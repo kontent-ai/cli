@@ -4,11 +4,13 @@ import { isTruthyEnv } from "../../lib/env.js";
 import { isErr } from "../../lib/result.js";
 import { formatTelemetryOffReason, resolveTelemetryConsent } from "../../lib/telemetry/consent.js";
 import { amplitudeApiKey } from "../../lib/telemetry/context.js";
-import { type LogOptions, logError, logInfo, logWarning } from "../../log.js";
+import type { Logger } from "../../log.js";
 
-export type TelemetryCommandParams = LogOptions;
-
-export const showTelemetryStatus = async (params: TelemetryCommandParams): Promise<void> => {
+/**
+ * Returns the report rather than logging it: it is the payload the command
+ * exists to produce, so it belongs on stdout, ungated by --logLevel.
+ */
+export const buildTelemetryStatusReport = async (): Promise<string> => {
   const config = await readCliConfig();
   const consent = resolveTelemetryConsent(process.env, config, amplitudeApiKey, isCI);
 
@@ -18,49 +20,37 @@ export const showTelemetryStatus = async (params: TelemetryCommandParams): Promi
       : "Reason: default (no opt-out detected)"
     : `Reason: ${formatTelemetryOffReason(consent.reason)}`;
 
-  logInfo(
-    params,
-    "standard",
-    [
-      `Telemetry: ${consent.isEnabled ? "enabled" : "disabled"}`,
-      reasonLine,
-      `Config file: ${getCliConfigPath()}`,
-    ].join("\n"),
-  );
+  return [
+    `Telemetry: ${consent.isEnabled ? "enabled" : "disabled"}`,
+    reasonLine,
+    `Config file: ${getCliConfigPath()}`,
+  ].join("\n");
 };
 
-export const setTelemetryStatus = async (
-  params: TelemetryCommandParams,
-  isEnabled: boolean,
-): Promise<void> => {
+export const setTelemetryStatus = async (logger: Logger, isEnabled: boolean): Promise<void> => {
   const written = await writeCliConfig({
     telemetryEnabled: isEnabled,
     telemetryNoticeShown: true,
   });
   if (isErr(written)) {
-    logError(params, `Failed to update telemetry config: ${written.error}`);
+    logger.error(`Failed to update telemetry config: ${written.error}`);
     process.exitCode = 1;
     return;
   }
-  logInfo(params, "standard", isEnabled ? "Telemetry enabled." : "Telemetry disabled.");
+  logger.info("standard", isEnabled ? "Telemetry enabled." : "Telemetry disabled.");
   if (isEnabled) {
-    warnIfEnvForcesOff(params);
+    warnIfEnvForcesOff(logger);
   }
 };
 
-const warnIfEnvForcesOff = (params: TelemetryCommandParams): void => {
+const warnIfEnvForcesOff = (logger: Logger): void => {
   if (isTruthyEnv(process.env.DO_NOT_TRACK)) {
-    logWarning(
-      params,
-      "standard",
-      "Note: DO_NOT_TRACK is set, so telemetry stays off in this environment.",
-    );
+    logger.warning("standard", "DO_NOT_TRACK is set, so telemetry stays off in this environment.");
   }
   if (isTruthyEnv(process.env.KONTENT_DO_NOT_TRACK)) {
-    logWarning(
-      params,
+    logger.warning(
       "standard",
-      "Note: KONTENT_DO_NOT_TRACK is set, so telemetry stays off in this environment.",
+      "KONTENT_DO_NOT_TRACK is set, so telemetry stays off in this environment.",
     );
   }
 };

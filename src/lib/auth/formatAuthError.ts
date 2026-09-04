@@ -1,5 +1,6 @@
 import { match } from "ts-pattern";
 
+import { errorMessage } from "../error.js";
 import type { AuthError } from "./types.js";
 
 export const formatAuthError = (error: AuthError): string =>
@@ -9,43 +10,33 @@ export const formatAuthError = (error: AuthError): string =>
     .with({ kind: "expired-token" }, () => "device flow expired")
     .with(
       { kind: "discovery-failed" },
-      ({ cause }) => `failed to discover Auth0 issuer: ${describeCause(cause)}`,
+      ({ cause }) => `failed to discover Auth0 issuer: ${errorMessage(cause)}`,
     )
     .with(
       { kind: "device-auth-failed" },
-      ({ cause }) => `failed to start device authorization: ${describeCause(cause)}`,
+      ({ cause }) => `failed to start device authorization: ${errorMessage(cause)}`,
     )
     .with(
       { kind: "poll-failed" },
       ({ code, description }) =>
         `device flow failed (${code})${description ? `: ${description}` : ""}`,
     )
-    .with(
-      { kind: "refresh-failed" },
-      ({ cause }) => `token refresh failed: ${describeCause(cause)}`,
-    )
+    .with({ kind: "refresh-failed" }, ({ cause }) => `token refresh failed: ${errorMessage(cause)}`)
     .with(
       { kind: "refresh-rejected" },
-      ({ cause }) => `refresh token rejected: ${describeCause(cause)}`,
+      ({ cause }) => `refresh token rejected: ${errorMessage(cause)}`,
     )
     .with(
       { kind: "storage-read-failed" },
-      ({ cause }) => `failed to read stored tokens: ${describeCause(cause)}`,
+      ({ cause }) => `failed to read stored tokens: ${errorMessage(cause)}`,
     )
     .with(
       { kind: "storage-write-failed" },
-      ({ cause }) => `failed to write stored tokens: ${describeCause(cause)}`,
+      ({ cause }) => `failed to write stored tokens: ${errorMessage(cause)}`,
     )
     .with(
       { kind: "storage-clear-failed" },
-      ({ cause }) => `failed to clear stored tokens: ${describeCause(cause)}`,
+      ({ cause }) => `failed to clear stored tokens: ${errorMessage(cause)}`,
     )
-    .with({ kind: "unknown" }, ({ cause }) => `unexpected error: ${describeCause(cause)}`)
+    .with({ kind: "unknown" }, ({ cause }) => `unexpected error: ${errorMessage(cause)}`)
     .exhaustive();
-
-const describeCause = (cause: unknown): string => {
-  if (cause instanceof Error) {
-    return cause.message;
-  }
-  return String(cause);
-};

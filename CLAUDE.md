@@ -12,26 +12,36 @@ Run and pass these (same gate as CI, in order):
 pnpm typecheck && pnpm lint && pnpm biome:check && pnpm test
 ```
 
-Autofix is available: `pnpm lint:fix`, `pnpm biome:fix`. Build with `pnpm build` (tsdown). Node version is `.nvmrc` (`lts/*`). Always use pnpm, never npm/yarn.
+Autofix is available: `pnpm lint:fix`, `pnpm biome:fix`. Build with `pnpm build` (tsdown). Node is `lts` — CI pins it through `pnpm/setup`'s `runtime:` input in each workflow, `.nvmrc` covers local `nvm use`; keep the two in step. Always use pnpm, never npm/yarn.
 
 ## Architecture
 
 Three layers, dependencies point downward only (`commands → core → lib`):
 
-- `src/index.ts` — composition root. Folds each command's `register` over yargs via `reduce`, wires shared `deps` (telemetry).
+- `src/index.ts` — composition root. Folds each command's `register` (from `src/commands/registry.ts`) over yargs via `reduce`, wires shared `deps` (telemetry).
 - `src/commands/**` — yargs wiring + presentation only. Register the command, call core, format output, log, set `process.exitCode`, fire the telemetry tracker. No business logic.
-- `src/core/**` — orchestration of business logic. Returns `Result`/`Option`; never writes to the console directly (logs only through passed `LogOptions`). **Exception:** interactive commands may drive their own terminal UI from core — e.g. `src/core/project/bootstrap.ts` uses `@clack/prompts` (spinners, `confirm`/`select`, notes) directly because the flow is inherently interactive. Keep non-interactive core free of direct console writes.
+- `src/core/**` — orchestration of business logic. Returns `Result`/`Option`; never writes to the console directly (logs only through a passed `Logger`). **Exception:** interactive commands may drive their own terminal UI from core — e.g. `src/core/project/bootstrap.ts` uses the prompts of `src/lib/ui/prompts.ts` (spinners, `confirm`/`select`, notes) directly because the flow is inherently interactive. Keep non-interactive core free of direct console writes.
 - `src/lib/**` — reusable primitives: `auth/`, `iapi/`, `mapi/`, `config/`, `telemetry/`, plus `result.ts` and `option.ts`.
 
-Adding a command: export a `register: RegisterCommand` (see `src/commands/login/login.ts`), then add its import to the `register` array in the parent command or `src/index.ts`.
+Adding a command: export a `register: RegisterCommand` (see `src/commands/login/login.ts`), then add its import to the `register` array in the parent command or `src/commands/registry.ts`. Then run `pnpm docs:generate` (`scripts/generateCommandDocs.ts`) — it replays the registrations against a recording proxy and rewrites the generated docs: the marker-fenced command table in the root `README.md`, and the `<!-- reference:start/end -->` block in each command folder's `README.md` (created as a skeleton when missing). Prose outside the markers is handwritten — write command docs there, never inside the block. Two opt-out sets in the script: `commandsWithoutPage` (no colocated README) and `commandsWithoutIndexEntry` (no root-README table row; telemetry is there). The generator errors on a command-folder README with markers but no matching command (stale after rename/removal) — resolve by hand; it never deletes pages.
 
 ### API clients
 
 - `iapi` (`src/lib/iapi`) — internal Kontent.ai API; hand-rolled client, one file per endpoint, over `@kontent-ai/core-sdk`. Endpoint validators (the `schema` field) must be **`zod/mini`** (`import * as z from "zod/mini"`) — classic `zod` won't infer the payload.
-- `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`.
+- `mapi` (`src/lib/mapi`) — public Management API via `@kontent-ai/management-sdk`. `src/lib/mapi/raw` is the deliberate opposite: a passthrough (no schema, no response interpretation) behind `kontent mapi`, where a 4xx/5xx is a result, not an error. It builds on core-sdk's `getDefaultHttpService` and turns the non-2xx it reports as errors back into results, reading the body off `error.details.adapterResponse`; retry, `Retry-After` and header merging are core-sdk's. Its doc comments carry the why: `raw/client.ts` for which SDK error reasons stay errors, `raw/contentType.ts` for the rule that decides whether a body is printed.
 - `@kontent-ai/core-sdk` — shared HTTP/SDK layer both clients build on.
 
-**Commands build clients; core receives them.** The command builds the `iapiClient`/`mapiClient` and passes them into core (e.g. `performBootstrap(params, { iapiClient, mapiClient })`); core never constructs clients itself. Auth failure is handled in the command, not surfaced as a core `Result` error.
+**Commands build clients; core receives them.** The command builds the `iapiClient`/`mapiClient` and passes them into core (e.g. `performBootstrap(params, { logger, iapiClient, mapiClient })`); core never constructs clients itself. Auth failure is handled in the command, not surfaced as a core `Result` error. Same split for arguments: pure parsers live in `lib` (`mapi/raw/headers.ts`, `mapi/raw/method.ts`), reading what the invocation points at stays in the command, and each layer declares only the error kinds it raises.
+
+### Output channels
+
+- **stdout** — the data the command exists to produce, and nothing else. It is never level-gated: `--logLevel none` must still print a payload, because a response body is not a log.
+- **stderr** — everything said *about* producing it: progress, warnings, errors, verbose traces. This is the POSIX meaning of stderr (diagnostics, not errors), and how curl, git and npm behave.
+
+A reader closing the pipe early (`| head`) is that reader exiting normally, not a write failure: `src/index.ts` swallows `EPIPE` on both streams so it never becomes a stack trace, and leaves `process.exitCode` to the command.
+
+A handler that logs starts with `const logger = createLoggerFromArgs(args)` (`src/log.ts`) and passes that `Logger` down; one that only emits a payload takes no logger at all (`src/commands/telemetry/status.ts`).
+Core takes the logger as a parameter or inside its `deps` object; `createLoggerFromArgs` is the only place that resolves the `--logLevel`/`--verbose` pair; everything else builds a logger from a single `LogLevel` via `createLogger`. The `sink` parameter is a test seam, not a routing knob — never point a log at stdout.
 
 ## Conventions
 
@@ -49,10 +59,12 @@ Adding a command: export a `register: RegisterCommand` (see `src/commands/login/
 
 ## Testing
 
-Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
+Vitest; `test/unit/` for pure unit tests, `test/integration/` for integration tests, `test/helpers/` for shared helpers. Command-level behavior (argument parsing, exit codes, which stream a message lands on) is tested by folding a command's `register` over a real yargs instance and faking only the core call underneath — see `test/integration/mapiCommand.test.ts`. Run `pnpm test`. Inject fakes into core instead of real I/O — for iapi reuse `test/helpers/iapiTestClient.ts` (real client over core-sdk's `HttpAdapter` seam, declarative routes).
+
+`test/e2e/` runs the built binary against a real Kontent.ai project (clone-per-run from an empty template env). Gated on `E2E_MAPI_KEY`/`E2E_SOURCE_ENV_ID` (fails fast with an error when unset). Run with `pnpm test:e2e` (own `vitest.e2e.config.ts`, loads `.env`); excluded from `pnpm test` and the before-halting gate. CI: `.github/workflows/e2e.yml` (master push, PRs, manual; fork PRs are skipped at the job level — no secret access).
 
 ## Telemetry
 
-Amplitude-based, see `TELEMETRY.md`. New `KONTENT_*` env vars need a hidden yargs option registered in `src/index.ts` — `.strict()` + `.env("KONTENT")` rejects unknown env vars otherwise.
+Amplitude-based, see `TELEMETRY.md`. Env vars are read from `process.env` where they apply, never mapped onto yargs options — `src/index.ts` deliberately does not call `.env()`, so a stray `KONTENT_*` var cannot break an unrelated command.
 
 Event names and the custom event-property keys we set are kebab-case (`cli__some-command`, `error-code`, `sample-project-type`); single words stay bare (`outcome`). Amplitude's built-in fields (`device_id`, `user_id`, `platform`, `app_version`, `os_name`, `os_version`) are the exception and keep `snake_case`.

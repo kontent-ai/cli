@@ -1,0 +1,53 @@
+name: E2E
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# A force-push cancels the superseded run; its cloned environment is still
+# deleted by the always() cleanup step below.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    # Fork PRs cannot access the E2E_MAPI_KEY secret, so the job is skipped for
+    # them (grey check). Maintainers can run it via workflow_dispatch instead.
+    if: github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      E2E_MAPI_KEY: ${{ secrets.E2E_MAPI_KEY }}
+      E2E_SOURCE_ENV_ID: ${{ secrets.E2E_SOURCE_ENV_ID }}
+      # Empty is fine: vitest.e2e.config.ts falls back to production kontent.ai.
+      E2E_KONTENT_URL: ${{ vars.E2E_KONTENT_URL }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@lts
+          cache: true
+          require-lockfile: true
+      - name: E2E tests
+        # The runner context is unavailable in job-level env, so the file path
+        # is set per step.
+        env:
+          E2E_ENV_ID_FILE: ${{ runner.temp }}/e2e-env-id
+        run: pnpm test:e2e
+      # Deletes the cloned environment when the job died before afterAll could
+      # (cancellation, timeout). A normal run deletes it itself; the 404 here is fine.
+      - name: Delete leaked test environment
+        if: always()
+        env:
+          E2E_ENV_ID_FILE: ${{ runner.temp }}/e2e-env-id
+        run: |
+          if [ -s "$E2E_ENV_ID_FILE" ]; then
+            curl -s -X DELETE "https://manage.${E2E_KONTENT_URL:-kontent.ai}/v2/projects/$(cat "$E2E_ENV_ID_FILE")" \
+              -H "Authorization: Bearer $E2E_MAPI_KEY" || true
+          fi

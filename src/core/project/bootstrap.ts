@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { confirm, isCancel, note, select, spinner } from "@clack/prompts";
+import { isCancel } from "@clack/prompts";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { downloadTemplate } from "giget";
 import { applyEnvOverrides } from "../../lib/envFile.js";
@@ -13,17 +13,18 @@ import { type ApiKeyListingItem, listApiKeys } from "../../lib/iapi/endpoints/li
 import { listProjectProperties } from "../../lib/iapi/endpoints/listProjectProperties.js";
 import type { MapiClient } from "../../lib/mapi/client.js";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
-import { type LogOptions, logError, logWarning } from "../../log.js";
+import { confirm, note, select, spinner } from "../../lib/ui/prompts.js";
+import type { Logger } from "../../log.js";
 import { buildEnvValues, findSample, type PreviewSpaceConfig, type SampleApp } from "./samples.js";
 import { ensureLocalhostSpace, PREVIEW_PORT, type SpaceSetupError } from "./space.js";
 
-export type BootstrapParams = LogOptions &
-  Readonly<{
-    envId: string;
-    path: string;
-  }>;
+export type BootstrapParams = Readonly<{
+  envId: string;
+  path: string;
+}>;
 
-export type BootstrapClients = Readonly<{
+export type BootstrapDeps = Readonly<{
+  logger: Logger;
   iapiClient: IapiClient;
   mapiClient: MapiClient;
 }>;
@@ -49,9 +50,9 @@ const CREATE_NEW_KEY_VALUE = "__create_new_delivery_key__";
 
 export const performBootstrap = async (
   params: BootstrapParams,
-  clients: BootstrapClients,
+  deps: BootstrapDeps,
 ): Promise<Result<BootstrapSuccess, BootstrapError>> => {
-  const { iapiClient, mapiClient } = clients;
+  const { logger, iapiClient, mapiClient } = deps;
 
   const targetCheck = await ensureTargetUsable(params.path);
   if (targetCheck.kind === "err") {
@@ -99,17 +100,17 @@ export const performBootstrap = async (
   }
   cloneSpinner.stop(`Cloned into ${params.path}`);
 
-  await wireEnvFile(params, sample, deliveryKey);
+  await wireEnvFile(params, logger, sample, deliveryKey);
 
   if (sample.previewSpace) {
-    await setupLocalhostSpace(params, mapiClient, sample.previewSpace);
+    await setupLocalhostSpace(logger, mapiClient, sample.previewSpace);
   }
 
   return ok({ subscriptionId, sampleProjectType: sampleValue });
 };
 
 const setupLocalhostSpace = async (
-  params: BootstrapParams,
+  logger: Logger,
   mapiClient: MapiClient,
   previewSpace: PreviewSpaceConfig,
 ): Promise<void> => {
@@ -119,7 +120,7 @@ const setupLocalhostSpace = async (
 
   if (isErr(result)) {
     spaceSpinner.error("Could not set up the localhost preview space");
-    logWarning(params, "standard", spaceWarning(result.error));
+    logger.warning("standard", spaceWarning(result.error));
     return;
   }
 
@@ -254,6 +255,7 @@ const ensureTargetUsable = async (
 
 const wireEnvFile = async (
   params: BootstrapParams,
+  logger: Logger,
   sample: SampleApp,
   deliveryKey: string,
 ): Promise<void> => {
@@ -273,7 +275,7 @@ const wireEnvFile = async (
       return;
     }
     envSpinner.error(`Failed to read ${sample.envTemplateFile}`);
-    logError(params, errorMessage(cause));
+    logger.error(errorMessage(cause));
     return;
   }
 
@@ -284,7 +286,7 @@ const wireEnvFile = async (
     envSpinner.stop(`Wrote ${ENV_OUTPUT_FILE}`);
   } catch (cause) {
     envSpinner.error(`Failed to write ${ENV_OUTPUT_FILE}`);
-    logError(params, errorMessage(cause));
+    logger.error(errorMessage(cause));
   }
 };
 

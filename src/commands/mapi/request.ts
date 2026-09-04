@@ -1,0 +1,304 @@
+import { openAsBlob } from "node:fs";
+import { type FileHandle, open } from "node:fs/promises";
+import type { Readable } from "node:stream";
+import { blob } from "node:stream/consumers";
+import { isatty } from "node:tty";
+import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
+import { match } from "ts-pattern";
+import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
+import { formatAuthError } from "../../lib/auth/formatAuthError.js";
+import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
+import { errorMessage } from "../../lib/error.js";
+import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
+import { parseHeaders } from "../../lib/mapi/raw/headers.js";
+import { parseMethod } from "../../lib/mapi/raw/method.js";
+import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
+import type { Telemetry } from "../../lib/telemetry/tracking.js";
+import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
+import type { RegisterCommand } from "../../types/yargs.js";
+import { presentResponse } from "./presentResponse.js";
+
+type RequestArgs = LogOptions &
+  Readonly<{
+    endpoint: string;
+    envId: string;
+    mapiKey?: string | undefined;
+    method?: string | undefined;
+    header?: ReadonlyArray<string> | undefined;
+    input?: string | undefined;
+    include?: boolean | undefined;
+  }>;
+
+export const register: RegisterCommand = (sub, deps) =>
+  sub.command({
+    command: "$0 <endpoint>",
+    describe: "Send an authenticated request to the Management API",
+    builder: (b) =>
+      b
+        // `<endpoint>` only makes it required at runtime; demandOption narrows the type.
+        .positional("endpoint", {
+          type: "string",
+          demandOption: true,
+          describe: 'API path, e.g. "types" or "projects/{environment_id}/types"',
+        })
+        .option("envId", {
+          type: "string",
+          demandOption: true,
+          describe: "Environment ID (Guid)",
+        })
+        .option("mapiKey", {
+          type: "string",
+          describe:
+            "Management API key. Falls back to the KONTENT_MAPI_KEY environment variable, then to the logged-in user's token",
+        })
+        .option("method", {
+          type: "string",
+          alias: "X",
+          describe: "HTTP method. (default: GET, or POST with --input)",
+        })
+        .option("header", {
+          type: "string",
+          array: true,
+          alias: "H",
+          describe:
+            'Request header in the "Name: value" format. Repeatable. An Authorization header takes precedence over --mapiKey and the stored login token',
+        })
+        // Without nargs the array is greedy, so `-H 'X-Foo: 1' types` swallows the
+        // endpoint and yargs then reports it as a missing positional.
+        .nargs("header", 1)
+        .option("input", {
+          type: "string",
+          describe:
+            'Path to the request body, or "-" to read stdin. A pipe works too - /dev/stdin or <(cmd). Sent as application/json unless a Content-Type header says otherwise - set one when uploading a binary file, since the Management API stores it as the asset\'s MIME type',
+        })
+        // Without nargs, yargs-parser reads the lone "-" of `--input -` as a
+        // positional and .strict() then rejects it as an unknown argument.
+        .nargs("input", 1)
+        .option("include", {
+          type: "boolean",
+          alias: "i",
+          default: false,
+          describe: "Print the status line and response headers before the body",
+        })
+        // A query string needs quoting: "?" is a glob character in zsh and bash.
+        .example("$0 mapi 'types?limit=10' --envId <id>", "List the first 10 content types")
+        .example(
+          "$0 mapi types --envId <id> --input body.json",
+          "Create a content type from a file (--input implies POST)",
+        )
+        .example("$0 mapi 'items/<item-id>' -X DELETE --envId <id>", "Delete a content item")
+        .example(
+          "$0 mapi types -H 'X-Foo: 1' -H 'X-Bar: 2' --envId <id>",
+          "Send extra headers (-H is repeatable)",
+        )
+        .example(
+          'echo \'{"name":"Article"}\' | $0 mapi types --envId <id> --input -',
+          "Create a content type from a piped body",
+        ),
+    handler: async (args) => runRequest(args, createLoggerFromArgs(args), deps.telemetry),
+  });
+
+const runRequest = async (
+  args: RequestArgs,
+  logger: Logger,
+  telemetry: Telemetry,
+): Promise<void> => {
+  const tracker = telemetry.startCommandTracking("mapi", logger);
+
+  const prepared = await prepareRequest(args);
+  if (isErr(prepared)) {
+    tracker.fail(prepared.error.kind);
+    logger.error(prepared.error.message);
+    process.exitCode = 1;
+    return;
+  }
+
+  const credential = await resolveMapiCredential(prepared.value.headers, args.mapiKey);
+  if (isErr(credential)) {
+    tracker.fail(`auth:${credential.error.kind}`);
+    logger.error(formatAuthError(credential.error));
+    process.exitCode = 1;
+    return;
+  }
+  const { token, source } = credential.value;
+
+  const result = await performRawMapiRequest(
+    {
+      ...prepared.value,
+      endpoint: args.endpoint,
+      envId: args.envId,
+    },
+    { logger, client: createMapiRawClient({ token, logger }) },
+  );
+
+  if (isErr(result)) {
+    tracker.fail(result.error.kind, { "auth-source": source });
+    logger.error(result.error.message);
+    process.exitCode = 1;
+    return;
+  }
+
+  const presented = presentResponse(result.value, args.include === true);
+  if (presented.payload !== "") {
+    process.stdout.write(presented.payload);
+  }
+  if (presented.droppedBodyWarning !== undefined) {
+    logger.warning("standard", presented.droppedBodyWarning);
+  }
+
+  if (result.value.statusCode >= 400) {
+    tracker.fail(`http-${result.value.statusCode}`, {
+      "status-code": result.value.statusCode,
+      "auth-source": source,
+    });
+    logger.error(formatFailure(result.value, source));
+    process.exitCode = 1;
+    return;
+  }
+
+  tracker.succeed({ "status-code": result.value.statusCode, "auth-source": source });
+};
+
+type PreparedRequest = Readonly<{
+  method: HttpMethod;
+  headers: ReadonlyArray<Header>;
+  body: Blob | null;
+}>;
+
+type RequestArgsError = Readonly<{
+  kind: "invalid-method" | "invalid-header" | "unreadable-input";
+  message: string;
+}>;
+
+const prepareRequest = async (
+  args: RequestArgs,
+): Promise<Result<PreparedRequest, RequestArgsError>> => {
+  const method = parseMethod(args.method, args.input !== undefined);
+  if (isErr(method)) {
+    return err({ kind: "invalid-method", message: method.error });
+  }
+
+  // Where curl parity stops: curl does send `-X GET` with a body, we cannot - the
+  // fetch spec forbids one on GET and undici throws before the request leaves.
+  // Checked before the input is read: there is no point opening a file the
+  // request can never carry. Only an explicit `-X GET` reaches this.
+  if (args.input !== undefined && method.value === "GET") {
+    return err({
+      kind: "invalid-method",
+      message:
+        "A GET request cannot carry a body. Use -X POST, PUT or PATCH with --input, or drop --input.",
+    });
+  }
+
+  const headers = parseHeaders(args.header ?? []);
+  if (isErr(headers)) {
+    return err({ kind: "invalid-header", message: headers.error });
+  }
+
+  const body = args.input === undefined ? ok(null) : await readInput(args.input);
+  if (isErr(body)) {
+    return body;
+  }
+
+  return ok({
+    method: method.value,
+    // The default goes first so an explicit -H Content-Type wins the merge.
+    headers:
+      body.value === null
+        ? headers.value
+        : [{ name: "Content-Type", value: "application/json" }, ...headers.value],
+    body: body.value,
+  });
+};
+
+const readInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
+  if (input !== "-") {
+    return await readFileInput(input);
+  }
+
+  // Without this guard the command would wait forever for input nobody is piping.
+  if (process.stdin.isTTY) {
+    return err({
+      kind: "unreadable-input",
+      message: "Nothing is piped to stdin. Pipe the body in, or pass --input <file>.",
+    });
+  }
+
+  return await drain(process.stdin, "stdin");
+};
+
+// A Blob has to know its length up front, so a regular file is the only source that can
+// be handed to openAsBlob unread and streamed from disk at send time; everything else is
+// drained into memory first. openAsBlob only stats the path it takes, reporting a missing
+// one as a bare "Unable to open file as blob" and an unreadable one only once the body is
+// read, with the request already out - opening the path first is what turns either into a
+// real errno. openAsBlob takes a path, not a descriptor, so the probe handle is closed and
+// the path is opened a second time; a swap or chmod between the two opens is accepted.
+const readFileInput = async (input: string): Promise<Result<Blob, RequestArgsError>> => {
+  const label = `"${input}"`;
+  const toError = unreadable(label);
+
+  const opened = await tryAsync(async () => await open(input, "r"), toError);
+  if (isErr(opened)) {
+    return opened;
+  }
+  const handle = opened.value;
+
+  const stats = await tryAsync(async () => await handle.stat(), toError);
+  if (isErr(stats)) {
+    await closeQuietly(handle);
+    return stats;
+  }
+
+  // A directory opens fine read-only on POSIX, so only the stat rules it out.
+  if (stats.value.isDirectory()) {
+    await closeQuietly(handle);
+    return err({ kind: "unreadable-input", message: `Failed to read ${label}: is a directory.` });
+  }
+
+  if (isatty(handle.fd)) {
+    await closeQuietly(handle);
+    return err({
+      kind: "unreadable-input",
+      message: `Failed to read ${label}: it is a terminal, nothing will arrive.`,
+    });
+  }
+
+  if (stats.value.isFile()) {
+    await closeQuietly(handle);
+    return await tryAsync(async () => await openAsBlob(input), toError);
+  }
+
+  // createReadStream defaults to autoClose, closing the handle on the stream's end or error.
+  return await drain(handle.createReadStream(), label);
+};
+
+// A failed close cannot make the input any less readable, so it is not a result.
+const closeQuietly = async (handle: FileHandle): Promise<void> =>
+  await handle.close().catch(() => undefined);
+
+const drain = async (source: Readable, label: string): Promise<Result<Blob, RequestArgsError>> =>
+  await tryAsync(async () => await blob(source), unreadable(label));
+
+const unreadable =
+  (label: string) =>
+  (cause: unknown): RequestArgsError => ({
+    kind: "unreadable-input",
+    message: `Failed to read ${label}: ${errorMessage(cause)}`,
+  });
+
+const formatFailure = (response: MapiResponse, source: AuthSource): string => {
+  const summary = `HTTP ${response.statusCode} ${response.statusText}`;
+
+  if (response.statusCode !== 401) {
+    return summary;
+  }
+
+  const hint = match(source)
+    .with("header", () => "Check the Authorization header you supplied.")
+    .with("mapi-key", () => "Check your Management API key.")
+    .with("login", () => "Run `kontent login` to sign in again.")
+    .exhaustive();
+
+  return `${summary}\n${hint}`;
+};
