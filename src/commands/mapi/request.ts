@@ -94,6 +94,11 @@ export const register: RegisterCommand = (sub, deps) =>
         .example(
           'echo \'{"name":"Article"}\' | $0 mapi types --envId <id> --input -',
           "Create a content type from a piped body",
+        )
+        .epilogue(
+          "Not sure which endpoint or payload shape to use? Look it up first:\n" +
+            '  kontent docs endpoint "upsert language variant"   method, URL, parameters, response schema\n' +
+            '  kontent docs object "language variant"            object properties',
         ),
     handler: async (args) => runRequest(args, createLoggerFromArgs(args), deps.telemetry),
   });
