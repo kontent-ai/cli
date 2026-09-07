@@ -59,7 +59,7 @@ Each command supports `--help` for its own options.
 | [`kontent login`](src/commands/login/README.md) | Authenticate with Kontent.ai via Auth0 device flow |
 | [`kontent logout`](src/commands/logout/README.md) | Clear stored authentication tokens |
 | [`kontent mapi <endpoint>`](src/commands/mapi/README.md) | Send an authenticated request to the Management API |
-| [`kontent project sample bootstrap`](src/commands/project/sample/README.md) | Clone a sample app for an environment and wire its .env |
+| [`kontent project sample bootstrap`](src/commands/project/sample/bootstrap/README.md) | Clone a sample app for an environment and wire its .env |
 <!-- commands:end -->
 
 ## Global options
