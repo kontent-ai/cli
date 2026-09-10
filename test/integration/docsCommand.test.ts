@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
 import { register } from "../../src/commands/docs/docs.js";
-import { searchDocs } from "../../src/core/docs/learn.js";
+import { getEndpointDetails, getObjectDetails, searchDocs } from "../../src/core/docs/learn.js";
 import { err, ok } from "../../src/lib/result.js";
 import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/docs/learn.js", () => ({
   searchDocs: vi.fn(async () => ok([{ title: "Filter by taxonomy" }])),
-  getEndpointDetails: vi.fn(async () => ok({ title: "Upsert a language variant" })),
-  getObjectDetails: vi.fn(async () => ok({ title: "Language variant" })),
+  getEndpointDetails: vi.fn(async () => ok([{ title: "Upsert a language variant" }])),
+  getObjectDetails: vi.fn(async () => ok([{ title: "Language variant" }])),
 }));
 
 // Drives the real yargs wiring, so what the parser hands the handler is what is
@@ -43,10 +43,13 @@ const captureStream = (stream: "stdout" | "stderr") => {
 
 const lastSearchParams = () => vi.mocked(searchDocs).mock.calls.at(-1)?.[0];
 
+const lastObjectParams = () => vi.mocked(getObjectDetails).mock.calls.at(-1)?.[0];
+
 describe("kontent docs argument handling", () => {
   beforeEach(() => {
     process.exitCode = undefined;
     vi.mocked(searchDocs).mockClear();
+    vi.mocked(getObjectDetails).mockClear();
   });
 
   it("passes the search positional and the limit to the core", async () => {
@@ -61,7 +64,44 @@ describe("kontent docs argument handling", () => {
     captured.restore();
 
     expect(failure).toBeUndefined();
-    expect(lastSearchParams()).toEqual({ query: "how to filter by taxonomy", limit: 3 });
+    expect(lastSearchParams()).toEqual({
+      query: "how to filter by taxonomy",
+      limit: 3,
+      apiReference: undefined,
+    });
+  });
+
+  it("leaves search unfiltered by default and filters on --api", async () => {
+    const captured = captureStream("stdout");
+    await runCommand(["docs", "search", "webhook"]);
+    expect(lastSearchParams()?.apiReference).toBeUndefined();
+
+    await runCommand(["docs", "search", "webhook", "--api", "delivery_api"]);
+    captured.restore();
+
+    expect(lastSearchParams()?.apiReference).toBe("delivery_api");
+  });
+
+  it("defaults object lookups to the Management API reference and filters on --api", async () => {
+    const captured = captureStream("stdout");
+    await runCommand(["docs", "object", "text element"]);
+    expect(lastObjectParams()).toEqual({
+      query: "text element",
+      limit: 1,
+      apiReference: "content_management_api_v2",
+    });
+
+    await runCommand(["docs", "object", "text element", "--api", "delivery_api"]);
+    captured.restore();
+
+    expect(lastObjectParams()?.apiReference).toBe("delivery_api");
+  });
+
+  it("rejects an api the service does not know without calling the core", async () => {
+    const failure = await runCommand(["docs", "object", "text element", "--api", "nope"]);
+
+    expect(failure).toContain("Invalid values");
+    expect(getObjectDetails).not.toHaveBeenCalled();
   });
 
   it.each(["0", "11", "1.5"])("rejects --limit %s without calling the core", async (limit) => {
@@ -71,7 +111,14 @@ describe("kontent docs argument handling", () => {
     expect(searchDocs).not.toHaveBeenCalled();
   });
 
-  it("prints the payload as indented JSON on stdout and says nothing on stderr", async () => {
+  it("shares the limit check with the detail commands", async () => {
+    const failure = await runCommand(["docs", "endpoint", "add a content type", "--limit", "0"]);
+
+    expect(failure).toContain("--limit must be a whole number between 1 and 10.");
+  });
+
+  // A single candidate is still a candidate list, so the shape does not change with --limit.
+  it("prints the candidates as a JSON array on stdout and says nothing on stderr", async () => {
     const stdout = captureStream("stdout");
     const stderr = captureStream("stderr");
 
@@ -79,9 +126,39 @@ describe("kontent docs argument handling", () => {
     stdout.restore();
     stderr.restore();
 
-    expect(stdout.text()).toBe(`{\n  "title": "Language variant"\n}\n`);
+    expect(stdout.text()).toBe(`[\n  {\n    "title": "Language variant"\n  }\n]\n`);
     expect(stderr.text()).toBe("");
     expect(process.exitCode).toBeUndefined();
+  });
+
+  // Live payloads bury httpMethod after huge bodyParameters trees; the presenter
+  // must hoist it to the front regardless of where the service puts it.
+  it("prints httpMethod first even when the payload puts it later", async () => {
+    vi.mocked(getEndpointDetails).mockResolvedValueOnce(
+      ok([
+        {
+          bodyParameters: { huge: "tree" },
+          title: "Publish a language variant",
+          httpMethod: "put",
+        },
+      ]),
+    );
+    const stdout = captureStream("stdout");
+
+    await runCommand(["docs", "endpoint", "publish a language variant"]);
+    stdout.restore();
+
+    expect(stdout.text().startsWith('[\n  {\n    "httpMethod"')).toBe(true);
+  });
+
+  it("prints the JSON on one line with --compact", async () => {
+    const stdout = captureStream("stdout");
+
+    await runCommand(["docs", "object", "language variant", "--compact"]);
+    stdout.restore();
+
+    expect(stdout.text()).toBe(`${JSON.stringify([{ title: "Language variant" }])}\n`);
+    expect(stdout.text().split("\n")).toHaveLength(2);
   });
 
   it("keeps a failed request off stdout and fails the command", async () => {
