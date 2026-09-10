@@ -10,9 +10,9 @@ import {
   type SdkConfig,
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
-
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../package.json" with { type: "json" };
+import type { ApiReference } from "./apiReference.js";
 
 export const learnBaseUrl: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };
 
@@ -43,14 +43,20 @@ export const createLearnClient = (
   };
 };
 
+/** `apiReference` narrows the candidates before the service ranks them. */
+export type LearnQueryParams = Readonly<{ text: string; apiReference?: ApiReference }>;
+
 export const createLearnQuery = <TPayload extends JsonValue>(
   client: LearnClient,
   path: string,
-  text: string,
+  params: LearnQueryParams,
   schema: SchemaInput<TPayload>,
 ): FetchQuery<TPayload> => {
   const url = new URL(path, `${client.baseUrl.protocol}://${client.baseUrl.host}`);
-  url.searchParams.set("text", text);
+  url.searchParams.set("text", params.text);
+  if (params.apiReference !== undefined) {
+    url.searchParams.set("apiReference", params.apiReference);
+  }
 
   return createFetchQuery({
     url,

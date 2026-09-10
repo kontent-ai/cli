@@ -19,7 +19,8 @@ kontent docs search <query> [options]
 
 | Option | Type | Description |
 | --- | --- | --- |
-| `--limit` | number | Maximum number of results (1-10). Default: `10`. |
+| `--limit` | number | Maximum number of candidates to print (1-10). Default: `10`. |
+| `--api` | `delivery_api` \| `content_management_api_v2` \| `subscription_api` \| `sync_api_v2` | Restrict results to one API reference; conceptual guides are excluded when set |
 
 ## Examples
 
@@ -29,5 +30,8 @@ kontent docs search 'how to filter by taxonomy'
 
 # Keep only the three best matches
 kontent docs search 'language variant' --limit 3
+
+# Keep only Delivery API reference pages
+kontent docs search 'webhook' --api delivery_api
 ```
 <!-- reference:end -->

@@ -1,16 +1,15 @@
 import * as z from "zod/mini";
 
-import { createLearnQuery, type LearnClient } from "../client.js";
+import { createLearnQuery, type LearnClient, type LearnQueryParams } from "../client.js";
 
-export const ObjectDetailsSchema = z.object({
-  title: z.string(),
-  url: z.string(),
-  apiReference: z.string(),
-});
+export const ObjectDetailsSchema = z.record(z.string(), z.json());
 
 export type ObjectDetails = z.infer<typeof ObjectDetailsSchema>;
 
-export const ObjectDetailsResponseSchema = z.object({ json: ObjectDetailsSchema });
+// The route answers with up to ten candidates ranked by score, empty when nothing matches.
+export const ObjectDetailsResponseSchema = z.object({
+  json: z.array(ObjectDetailsSchema),
+});
 
-export const objectDetails = (client: LearnClient, text: string) =>
-  createLearnQuery(client, "/object-details", text, ObjectDetailsResponseSchema);
+export const objectDetails = (client: LearnClient, params: LearnQueryParams) =>
+  createLearnQuery(client, "/object-details", params, ObjectDetailsResponseSchema);
