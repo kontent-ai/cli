@@ -21,7 +21,7 @@ export const register: RegisterCommand = (y, deps) =>
         .demandCommand(1, chalk.red("You need to provide a docs subcommand."))
         .strict()
         .epilogue(
-          'Detail commands return the single best match without a confidence score.\nRun "kontent docs search" first when unsure which endpoint or object you need.',
+          'Every command prints a JSON array of candidates the service ranked by score; --limit says how many of them to keep.\nRun "kontent docs search" first when unsure which endpoint or object you need.',
         ),
     handler: () => {
       // parent command is a group; subcommands handle execution

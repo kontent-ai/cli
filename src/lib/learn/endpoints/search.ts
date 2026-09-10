@@ -1,21 +1,13 @@
 import * as z from "zod/mini";
 
-import { createLearnQuery, type LearnClient } from "../client.js";
+import { createLearnQuery, type LearnClient, type LearnQueryParams } from "../client.js";
 
-// Only the fields the CLI reads are declared: core-sdk hands back the raw payload,
-// so everything else the service returns rides through to stdout untouched.
-export const SearchResultSchema = z.object({
-  title: z.string(),
-  codename: z.string(),
-  type: z.string(),
-  url: z.string(),
-  body: z.string(),
-  score: z.number(),
-});
+export const SearchResultSchema = z.record(z.string(), z.json());
 
 export type SearchResult = z.infer<typeof SearchResultSchema>;
 
+// The route answers with candidates ranked by score, empty when nothing matches.
 export const SearchResponseSchema = z.object({ json: z.array(SearchResultSchema) });
 
-export const search = (client: LearnClient, text: string) =>
-  createLearnQuery(client, "/search", text, SearchResponseSchema);
+export const search = (client: LearnClient, params: LearnQueryParams) =>
+  createLearnQuery(client, "/search", params, SearchResponseSchema);
