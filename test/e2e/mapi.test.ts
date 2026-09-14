@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { requireE2eConfig } from "./helpers/config.js";
 import {
   cloneTestEnvironment,
   deleteTestEnvironment,
-  recordEnvironmentId,
+  randomSuffix,
   type TestEnvironment,
-} from "./helpers/environment.js";
-import { randomSuffix } from "./helpers/random.js";
+} from "../helpers/environment.js";
+import { requireE2eConfig } from "./helpers/config.js";
+import { recordEnvironmentId } from "./helpers/environment.js";
 import { type CliRunOptions, parseStdout, runCli } from "./helpers/runCli.js";
 
 const config = requireE2eConfig();
@@ -41,7 +41,7 @@ describe("kontent mapi e2e", () => {
     );
 
   beforeAll(async () => {
-    env = await cloneTestEnvironment(config);
+    env = await cloneTestEnvironment(config, "e2e");
     await recordEnvironmentId(env.envId);
   });
 

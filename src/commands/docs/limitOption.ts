@@ -14,4 +14,4 @@ export const withLimitOption = <T>(b: Argv<T>, defaultLimit: number) =>
       Number.isInteger(args.limit) && args.limit >= 1 && args.limit <= MAX_LIMIT
         ? true
         : `--limit must be a whole number between 1 and ${MAX_LIMIT}.`,
-    )
+    );
