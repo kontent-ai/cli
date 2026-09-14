@@ -13,5 +13,9 @@ my-kickstart/
 .claude/worktrees/
 .claude/plans/
 
+# Eval run reports; the folder itself stays tracked
+evals/results/*
+!evals/results/.gitkeep
+
 # pnpm pack output
 *.tgz
