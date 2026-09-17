@@ -8,7 +8,8 @@ import yargs from "yargs";
 import { register } from "../../src/commands/mapi/request.js";
 import type { MapiRequestParams } from "../../src/core/mapi/request.js";
 import { performRawMapiRequest } from "../../src/core/mapi/request.js";
-import { ok } from "../../src/lib/result.js";
+import { getValidAccessToken } from "../../src/lib/auth/tokenAccess.js";
+import { err, ok } from "../../src/lib/result.js";
 import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/mapi/request.js", () => ({
@@ -23,9 +24,13 @@ vi.mock("../../src/lib/auth/tokenAccess.js", () => ({
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 
+type CommandRun = Readonly<{ failure: string | undefined; stdout: string; stderr: string }>;
+
 // Drives the real yargs wiring, so what the parser hands the handler is what is
 // asserted on. The core call is faked; everything above it is production code.
-const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefined> => {
+// Both streams are always captured: every 2xx writes somewhere, and a test that
+// only cares about the parsed arguments must not spill that into the runner's output.
+const runCommand = async (argv: ReadonlyArray<string>): Promise<CommandRun> => {
   const parser = register(
     yargs([...argv])
       .strict()
@@ -35,11 +40,17 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
       telemetry: noopTelemetry,
     },
   );
+  const stdout = captureStream("stdout");
+  const stderr = captureStream("stderr");
   try {
     await parser.parseAsync([...argv]);
-    return undefined;
+    return { failure: undefined, stdout: stdout.text(), stderr: stderr.text() };
   } catch (cause) {
-    return cause instanceof Error ? cause.message : String(cause);
+    const failure = cause instanceof Error ? cause.message : String(cause);
+    return { failure, stdout: stdout.text(), stderr: stderr.text() };
+  } finally {
+    stdout.restore();
+    stderr.restore();
   }
 };
 
@@ -72,10 +83,11 @@ describe("kontent mapi argument handling", () => {
   beforeEach(() => {
     process.exitCode = undefined;
     vi.mocked(performRawMapiRequest).mockClear();
+    vi.unstubAllEnvs();
   });
 
   it("keeps -H from swallowing the endpoint positional", async () => {
-    const failure = await runCommand(["-H", "X-Foo: 1", "types", "--envId", ENV_ID]);
+    const { failure } = await runCommand(["-H", "X-Foo: 1", "types", "--envId", ENV_ID]);
 
     expect(failure).toBeUndefined();
     expect(lastParams().endpoint).toBe("types");
@@ -83,7 +95,7 @@ describe("kontent mapi argument handling", () => {
   });
 
   it("accepts -H after the endpoint too", async () => {
-    const failure = await runCommand(["types", "-H", "X-Foo: 1", "--envId", ENV_ID]);
+    const { failure } = await runCommand(["types", "-H", "X-Foo: 1", "--envId", ENV_ID]);
 
     expect(failure).toBeUndefined();
     expect(lastParams().endpoint).toBe("types");
@@ -112,16 +124,28 @@ describe("kontent mapi argument handling", () => {
         body: null,
       }),
     );
-    const stdout = captureStream("stdout");
-    const stderr = captureStream("stderr");
+    const { stdout, stderr } = await runCommand(["types", "--envId", ENV_ID]);
 
-    await runCommand(["types", "--envId", ENV_ID]);
-    stdout.restore();
-    stderr.restore();
-
-    expect(stdout.text()).toBe("");
-    expect(stderr.text()).toContain("137 bytes of text/html");
+    expect(stdout).toBe("");
+    expect(stderr).toContain("137 bytes of text/html");
     expect(process.exitCode).toBe(1);
+  });
+
+  it("announces an empty success body on stderr instead of leaving stdout silent", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 204, statusText: "No Content", headers: [], body: null }),
+    );
+    const { stdout, stderr } = await runCommand([
+      "items/<item-id>/publish",
+      "-X",
+      "PUT",
+      "--envId",
+      ENV_ID,
+    ]);
+
+    expect(stdout).toBe("");
+    expect(stderr).toContain("HTTP 204 No Content");
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("prints a 4xx body on stdout and its diagnosis on stderr", async () => {
@@ -133,16 +157,11 @@ describe("kontent mapi argument handling", () => {
         body: { message: "The requested content type was not found." },
       }),
     );
-    const stdout = captureStream("stdout");
-    const stderr = captureStream("stderr");
+    const { stdout, stderr } = await runCommand(["types/missing", "--envId", ENV_ID]);
 
-    await runCommand(["types/missing", "--envId", ENV_ID]);
-    stdout.restore();
-    stderr.restore();
-
-    expect(stdout.text()).toContain("The requested content type was not found.");
-    expect(stderr.text()).toContain("HTTP 404 Not Found");
-    expect(stderr.text()).not.toContain("The requested content type was not found.");
+    expect(stdout).toContain("The requested content type was not found.");
+    expect(stderr).toContain("HTTP 404 Not Found");
+    expect(stderr).not.toContain("The requested content type was not found.");
     expect(process.exitCode).toBe(1);
   });
 
@@ -190,13 +209,10 @@ describe("kontent mapi argument handling", () => {
   it("reports an unreadable --input file without calling the API", async () => {
     // Inside the suite's temp dir, so "missing" is a fact rather than a guess about /tmp.
     const path = join(tempDir, "absent", "body.json");
-    const captured = captureStream("stderr");
+    const { stderr } = await runCommand(["types", "--input", path, "--envId", ENV_ID]);
 
-    await runCommand(["types", "--input", path, "--envId", ENV_ID]);
-    captured.restore();
-
-    expect(captured.text()).toContain(path);
-    expect(captured.text()).toContain("ENOENT");
+    expect(stderr).toContain(path);
+    expect(stderr).toContain("ENOENT");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
@@ -208,41 +224,56 @@ describe("kontent mapi argument handling", () => {
       const path = join(tempDir, "noperm.json");
       await writeFile(path, "{}");
       await chmod(path, 0o000);
-      const captured = captureStream("stderr");
+      const { stderr } = await runCommand(["types", "--input", path, "--envId", ENV_ID]);
+      // Back to readable so the suite's rm of the temp dir cannot trip on it.
+      await chmod(path, 0o644);
 
-      try {
-        await runCommand(["types", "--input", path, "--envId", ENV_ID]);
-      } finally {
-        captured.restore();
-        // Back to readable so the suite's rm of the temp dir cannot trip on it.
-        await chmod(path, 0o644);
-      }
-
-      expect(captured.text()).toContain("EACCES");
+      expect(stderr).toContain("EACCES");
       expect(process.exitCode).toBe(1);
       expect(performRawMapiRequest).not.toHaveBeenCalled();
     },
   );
 
   it("rejects a directory at --input before the request goes out", async () => {
-    const captured = captureStream("stderr");
+    const { stderr } = await runCommand(["types", "--input", tempDir, "--envId", ENV_ID]);
 
-    await runCommand(["types", "--input", tempDir, "--envId", ENV_ID]);
-    captured.restore();
-
-    expect(captured.text()).toContain("is a directory");
+    expect(stderr).toContain("is a directory");
     expect(process.exitCode).toBe(1);
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 
   it("rejects a body on GET instead of letting the transport throw", async () => {
-    const captured = captureStream("stderr");
+    const { stderr } = await runCommand([
+      "types",
+      "-X",
+      "GET",
+      "--input",
+      "body.json",
+      "--envId",
+      ENV_ID,
+    ]);
 
-    await runCommand(["types", "-X", "GET", "--input", "body.json", "--envId", ENV_ID]);
-    captured.restore();
-
-    expect(captured.text()).toContain("A GET request cannot carry a body");
+    expect(stderr).toContain("A GET request cannot carry a body");
     expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("explains where a credential can come from when none is found", async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValueOnce(err({ kind: "not-logged-in" }));
+    vi.stubEnv("KONTENT_MAPI_KEY", "");
+    const { stderr } = await runCommand(["types", "--envId", ENV_ID]);
+
+    expect(stderr).toContain(
+      "No Management API credential found. Run `kontent login`, or pass --mapiKey <key>, send an Authorization header, or set KONTENT_MAPI_KEY.",
+    );
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("rejects a blank --envId before any request goes out", async () => {
+    const { failure } = await runCommand(["types", "--envId", ""]);
+
+    expect(failure).toContain("--envId must not be empty.");
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 });
