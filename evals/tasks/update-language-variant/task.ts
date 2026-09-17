@@ -158,7 +158,7 @@ export const updateLanguageVariant: EvalTask = {
       relatedElement !== undefined && Array.isArray(relatedElement.value)
         ? relatedElement.value
         : [];
-    const linksWinterReleaseNotes =
+    const hasWinterReleaseNotesLink =
       winterReleaseNotes !== undefined &&
       relatedValue.some(
         (reference) =>
@@ -192,7 +192,7 @@ export const updateLanguageVariant: EvalTask = {
       },
       {
         id: "related-links-winter-release-notes",
-        passed: linksWinterReleaseNotes,
+        passed: hasWinterReleaseNotesLink,
         evidence: `related element references: ${describeList(
           relatedValue.map((reference) => reference.codename ?? reference.id ?? "?"),
         )}`,

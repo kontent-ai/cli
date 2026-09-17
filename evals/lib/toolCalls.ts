@@ -12,12 +12,6 @@ import * as z from "zod/mini";
 import { findResultMessage } from "./messages.js";
 import { AGENT_TOOLS, bashInputSchema, DENIAL_PREFIX, webFetchInputSchema } from "./policy.js";
 
-export const bashOutputSchema = z.object({ stdout: z.string(), stderr: z.string() });
-export const webFetchOutputSchema = z.object({
-  result: z.string(),
-  durationMs: z.number(),
-}) satisfies z.ZodMiniType<Pick<WebFetchOutput, "result" | "durationMs">>;
-
 export type ToolCallTool = "Bash" | "WebFetch";
 
 export type ToolCallOutcome = "ok" | "failed" | "denied" | "no-result";
@@ -161,6 +155,8 @@ const parseToolResult = (
   return tool === "Bash" ? parseBashResult(raw) : parseWebFetchResult(raw);
 };
 
+const bashOutputSchema = z.object({ stdout: z.string(), stderr: z.string() });
+
 const parseBashResult = (raw: RawToolResult): ToolResult => {
   const parsed = bashOutputSchema.safeParse(raw.toolUseResult);
   if (parsed.success) {
@@ -173,6 +169,11 @@ const parseBashResult = (raw: RawToolResult): ToolResult => {
   }
   return { isError: raw.isError, stdout: textContentOf(raw.content), stderr: "", durationMs: null };
 };
+
+const webFetchOutputSchema = z.object({
+  result: z.string(),
+  durationMs: z.number(),
+}) satisfies z.ZodMiniType<Pick<WebFetchOutput, "result" | "durationMs">>;
 
 const parseWebFetchResult = (raw: RawToolResult): ToolResult => {
   const parsed = webFetchOutputSchema.safeParse(raw.toolUseResult);

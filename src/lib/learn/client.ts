@@ -14,8 +14,6 @@ import {
 import pkg from "../../../package.json" with { type: "json" };
 import type { ApiReference } from "./apiReference.js";
 
-export const learnBaseUrl: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };
-
 /** The Learn-MCP service needs no auth, so the client carries no token. */
 export type LearnClient = Readonly<{
   config: SdkConfig;
@@ -68,6 +66,8 @@ export const createLearnQuery = <TPayload extends JsonValue>(
     mapExtraResponseProps: () => ({}),
   });
 };
+
+const learnBaseUrl: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };
 
 const learnSdkInfo: SdkInfo = {
   name: pkg.name,

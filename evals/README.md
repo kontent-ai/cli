@@ -12,10 +12,11 @@ Vitest specs and run as part of `pnpm test` like any other unit test.
 Two tools, declared in `evals/lib/policy.ts` and wired into the SDK options by `evals/lib/agent.ts`,
 enforced by the `PreToolUse` hook via the pure policy reducer in `evals/lib/policy.ts`:
 
-- `Bash`, confined to the task's workspace directory: denied for any command referencing a path
-  outside it.
+- `Bash`, denied for any command referencing a path outside the task's workspace directory. This is
+  a file-access guard, not a sandbox: Bash has full network access, and the agent is trusted with it.
 - `WebFetch`, allowed for `kontent.ai` only (the API reference lives at `kontent.ai/learn/...`), and
-  denied outright for a URL that contains the Management API key.
+  denied outright for a URL that contains the Management API key. The rule exists to measure, not to
+  contain: every fetch is a fallback the CLI's own docs did not cover.
 
 The preamble says nothing about the web or about `kontent docs`: which route the agent takes to the
 API reference is part of what a run records (`docs` and `fetch` counts, and the report's "Web

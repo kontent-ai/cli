@@ -15,7 +15,8 @@ const exitCode = result.status ?? 1;
 const logPath = process.env.EVALS_INVOCATION_LOG;
 if (logPath !== undefined && logPath !== "") {
   const key = process.env.EVALS_MAPI_KEY;
-  const redactedArgs = args.map((arg) => (key !== undefined && arg === key ? "<mapi-key>" : arg));
+  const redactedArgs =
+    key === undefined || key === "" ? args : args.map((arg) => arg.split(key).join("<mapi-key>"));
   appendFileSync(logPath, `${JSON.stringify({ exitCode, args: redactedArgs })}\n`);
 }
 

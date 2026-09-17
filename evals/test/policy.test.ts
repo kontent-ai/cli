@@ -35,6 +35,8 @@ describe("findPathOutsideWorkspace", () => {
     ["cat /Users/someone/.zshrc", "/Users/someone/.zshrc"],
     [`cat ${workspace}/../other/secret`, `${workspace}/../other/secret`],
     ["cat ../secret", "../secret"],
+    ["cd ..", ".."],
+    ["cd foo/..", "foo/.."],
     ["cat /var/folders/ab/other-dir/file", "/var/folders/ab/other-dir/file"],
     ['grep -r key "/Users/someone/src"', '"/Users/someone/src"'],
     ["ls /etc", "/etc"],

@@ -120,8 +120,7 @@ const isPathOutsideWorkspace = (token: string, workspaceDirs: ReadonlyArray<stri
     path.startsWith("~") ||
     path.includes("$HOME") ||
     path.includes(`\${HOME}`) ||
-    path.includes("/../") ||
-    path.startsWith("../")
+    path.split("/").includes("..")
   ) {
     return true;
   }
