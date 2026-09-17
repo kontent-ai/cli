@@ -13,7 +13,7 @@ kontent mapi <endpoint> [options]
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| `<endpoint>` | string | API path, e.g. "types" or "projects/{environment_id}/types" |
+| `<endpoint>` | string | API path under the environment, e.g. "types" or "types/codename/article". --envId is prepended for you; a path starting with "projects/" is sent as is |
 
 ## Options
 
@@ -43,6 +43,9 @@ kontent mapi types -H 'X-Foo: 1' -H 'X-Bar: 2' --envId <id>
 
 # Create a content type from a piped body
 echo '{"name":"Article"}' | kontent mapi types --envId <id> --input -
+
+# Get a content type by codename
+kontent mapi 'types/codename/article' --envId <id>
 ```
 <!-- reference:end -->
 
