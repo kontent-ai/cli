@@ -1,19 +1,19 @@
 import { match } from "ts-pattern";
-import { getAuthenticatedIapiClient } from "../../../core/iapi/authenticatedClient.js";
+import { getAuthenticatedIapiClient } from "../../../../core/iapi/authenticatedClient.js";
 import {
   type BootstrapError,
   type BootstrapParams,
   performBootstrap,
-} from "../../../core/project/bootstrap.js";
-import { supportedProjectTypes } from "../../../core/project/samples.js";
-import { formatAuthError } from "../../../lib/auth/formatAuthError.js";
-import { formatIapiError } from "../../../lib/iapi/formatIapiError.js";
-import { createMapiClient } from "../../../lib/mapi/client.js";
-import { isErr } from "../../../lib/result.js";
-import type { Telemetry } from "../../../lib/telemetry/tracking.js";
-import { intro, note, outro } from "../../../lib/ui/prompts.js";
-import { createLoggerFromArgs, type Logger } from "../../../log.js";
-import type { RegisterCommand } from "../../../types/yargs.js";
+} from "../../../../core/project/bootstrap.js";
+import { supportedProjectTypes } from "../../../../core/project/samples.js";
+import { formatAuthError } from "../../../../lib/auth/formatAuthError.js";
+import { formatIapiError } from "../../../../lib/iapi/formatIapiError.js";
+import { createMapiClient } from "../../../../lib/mapi/client.js";
+import { isErr } from "../../../../lib/result.js";
+import type { Telemetry } from "../../../../lib/telemetry/tracking.js";
+import { intro, note, outro } from "../../../../lib/ui/prompts.js";
+import { createLoggerFromArgs, type Logger } from "../../../../log.js";
+import type { RegisterCommand } from "../../../../types/yargs.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({

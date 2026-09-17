@@ -56,10 +56,13 @@ Each command supports `--help` for its own options.
 <!-- commands:start -->
 | Command | Description |
 | --- | --- |
+| [`kontent docs search <query>`](src/commands/docs/search/README.md) | Search Kontent.ai Learn docs and API reference, ranked by relevance |
+| [`kontent docs endpoint <query>`](src/commands/docs/endpoint/README.md) | Show matching API endpoints: method, URL, parameters, responses, code samples |
+| [`kontent docs object <query>`](src/commands/docs/object/README.md) | Show matching API reference objects and their properties |
 | [`kontent login`](src/commands/login/README.md) | Authenticate with Kontent.ai via Auth0 device flow |
 | [`kontent logout`](src/commands/logout/README.md) | Clear stored authentication tokens |
 | [`kontent mapi <endpoint>`](src/commands/mapi/README.md) | Send an authenticated request to the Management API |
-| [`kontent project sample bootstrap`](src/commands/project/sample/README.md) | Clone a sample app for an environment and wire its .env |
+| [`kontent project sample bootstrap`](src/commands/project/sample/bootstrap/README.md) | Clone a sample app for an environment and wire its .env |
 <!-- commands:end -->
 
 ## Global options

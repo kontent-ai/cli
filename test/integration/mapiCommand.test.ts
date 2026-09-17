@@ -8,7 +8,8 @@ import yargs from "yargs";
 import { register } from "../../src/commands/mapi/request.js";
 import type { MapiRequestParams } from "../../src/core/mapi/request.js";
 import { performRawMapiRequest } from "../../src/core/mapi/request.js";
-import { ok } from "../../src/lib/result.js";
+import { getValidAccessToken } from "../../src/lib/auth/tokenAccess.js";
+import { err, ok } from "../../src/lib/result.js";
 import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/mapi/request.js", () => ({
@@ -72,6 +73,7 @@ describe("kontent mapi argument handling", () => {
   beforeEach(() => {
     process.exitCode = undefined;
     vi.mocked(performRawMapiRequest).mockClear();
+    vi.unstubAllEnvs();
   });
 
   it("keeps -H from swallowing the endpoint positional", async () => {
@@ -122,6 +124,22 @@ describe("kontent mapi argument handling", () => {
     expect(stdout.text()).toBe("");
     expect(stderr.text()).toContain("137 bytes of text/html");
     expect(process.exitCode).toBe(1);
+  });
+
+  it("announces an empty success body on stderr instead of leaving stdout silent", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 204, statusText: "No Content", headers: [], body: null }),
+    );
+    const stdout = captureStream("stdout");
+    const stderr = captureStream("stderr");
+
+    await runCommand(["items/<item-id>/publish", "-X", "PUT", "--envId", ENV_ID]);
+    stdout.restore();
+    stderr.restore();
+
+    expect(stdout.text()).toBe("");
+    expect(stderr.text()).toContain("HTTP 204 No Content");
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("prints a 4xx body on stdout and its diagnosis on stderr", async () => {
@@ -243,6 +261,28 @@ describe("kontent mapi argument handling", () => {
 
     expect(captured.text()).toContain("A GET request cannot carry a body");
     expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("explains where a credential can come from when none is found", async () => {
+    vi.mocked(getValidAccessToken).mockResolvedValueOnce(err({ kind: "not-logged-in" }));
+    vi.stubEnv("KONTENT_MAPI_KEY", "");
+    const captured = captureStream("stderr");
+
+    await runCommand(["types", "--envId", ENV_ID]);
+    captured.restore();
+
+    expect(captured.text()).toContain(
+      "No Management API credential found. Run `kontent login`, or pass --mapiKey <key>, send an Authorization header, or set KONTENT_MAPI_KEY.",
+    );
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("rejects a blank --envId before any request goes out", async () => {
+    const failure = await runCommand(["types", "--envId", ""]);
+
+    expect(failure).toContain("--envId must not be empty.");
     expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 });

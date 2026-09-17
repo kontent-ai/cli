@@ -39,7 +39,8 @@ export const register: RegisterCommand = (sub, deps) =>
         .positional("endpoint", {
           type: "string",
           demandOption: true,
-          describe: 'API path, e.g. "types" or "projects/{environment_id}/types"',
+          describe:
+            'API path under the environment, e.g. "types" or "types/codename/article". --envId is prepended for you; a path starting with "projects/" is sent as is',
         })
         .option("envId", {
           type: "string",
@@ -94,6 +95,14 @@ export const register: RegisterCommand = (sub, deps) =>
         .example(
           'echo \'{"name":"Article"}\' | $0 mapi types --envId <id> --input -',
           "Create a content type from a piped body",
+        )
+        .example("$0 mapi 'types/codename/article' --envId <id>", "Get a content type by codename")
+        .check((args) => (args.envId.trim() === "" ? "--envId must not be empty." : true))
+        .epilogue(
+          "Not sure which endpoint or payload shape to use? Look it up first:\n" +
+            '  kontent docs search "publish a variant"            find the right page\n' +
+            '  kontent docs endpoint "upsert language variant"    method, URL, parameters\n' +
+            '  kontent docs object "rich text element"            object properties',
         ),
     handler: async (args) => runRequest(args, createLoggerFromArgs(args), deps.telemetry),
   });
@@ -116,7 +125,11 @@ const runRequest = async (
   const credential = await resolveMapiCredential(prepared.value.headers, args.mapiKey);
   if (isErr(credential)) {
     tracker.fail(`auth:${credential.error.kind}`);
-    logger.error(formatAuthError(credential.error));
+    logger.error(
+      credential.error.kind === "not-logged-in"
+        ? "No Management API credential found. Run `kontent login`, or pass --mapiKey <key>, send an Authorization header, or set KONTENT_MAPI_KEY."
+        : formatAuthError(credential.error),
+    );
     process.exitCode = 1;
     return;
   }
@@ -144,6 +157,9 @@ const runRequest = async (
   }
   if (presented.droppedBodyWarning !== undefined) {
     logger.warning("standard", presented.droppedBodyWarning);
+  }
+  if (presented.payload === "" && result.value.statusCode < 400) {
+    logger.info("standard", `HTTP ${result.value.statusCode} ${result.value.statusText}`);
   }
 
   if (result.value.statusCode >= 400) {

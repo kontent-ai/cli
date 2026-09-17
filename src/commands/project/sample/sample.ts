@@ -1,7 +1,7 @@
 import chalk from "chalk";
 
 import type { RegisterCommand } from "../../../types/yargs.js";
-import { register as registerBootstrap } from "./bootstrap.js";
+import { register as registerBootstrap } from "./bootstrap/bootstrap.js";
 
 const subcommandsToRegister: ReadonlyArray<RegisterCommand> = [registerBootstrap];
 
