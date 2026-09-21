@@ -4,7 +4,7 @@ import { getEndpointDetails, getObjectDetails, searchDocs } from "../../src/core
 import { createLearnClient } from "../../src/lib/learn/client.js";
 import { createLogger } from "../../src/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
-import { type MapiRoute, mapiTestAdapter } from "../helpers/mapiTestAdapter.js";
+import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
 
 const BASE_URL: BaseUrl = { protocol: "https", host: "learn.test" };
 
@@ -19,8 +19,8 @@ const searchItem = (title: string) => ({
   score: 0.5,
 });
 
-const run = (routes: ReadonlyArray<MapiRoute>) => {
-  const { adapter, requests } = mapiTestAdapter(routes);
+const run = (routes: ReadonlyArray<HttpRoute>) => {
+  const { adapter, requests } = httpTestAdapter(routes);
   return { deps: { logger, client: createLearnClient({ adapter, baseUrl: BASE_URL }) }, requests };
 };
 
@@ -38,13 +38,13 @@ const objectItem = (title: string) => ({
   apiReference: "content_management_api_v2",
 });
 
-const route = (path: RegExp, payload: JsonValue): MapiRoute => ({
+const route = (path: RegExp, payload: JsonValue): HttpRoute => ({
   method: "GET",
   path,
   replies: [{ payload }],
 });
 
-const searchRoute = (payload: JsonValue): MapiRoute => route(/^\/search$/, payload);
+const searchRoute = (payload: JsonValue): HttpRoute => route(/^\/search$/, payload);
 
 describe("docs queries", () => {
   it("sends the trimmed query as the text parameter and unwraps the envelope", async () => {
