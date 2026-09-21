@@ -5,7 +5,7 @@ import { type MapiRequestParams, performRawMapiRequest } from "../../src/core/ma
 import { createMapiRawClient } from "../../src/lib/mapi/raw/client.js";
 import { createLogger } from "../../src/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
-import { type MapiRoute, mapiTestAdapter } from "../helpers/mapiTestAdapter.js";
+import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const BASE_URL = "https://manage.test/v2";
@@ -28,8 +28,8 @@ type RunOptions = Readonly<{
   token?: string | undefined;
 }>;
 
-const run = async (routes: ReadonlyArray<MapiRoute>, options: RunOptions = {}) => {
-  const { adapter, requests } = mapiTestAdapter(routes);
+const run = async (routes: ReadonlyArray<HttpRoute>, options: RunOptions = {}) => {
+  const { adapter, requests } = httpTestAdapter(routes);
   const client = createMapiRawClient({
     // `token: undefined` means an explicitly tokenless client, distinct from omitting it.
     token: "token" in options ? options.token : "secret-token",
@@ -41,7 +41,7 @@ const run = async (routes: ReadonlyArray<MapiRoute>, options: RunOptions = {}) =
   return { result, requests };
 };
 
-const typesRoute: MapiRoute = {
+const typesRoute: HttpRoute = {
   method: "GET",
   path: /\/types$/,
   replies: [{ payload: { types: [] } }],
@@ -177,7 +177,7 @@ describe("performRawMapiRequest", () => {
   it("clamps a Retry-After that asks for longer than the retry limit", async () => {
     vi.useFakeTimers();
     try {
-      const { adapter, requests } = mapiTestAdapter([
+      const { adapter, requests } = httpTestAdapter([
         {
           method: "GET",
           path: /\/types$/,
