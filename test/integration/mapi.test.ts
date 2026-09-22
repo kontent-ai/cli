@@ -83,7 +83,7 @@ describe("performRawMapiRequest", () => {
     expect(contentTypes.map((header) => header.value)).toEqual(["text/plain"]);
   });
 
-  it("adds no Authorization of its own when the client has no token", async () => {
+  it("sends a caller-supplied Authorization header as the only one", async () => {
     const { requests } = await run([typesRoute], {
       token: undefined,
       params: { headers: [{ name: "Authorization", value: "Bearer caller-token" }] },

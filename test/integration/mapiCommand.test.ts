@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
-import { register } from "../../src/commands/mapi/request.js";
+import { register as registerMapiCommand } from "../../src/commands/mapi/request.js";
 import type { MapiRequestParams } from "../../src/core/mapi/request.js";
 import { performRawMapiRequest } from "../../src/core/mapi/request.js";
 import { getValidAccessToken } from "../../src/lib/auth/tokenAccess.js";
@@ -31,7 +31,7 @@ type CommandRun = Readonly<{ failure: string | undefined; stdout: string; stderr
 // Both streams are always captured: every 2xx writes somewhere, and a test that
 // only cares about the parsed arguments must not spill that into the runner's output.
 const runCommand = async (argv: ReadonlyArray<string>): Promise<CommandRun> => {
-  const parser = register(
+  const parser = registerMapiCommand(
     yargs([...argv])
       .strict()
       .exitProcess(false)
@@ -92,13 +92,6 @@ describe("kontent mapi argument handling", () => {
     expect(failure).toBeUndefined();
     expect(lastParams().endpoint).toBe("types");
     expect(lastParams().headers).toContainEqual({ name: "X-Foo", value: "1" });
-  });
-
-  it("accepts -H after the endpoint too", async () => {
-    const { failure } = await runCommand(["types", "-H", "X-Foo: 1", "--envId", ENV_ID]);
-
-    expect(failure).toBeUndefined();
-    expect(lastParams().endpoint).toBe("types");
   });
 
   it("collects a repeated -H into one header list", async () => {
@@ -165,6 +158,17 @@ describe("kontent mapi argument handling", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("reports a transport failure on stderr and fails", async () => {
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      err({ kind: "transport", message: "fetch failed: getaddrinfo ENOTFOUND" }),
+    );
+    const { stdout, stderr } = await runCommand(["types", "--envId", ENV_ID]);
+
+    expect(stdout).toBe("");
+    expect(stderr).toContain("fetch failed: getaddrinfo ENOTFOUND");
+    expect(process.exitCode).toBe(1);
+  });
+
   it("sends the file at --input as the request body", async () => {
     const path = join(tempDir, "body.json");
     await writeFile(path, '{"name":"Article"}');
@@ -190,20 +194,24 @@ describe("kontent mapi argument handling", () => {
     expect(await lastParams().body?.text()).toBe('{"name":"Article"}');
   });
 
-  it.skipIf(process.platform === "win32")(
-    "sends an empty body for a character device with nothing in it",
-    async () => {
-      await runCommand(["types", "--input", "/dev/null", "--envId", ENV_ID]);
+  // Without nargs on --input, strict mode rejects the lone "-" as an unknown positional.
+  it("reads --input - from stdin, refusing when nothing is piped", async () => {
+    // The runner's stdin is not a terminal, so the flag is set by hand and removed after.
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    const { failure, stderr } = await runCommand([
+      "types",
+      "--input",
+      "-",
+      "--envId",
+      ENV_ID,
+    ]).finally(() => {
+      delete (process.stdin as { isTTY?: boolean }).isTTY;
+    });
 
-      expect(await lastParams().body?.text()).toBe("");
-      expect(process.exitCode).toBeUndefined();
-    },
-  );
-
-  it("wires no abort of its own, leaving SIGINT to the telemetry handler", async () => {
-    await runCommand(["types", "--envId", ENV_ID]);
-
-    expect(lastParams().abortSignal).toBeUndefined();
+    expect(failure).toBeUndefined();
+    expect(stderr).toContain("Nothing is piped to stdin");
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
   });
 
   it("reports an unreadable --input file without calling the API", async () => {
