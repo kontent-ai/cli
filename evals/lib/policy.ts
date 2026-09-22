@@ -63,7 +63,7 @@ export const applyToolPolicy = (
 // under a filesystem root that holds user or system data. Bare API paths like
 // `/types` and `/dev/null` stay allowed. False positives (denying something
 // safe) are acceptable; false negatives are not.
-export const findPathOutsideWorkspace = (
+const findPathOutsideWorkspace = (
   command: string,
   workspaceDirs: ReadonlyArray<string>,
 ): Option<string> => {
@@ -72,28 +72,6 @@ export const findPathOutsideWorkspace = (
     .filter((token) => token !== "")
     .find((token) => isPathOutsideWorkspace(token, workspaceDirs));
   return token === undefined ? none : some(token);
-};
-
-// macOS hands out `/var/folders/...` from mkdtemp while `pwd` inside it
-// reports `/private/var/folders/...`; both spellings count as inside.
-export const workspaceDirAliases = (workspaceDir: string): ReadonlyArray<string> =>
-  workspaceDir.startsWith("/private/")
-    ? [workspaceDir, workspaceDir.slice("/private".length)]
-    : [workspaceDir, `/private${workspaceDir}`];
-
-// The host check backs the WebFetch(domain:...) rule, whose subdomain and redirect handling is undocumented.
-export const checkWebFetch = (policy: ToolPolicy, url: string): Result<void, string> => {
-  if (policy.mapiKey !== "" && url.includes(policy.mapiKey)) {
-    return err("url contains the Management API key");
-  }
-  const host = parseHost(url);
-  if (isNone(host)) {
-    return err("url is not a valid http(s) url");
-  }
-  if (!WEB_FETCH_ALLOWED_HOSTS.includes(host.value)) {
-    return err(`host is not allowed: ${host.value}`);
-  }
-  return ok(undefined);
 };
 
 const FILESYSTEM_ROOTS: ReadonlyArray<string> = [
@@ -131,6 +109,28 @@ const isPathOutsideWorkspace = (token: string, workspaceDirs: ReadonlyArray<stri
   );
   const isInsideWorkspace = workspaceDirs.some((dir) => path === dir || path.startsWith(`${dir}/`));
   return isUnderRoot && !isInsideWorkspace;
+};
+
+// macOS hands out `/var/folders/...` from mkdtemp while `pwd` inside it
+// reports `/private/var/folders/...`; both spellings count as inside.
+const workspaceDirAliases = (workspaceDir: string): ReadonlyArray<string> =>
+  workspaceDir.startsWith("/private/")
+    ? [workspaceDir, workspaceDir.slice("/private".length)]
+    : [workspaceDir, `/private${workspaceDir}`];
+
+// The host check backs the WebFetch(domain:...) rule, whose subdomain and redirect handling is undocumented.
+const checkWebFetch = (policy: ToolPolicy, url: string): Result<void, string> => {
+  if (policy.mapiKey !== "" && url.includes(policy.mapiKey)) {
+    return err("url contains the Management API key");
+  }
+  const host = parseHost(url);
+  if (isNone(host)) {
+    return err("url is not a valid http(s) url");
+  }
+  if (!WEB_FETCH_ALLOWED_HOSTS.includes(host.value)) {
+    return err(`host is not allowed: ${host.value}`);
+  }
+  return ok(undefined);
 };
 
 const parseHost = (url: string): Option<string> => {

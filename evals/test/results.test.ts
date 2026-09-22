@@ -42,7 +42,7 @@ describe("writeTaskResult redaction", () => {
     expect(markdown).not.toContain(mapiKey);
   });
 
-  it("leaves the written task files untouched for an empty secret", async () => {
+  it("does not mangle the written task files when the secret is empty", async () => {
     const runDir = await mkdtemp(join(tmpdir(), "kontent-eval-results-"));
     await mkdir(join(runDir, "tasks"));
     const errorMessage = "nothing sensitive here";

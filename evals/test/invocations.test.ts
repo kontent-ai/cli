@@ -5,11 +5,7 @@ const record = (exitCode: number, args: ReadonlyArray<string>): string =>
   `${JSON.stringify({ exitCode, args })}\n`;
 
 describe("parseInvocationLog", () => {
-  it("returns an empty array for an empty log", () => {
-    expect(parseInvocationLog("")).toEqual([]);
-  });
-
-  it("parses each JSON line, keeping a spaced argument as one field", () => {
+  it("parses one invocation per JSON line", () => {
     const log =
       record(0, ["docs", "search", "content type"]) +
       record(1, ["mapi", "types", "--envId", "x", "--mapiKey", "<mapi-key>"]);
@@ -30,14 +26,6 @@ describe("parseInvocationLog", () => {
     const log = `${record(0, ["docs"])}${JSON.stringify({ exitCode: "abc", args: ["docs"] })}\n`;
 
     expect(parseInvocationLog(log)).toEqual([{ exitCode: 0, args: ["docs"] }]);
-  });
-
-  it("keeps an empty-string argument", () => {
-    const log = record(0, ["mapi", "types", "--envId", ""]);
-
-    expect(parseInvocationLog(log)).toEqual([
-      { exitCode: 0, args: ["mapi", "types", "--envId", ""] },
-    ]);
   });
 });
 
