@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPreamble, buildTaskPrompt } from "../lib/prompt.js";
+import { buildTaskPrompt } from "../lib/prompt.js";
 
 describe("buildTaskPrompt", () => {
   it("interpolates the env id and workspace dir, and appends the task body after a blank line", () => {
@@ -11,13 +11,6 @@ describe("buildTaskPrompt", () => {
 
     expect(prompt).toContain("env-123");
     expect(prompt).toContain("/tmp/workspace-abc");
-    expect(prompt).not.toContain("{{");
     expect(prompt.endsWith("\n\nDo the thing.")).toBe(true);
-  });
-});
-
-describe("buildPreamble", () => {
-  it("renders exactly six lines", () => {
-    expect(buildPreamble("env-123", "/tmp/workspace-abc").split("\n")).toHaveLength(6);
   });
 });

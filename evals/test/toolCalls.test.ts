@@ -65,21 +65,7 @@ describe("collectToolCalls", () => {
     expect(calls[0]?.stdout).toBe("");
   });
 
-  it("classifies a call listed only in permission_denials as denied", () => {
-    const calls = collectToolCalls([
-      createAssistantWebFetch("t1", "https://example.com/", "what is the request body shape"),
-      createResultMessage({
-        permissionDenials: [
-          { tool_name: "WebFetch", tool_use_id: "t1", tool_input: { url: "https://example.com/" } },
-        ],
-      }),
-    ]);
-
-    expect(calls[0]?.outcome).toBe("denied");
-    expect(calls[0]?.stderr).toBe("not pre-approved by the permission rules");
-  });
-
-  it("matches denials by tool_use_id, not by url: an earlier ok fetch to the same url stays ok", () => {
+  it("classifies a call listed only in permission_denials as denied, matched by tool_use_id", () => {
     const calls = collectToolCalls([
       createAssistantWebFetch("t1", "https://kontent.ai/learn", "what is the request body shape"),
       createWebFetchResult("t1", { result: "first" }),
@@ -95,8 +81,10 @@ describe("collectToolCalls", () => {
       }),
     ]);
 
+    // The earlier fetch to the same url stays ok: denials are keyed by id, not by url.
     expect(calls[0]?.outcome).toBe("ok");
     expect(calls[1]?.outcome).toBe("denied");
+    expect(calls[1]?.stderr).toBe("not pre-approved by the permission rules");
   });
 
   it("classifies a failed command from is_error", () => {
@@ -130,14 +118,5 @@ describe("collectToolCalls", () => {
 
     expect(calls[0]?.stdout).toBe("first output");
     expect(calls[1]?.stdout).toBe("second output");
-  });
-
-  it("classifies a plain successful call as ok", () => {
-    const calls = collectToolCalls([
-      createAssistantBash("t1", "kontent content-type list"),
-      createBashResult("t1", { stdout: "Article\n", stderr: "" }),
-    ]);
-
-    expect(calls[0]?.outcome).toBe("ok");
   });
 });

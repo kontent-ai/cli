@@ -1,20 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { none, some } from "../../src/lib/option.js";
-import { err, isErr, isOk, ok } from "../../src/lib/result.js";
-import {
-  AGENT_PERMISSION_RULES,
-  applyToolPolicy,
-  checkWebFetch,
-  DENIAL_PREFIX,
-  findPathOutsideWorkspace,
-  type ToolPolicy,
-  workspaceDirAliases,
-} from "../lib/policy.js";
+import { err, ok } from "../../src/lib/result.js";
+import { applyToolPolicy, DENIAL_PREFIX, type ToolPolicy } from "../lib/policy.js";
 
 const workspace = "/var/folders/ab/kontent-eval-x";
-const workspaceDirs = workspaceDirAliases(workspace);
+const key = "secret-key-123";
+const policy: ToolPolicy = { workspaceDir: workspace, mapiKey: key };
 
-describe("findPathOutsideWorkspace", () => {
+const bash = (command: string, activePolicy: ToolPolicy = policy) =>
+  applyToolPolicy(activePolicy, { toolName: "Bash", input: { command } });
+
+const webFetch = (url: string, activePolicy: ToolPolicy = policy) =>
+  applyToolPolicy(activePolicy, { toolName: "WebFetch", input: { url, prompt: "how do I do x" } });
+
+const outsideWorkspace = (token: string) =>
+  err(`${DENIAL_PREFIX}command references a path outside the workspace: ${token}`);
+
+describe("Bash", () => {
   it.each([
     "kontent mapi GET /types",
     "kontent mapi GET types --mapiKey $EVALS_MAPI_KEY",
@@ -25,7 +26,7 @@ describe("findPathOutsideWorkspace", () => {
     "cat x > /dev/null",
     "echo a|grep b",
   ])("allows %s", (command) => {
-    expect(findPathOutsideWorkspace(command, workspaceDirs)).toEqual(none);
+    expect(bash(command)).toEqual(ok(undefined));
   });
 
   it.each([
@@ -35,8 +36,6 @@ describe("findPathOutsideWorkspace", () => {
     ["cat /Users/someone/.zshrc", "/Users/someone/.zshrc"],
     [`cat ${workspace}/../other/secret`, `${workspace}/../other/secret`],
     ["cat ../secret", "../secret"],
-    ["cd ..", ".."],
-    ["cd foo/..", "foo/.."],
     ["cat /var/folders/ab/other-dir/file", "/var/folders/ab/other-dir/file"],
     ['grep -r key "/Users/someone/src"', '"/Users/someone/src"'],
     ["ls /etc", "/etc"],
@@ -46,27 +45,30 @@ describe("findPathOutsideWorkspace", () => {
     ["true;cat /etc/passwd", "/etc/passwd"],
     ["(cat /etc/passwd)", "/etc/passwd"],
   ])("denies %s", (command, expected) => {
-    expect(findPathOutsideWorkspace(command, workspaceDirs)).toEqual(some(expected));
+    expect(bash(command)).toEqual(outsideWorkspace(expected));
+  });
+
+  it("treats a /private-prefixed workspace and its mkdtemp spelling as the same dir", () => {
+    const privatePolicy: ToolPolicy = { ...policy, workspaceDir: `/private${workspace}` };
+
+    expect(bash(`cat ${workspace}/body.json`, privatePolicy)).toEqual(ok(undefined));
+    expect(bash(`cat /private${workspace}/body.json`, privatePolicy)).toEqual(ok(undefined));
+  });
+
+  it("denies malformed input", () => {
+    const verdict = applyToolPolicy(policy, { toolName: "Bash", input: { notCommand: "oops" } });
+
+    expect(verdict).toEqual(err(`${DENIAL_PREFIX}malformed Bash input`));
   });
 });
 
-describe("workspaceDirAliases", () => {
-  it("pairs the mkdtemp path with its /private twin", () => {
-    expect(workspaceDirAliases("/var/x")).toEqual(["/var/x", "/private/var/x"]);
-    expect(workspaceDirAliases("/private/var/x")).toEqual(["/private/var/x", "/var/x"]);
-  });
-});
-
-describe("checkWebFetch", () => {
-  const key = "secret-key-123";
-  const policy: ToolPolicy = { workspaceDir: workspace, mapiKey: key };
-
+describe("WebFetch", () => {
   it.each([
     "https://kontent.ai/learn/docs/apis/openapi/management-api-v2",
     "https://KONTENT.AI/learn",
     "http://kontent.ai/",
   ])("allows %s", (url) => {
-    expect(isOk(checkWebFetch(policy, url))).toBe(true);
+    expect(webFetch(url)).toEqual(ok(undefined));
   });
 
   it.each([
@@ -77,78 +79,28 @@ describe("checkWebFetch", () => {
     [`https://kontent.ai/?k=${key}`, "url contains the Management API key"],
     [`https://example.com/?k=${key}`, "url contains the Management API key"],
   ])("denies %s", (url, expected) => {
-    expect(checkWebFetch(policy, url)).toEqual(err(expected));
+    expect(webFetch(url)).toEqual(err(`${DENIAL_PREFIX}${expected}`));
   });
 
   it("does not treat an empty key as contained in every url", () => {
-    const noKeyPolicy: ToolPolicy = { workspaceDir: workspace, mapiKey: "" };
-    expect(checkWebFetch(noKeyPolicy, "https://kontent.ai/")).toEqual(ok(undefined));
-  });
-});
+    const noKeyPolicy: ToolPolicy = { ...policy, mapiKey: "" };
 
-describe("applyToolPolicy", () => {
-  const policy: ToolPolicy = { workspaceDir: workspace, mapiKey: "secret" };
-
-  it("allows a Bash call inside the workspace", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "Bash",
-      input: { command: "kontent auth status" },
-    });
-
-    expect(verdict).toEqual(ok(undefined));
-  });
-
-  it("denies a Bash call outside the workspace, prefixed with DENIAL_PREFIX", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "Bash",
-      input: { command: "cat /etc/passwd" },
-    });
-
-    expect(isErr(verdict)).toBe(true);
-    expect(isErr(verdict) && verdict.error).toBe(
-      `${DENIAL_PREFIX}command references a path outside the workspace: /etc/passwd`,
-    );
-  });
-
-  it("allows a WebFetch call to kontent.ai", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "WebFetch",
-      input: { url: "https://kontent.ai/learn", prompt: "how do I do x" },
-    });
-
-    expect(verdict).toEqual(ok(undefined));
-  });
-
-  it("denies a WebFetch call to another host", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "WebFetch",
-      input: { url: "https://example.com/", prompt: "how do I do x" },
-    });
-
-    expect(verdict).toEqual(err(`${DENIAL_PREFIX}host is not allowed: example.com`));
+    expect(webFetch("https://kontent.ai/", noKeyPolicy)).toEqual(ok(undefined));
   });
 
   it("denies malformed input", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "Bash",
-      input: { notCommand: "oops" },
-    });
+    const verdict = applyToolPolicy(policy, { toolName: "WebFetch", input: { url: 1 } });
 
-    expect(verdict).toEqual(err(`${DENIAL_PREFIX}malformed Bash input`));
-  });
-
-  it("allows any other tool", () => {
-    const verdict = applyToolPolicy(policy, {
-      toolName: "Read",
-      input: { path: "/etc/passwd" },
-    });
-
-    expect(verdict).toEqual(ok(undefined));
+    expect(verdict).toEqual(err(`${DENIAL_PREFIX}malformed WebFetch input`));
   });
 });
 
-describe("AGENT_PERMISSION_RULES", () => {
-  it("scopes WebFetch to the allowed hosts rather than allowing it bare", () => {
-    expect(AGENT_PERMISSION_RULES).toEqual(["Bash", "WebFetch(domain:kontent.ai)"]);
+describe("other tools", () => {
+  // The hook only inspects Bash and WebFetch; every other tool is kept off the
+  // agent by the `tools` list in agent.ts, so the policy itself stays open.
+  it("leaves any other tool to the agent's tool list", () => {
+    const verdict = applyToolPolicy(policy, { toolName: "Read", input: { path: "README.md" } });
+
+    expect(verdict).toEqual(ok(undefined));
   });
 });

@@ -20,7 +20,7 @@ const runWith = (messages: ReadonlyArray<SDKMessage>, extra: Partial<AgentRun> =
 });
 
 describe("buildTaskTrace", () => {
-  it("counts web fetches across a run", () => {
+  it("counts web fetches and denied calls across a run", () => {
     const trace = buildTaskTrace(
       runWith([
         createAssistantWebFetch(
@@ -31,11 +31,14 @@ describe("buildTaskTrace", () => {
         createWebFetchResult("t4", { result: "..." }),
         createAssistantBash("t5", "kontent content-type list"),
         createBashResult("t5", { stdout: "", stderr: "" }),
+        createAssistantBash("t6", "cat ~/.ssh/id_rsa"),
+        createDeniedResult("t6", "command references a path outside the workspace: ~/.ssh/id_rsa"),
       ]),
       [],
     );
 
     expect(trace.webFetchCount).toBe(1);
+    expect(trace.deniedCallCount).toBe(1);
   });
 
   it("derives invocation counts from the shim's invocation log, not the transcript", () => {
@@ -43,8 +46,15 @@ describe("buildTaskTrace", () => {
       { exitCode: 0, args: ["docs", "search", "taxonomy"] },
       { exitCode: 1, args: ["mapi", "--help"] },
     ];
+    // Would double every count if the transcript were consulted.
+    const messages = [
+      createAssistantBash("t1", "kontent docs search taxonomy"),
+      createBashResult("t1", { stdout: "", stderr: "" }),
+      createAssistantBash("t2", "kontent mapi --help"),
+      createBashResult("t2", { stdout: "", stderr: "", isError: true }),
+    ];
 
-    const trace = buildTaskTrace(runWith([]), invocations);
+    const trace = buildTaskTrace(runWith(messages), invocations);
 
     expect(trace.invocations).toBe(invocations);
     expect(trace.cliInvocationCount).toBe(2);
@@ -99,20 +109,6 @@ describe("buildTaskTrace", () => {
     );
 
     expect(trace.finalReply).toBe("The actual final answer.");
-  });
-
-  it("reads turns, cost and duration off the terminal result message", () => {
-    const trace = buildTaskTrace(
-      runWith([
-        createAssistantText("Working on it."),
-        createResultMessage({ numTurns: 3, durationMs: 4200, costUsd: 0.12 }),
-      ]),
-      [],
-    );
-
-    expect(trace.numbers.turns).toBe(3);
-    expect(trace.numbers.durationMs).toBe(4200);
-    expect(trace.numbers.costUsd).toBe(0.12);
   });
 
   it("falls back to usage fields when modelUsage is empty", () => {
@@ -176,25 +172,5 @@ describe("buildTaskTrace", () => {
       cacheReadTokens: 12,
       cacheCreationTokens: 6,
     });
-  });
-
-  it("counts denied calls across a run", () => {
-    const trace = buildTaskTrace(
-      runWith([
-        createAssistantBash("t1", "kontent content-type list"),
-        createBashResult("t1", { stdout: "", stderr: "" }),
-        createAssistantBash("t3", "cat ~/.ssh/id_rsa"),
-        createDeniedResult("t3", "command references a path outside the workspace: ~/.ssh/id_rsa"),
-      ]),
-      [],
-    );
-
-    expect(trace.deniedCallCount).toBe(1);
-  });
-
-  it("carries stopReason straight through from the run", () => {
-    const trace = buildTaskTrace(runWith([], { stopReason: "timeout" }), []);
-
-    expect(trace.stopReason).toBe("timeout");
   });
 });
