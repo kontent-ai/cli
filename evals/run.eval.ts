@@ -24,7 +24,7 @@ import type { Assertion, TaskId, Verdict } from "./lib/types.js";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const TASK_TIMEOUT_MS = 10 * 60_000;
-const MAX_TURNS = 40;
+const MAX_TURNS = 60;
 
 // Fail loudly at collection time: a broken task graph is a setup error, not
 // something a single `it` should discover mid-run.

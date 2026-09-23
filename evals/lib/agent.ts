@@ -60,6 +60,12 @@ export const runTaskAgent = async (
     if (abortController.signal.aborted) {
       return ok({ messages, stderr: stderrChunks.join(""), stopReason: "timeout" });
     }
+    // Hitting the turn cap is a graded outcome, not a harness failure: the SDK
+    // yields the error_max_turns result and then throws when the subprocess
+    // exits non-zero, so the transcript collected so far is kept.
+    if (deriveStopReason(messages) === "max_turns") {
+      return ok({ messages, stderr: stderrChunks.join(""), stopReason: "max_turns" });
+    }
     return err(`Running the agent failed: ${describeCause(cause)}`);
   } finally {
     clearTimeout(timeoutId);
