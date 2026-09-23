@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import type { AgentRun } from "./agent.js";
 import { AGENT_PERMISSION_RULES, AGENT_TOOLS } from "./policy.js";
@@ -17,6 +18,8 @@ export type RunSummaryHeader = Readonly<{
   permissionRules: ReadonlyArray<string>;
   maxTurns: number;
   cliVersion: string;
+  // The npm spec the CLI was installed from; absent when the run used the local build.
+  cliPackage?: string;
   gitSha: string;
   envId: string;
   preambleHash: string;
@@ -118,6 +121,8 @@ export const writeRunSummary = async (
 export const buildRunHeader = async (
   params: Readonly<{
     repoRoot: string;
+    cliEntry: string;
+    cliPackage: string | undefined;
     model: string;
     envId: string;
     startedAt: string;
@@ -125,7 +130,7 @@ export const buildRunHeader = async (
   }>,
 ): Promise<RunSummaryHeader> => {
   const [cliVersion, gitSha] = await Promise.all([
-    detectCliVersion(params.repoRoot),
+    detectCliVersion(params.cliEntry),
     detectGitSha(params.repoRoot),
   ]);
 
@@ -135,6 +140,7 @@ export const buildRunHeader = async (
     permissionRules: AGENT_PERMISSION_RULES,
     maxTurns: params.maxTurns,
     cliVersion,
+    cliPackage: params.cliPackage,
     gitSha,
     envId: params.envId,
     // Fixed dummy values so the hash tracks the wording only, not the per-run env id or workspace dir.
@@ -147,15 +153,16 @@ export const buildRunHeader = async (
 const redactSecret = (text: string, secret: string): string =>
   secret === "" ? text : text.split(secret).join("[REDACTED]");
 
-// Reads dist/index.mjs --version rather than package.json directly, so the
-// recorded version is what the agent actually ran against; falls back to
-// package.json only if the build is somehow unreadable.
-const detectCliVersion = async (repoRoot: string): Promise<string> => {
+// Runs the entry with --version rather than reading package.json directly, so
+// the recorded version is what the agent actually ran against; falls back to
+// the package.json one level above the entry's dist/ folder, true for both the
+// local build and an installed package, only if the entry is somehow unreadable.
+const detectCliVersion = async (cliEntry: string): Promise<string> => {
   try {
-    const { stdout } = await execFileAsync("node", [`${repoRoot}/dist/index.mjs`, "--version"]);
+    const { stdout } = await execFileAsync("node", [cliEntry, "--version"]);
     return stdout.trim();
   } catch {
-    const raw = await readFile(`${repoRoot}/package.json`, "utf8");
+    const raw = await readFile(join(dirname(cliEntry), "..", "package.json"), "utf8");
     return (JSON.parse(raw) as { version?: string }).version ?? "unknown";
   }
 };

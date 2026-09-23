@@ -118,6 +118,8 @@ describe.sequential("evals", () => {
 afterAll(async () => {
   const header = await buildRunHeader({
     repoRoot,
+    cliEntry: evalsContext.cliEntry,
+    cliPackage: evalsContext.cliPackage,
     model: evalsContext.model,
     envId: evalsContext.envId,
     startedAt,

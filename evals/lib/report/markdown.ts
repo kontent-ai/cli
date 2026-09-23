@@ -141,9 +141,12 @@ const renderDenied = (toolCalls: ReadonlyArray<ToolCall>): ReadonlyArray<string>
 
 const renderHeader = (header: RunSummaryHeader): string =>
   `# Eval run: ${header.model} @ ${header.envId} (${header.startedAt})\n\n` +
-  `cli ${header.cliVersion} | git ${header.gitSha} | tools ${header.tools.join(", ")} | ` +
+  `cli ${header.cliVersion}${renderCliPackage(header.cliPackage)} | git ${header.gitSha} | tools ${header.tools.join(", ")} | ` +
   `rules ${header.permissionRules.join(", ")} | max turns ${header.maxTurns} | ` +
   `preamble ${header.preambleHash}`;
+
+const renderCliPackage = (cliPackage: string | undefined): string =>
+  cliPackage === undefined ? "" : ` (${cliPackage})`;
 
 const renderTable = (rows: ReadonlyArray<RunSummaryRow>): string =>
   [

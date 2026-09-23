@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +15,9 @@ declare module "vitest" {
     evals: Readonly<{
       envId: string;
       cliBinDir: string;
+      cliEntry: string;
+      // The EVALS_CLI_PACKAGE npm spec; undefined when the run uses the local build.
+      cliPackage: string | undefined;
       runDir: string;
       model: string;
       mapiKey: string;
@@ -25,7 +28,7 @@ declare module "vitest" {
 const execFileAsync = promisify(execFile);
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
-// Runs once before evals/run.eval.ts: builds the CLI, clones the eval
+// Runs once before evals/run.eval.ts: builds (or installs) the CLI, clones the eval
 // environment, and hands both to the test file via `inject("evals")`.
 // Teardown deletes the clone unless EVALS_KEEP_ENV=1.
 export const setup = async ({ provide }: TestProject): Promise<() => Promise<void>> => {
@@ -36,10 +39,10 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
     throw new Error(config.error);
   }
 
-  process.stderr.write("Building the CLI...\n");
-  await execFileAsync("pnpm", ["build"], { cwd: repoRoot });
-
-  const cliBinDir = await createCliShim();
+  const cliPackage = readCliPackage();
+  const cliEntry =
+    cliPackage === undefined ? await buildLocalCli() : await installCliPackage(cliPackage);
+  const cliBinDir = await createCliShim(cliEntry);
   const model = readModel();
   const runDir = await createRunDirectory(join(repoRoot, "evals", "results"), model);
 
@@ -53,6 +56,8 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
     provide("evals", {
       envId: environment.envId,
       cliBinDir,
+      cliEntry,
+      cliPackage,
       runDir,
       model,
       mapiKey: config.value.mapiKey,
@@ -88,6 +93,37 @@ const failIfApiKeyIsSet = (): void => {
   }
 };
 
+const readCliPackage = (): string | undefined => {
+  const spec = process.env.EVALS_CLI_PACKAGE;
+  return spec === undefined || spec === "" ? undefined : spec;
+};
+
+const buildLocalCli = async (): Promise<string> => {
+  process.stderr.write("Building the CLI...\n");
+  await execFileAsync("pnpm", ["build"], { cwd: repoRoot });
+  return join(repoRoot, "dist", "index.mjs");
+};
+
+// Fixed and wiped at the start of each run, not in teardown: Vitest exits on
+// Ctrl+C without running teardown, so a per-run dir would leak a full install
+// every time. Outside the repo so that a dependency the package forgot to
+// declare cannot resolve from the repo's own node_modules.
+const cliInstallDir = join(tmpdir(), "kontent-evals-cli");
+
+const installCliPackage = async (spec: string): Promise<string> => {
+  process.stderr.write(`Installing ${spec} into ${cliInstallDir}...\n`);
+  await rm(cliInstallDir, { recursive: true, force: true });
+  await execFileAsync("npm", [
+    "install",
+    "--prefix",
+    cliInstallDir,
+    "--no-audit",
+    "--no-fund",
+    spec,
+  ]);
+  return realpath(join(cliInstallDir, "node_modules", ".bin", "kontent"));
+};
+
 const readModel = (): string => {
   const model = process.env.EVALS_MODEL;
   return model === undefined || model === "" ? "sonnet" : model;
@@ -95,18 +131,19 @@ const readModel = (): string => {
 
 // Creates a temp dir under the OS temp dir holding one executable bash script
 // named `kontent`. evals/lib/agent.ts prepends this dir to the agent's PATH,
-// so `kontent` resolves to the build `pnpm build` just produced above, never
-// a stale global install. The script defers to evals/shim.ts, which runs the
-// built CLI and, when $EVALS_INVOCATION_LOG is set, also writes the
-// invocation log (see evals/lib/invocations.ts). Bash-only, so no Windows.
-// The temp dir is not cleaned up.
-const createCliShim = async (): Promise<string> => {
+// so `kontent` resolves to `cliEntry`, never a stale global install. The
+// script defers to evals/shim.ts, which runs the entry and, when
+// $EVALS_INVOCATION_LOG is set, also writes the invocation log (see
+// evals/lib/invocations.ts). The entry travels as the shim's first argument
+// because the agent's env allowlist would drop an env var. Bash-only, so no
+// Windows. The temp dir is not cleaned up.
+const createCliShim = async (cliEntry: string): Promise<string> => {
   const binDir = await mkdtemp(join(tmpdir(), "kontent-evals-bin-"));
   const shimPath = join(binDir, "kontent");
   await writeFile(
     shimPath,
     `#!/usr/bin/env bash
-exec node "${join(repoRoot, "evals", "shim.ts")}" "$@"
+exec node "${join(repoRoot, "evals", "shim.ts")}" "${cliEntry}" "$@"
 `,
   );
   await chmod(shimPath, 0o755);

@@ -36,24 +36,27 @@ fetches" section). Every fetch is a place where the CLI's own docs did not carry
 EVALS_MODEL=sonnet pnpm evals:run
 ```
 
-`globalSetup.ts` builds the CLI, clones `EVALS_SOURCE_ENV_ID`, and hands the environment id and the
+`globalSetup.ts` builds the CLI (or installs it, see `EVALS_CLI_PACKAGE`), clones `EVALS_SOURCE_ENV_ID`, and hands the environment id and the
 built CLI's bin directory to the test file. `evals/run.eval.ts` then runs every task exported from
 `evals/lib/registry.ts`, in dependency order, sequentially, against that one environment: if any of
 a task's parents did not PASS, the task is recorded BLOCKED and no agent is spawned for it. Teardown
 deletes the cloned environment unless you keep it (see below).
 
-### Knobs (environment variables)
+### Environment variables
 
 - `EVALS_MODEL` - model passed to the Agent SDK. Default `sonnet`.
 - `EVALS_KEEP_ENV=1` - keep the cloned environment instead of deleting it at the end.
 - `EVALS_ALLOW_API_KEY=1` - run even with `ANTHROPIC_API_KEY` set.
+- `EVALS_CLI_PACKAGE` - npm package to evaluate instead of the local build, e.g.
+  `@kontent-ai/cli@next` or `@kontent-ai/cli@0.10.0-beta.1`. Runs
+  `npm install` into `$TMPDIR/kontent-evals-cli`, wiped at the start of each run.
 
 ## Output
 
 Each run writes to `evals/results/<YYYY-MM-DD>-<HHMM>-<model>/` (git-ignored; date and time are UTC,
 taken at the start of the run):
 
-- `run.json` - header (model, tools, permission rules, max turns, CLI version, git sha, environment
+- `run.json` - header (model, tools, permission rules, max turns, CLI version, CLI package when set, git sha, environment
   id, preamble hash, timing) and one row per task (verdict, turns, tool call, failed, denied, help,
   docs and fetch counts, cost, duration, stop reason).
 - `report.md` - the same summary as a table, plus a friction section (every failed call, every
