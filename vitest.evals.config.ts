@@ -1,13 +1,21 @@
 import { defineConfig } from "vitest/config";
 
-// Mirrors vitest.e2e.config.ts: local runs read EVALS_*/E2E_*-style gate
-// variables from .env, real env vars (e.g. in CI) take precedence, and a
-// missing .env is fine as long as the shell provides them - globalSetup.ts
-// fails the run when they are missing everywhere.
-try {
-  process.loadEnvFile();
-} catch {
-  // no .env file
+// Local runs read EVALS_* variables from one file: EVALS_ENV_FILE when set,
+// otherwise .env. A variable already set in the shell is never overwritten. The
+// two files never mix, so a key missing from EVALS_ENV_FILE fails the run in
+// globalSetup.ts instead of silently targeting .env's environment.
+const envFile = process.env.EVALS_ENV_FILE;
+if (envFile !== undefined && envFile !== "") {
+  // Not caught: a mistyped file name must not fall back to .env's environment.
+  process.loadEnvFile(envFile);
+  process.stderr.write(`Loaded ${envFile}\n`);
+} else {
+  try {
+    process.loadEnvFile();
+    process.stderr.write("Loaded .env\n");
+  } catch {
+    // no .env file
+  }
 }
 
 export default defineConfig({

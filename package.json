@@ -31,6 +31,7 @@
     "dev": "tsdown --watch",
     "docs:generate": "tsx scripts/generateCommandDocs.ts",
     "evals:run": "vitest run --config vitest.evals.config.ts",
+    "evals:run:release": "EVALS_ENV_FILE=.env.evals.release vitest run --config vitest.evals.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "pnpm build && vitest run --config vitest.e2e.config.ts",

@@ -4,7 +4,8 @@ coverage/
 .DS_Store
 *.log
 .env
-.env.local
+.env.*
+!.env.template
 
 # Local sample-app clones created by `kontent project bootstrap`
 my-kickstart/

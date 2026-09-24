@@ -50,6 +50,11 @@ deletes the cloned environment unless you keep it (see below).
 - `EVALS_CLI_PACKAGE` - npm package to evaluate instead of the local build, e.g.
   `@kontent-ai/cli@next` or `@kontent-ai/cli@0.10.0-beta.1`. Runs
   `npm install` into `$TMPDIR/kontent-evals-cli`, wiped at the start of each run.
+- `EVALS_ENV_FILE` - env file loaded instead of `.env`; the shell's values win over it. `.env` is
+  not read at all, so a key missing from the file fails the run. The run also fails if the file
+  is missing. `pnpm evals:run:release` sets it to `.env.evals.release`, meant for evaluating a
+  published package against kontent.ai (`KONTENT_URL=kontent.ai`, that environment's
+  `EVALS_SOURCE_ENV_ID` and `EVALS_MAPI_KEY`, `EVALS_CLI_PACKAGE`).
 
 ## Output
 

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { TestProject } from "vitest/node";
+import { kontentManagementUrl } from "../src/lib/config/kontentUrl.js";
 import { isErr } from "../src/lib/result.js";
 import { cloneTestEnvironment, deleteTestEnvironment } from "../test/helpers/environment.js";
 import { requireEvalsConfig } from "./lib/config.js";
@@ -43,6 +44,7 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
   const cliEntry =
     cliPackage === undefined ? await buildLocalCli() : await installCliPackage(cliPackage);
   const cliBinDir = await createCliShim(cliEntry);
+  process.stderr.write(`Target: ${kontentManagementUrl()} | CLI: ${cliPackage ?? "local build"}\n`);
   const model = readModel();
   const runDir = await createRunDirectory(join(repoRoot, "evals", "results"), model);
 

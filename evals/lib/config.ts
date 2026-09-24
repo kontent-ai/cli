@@ -20,4 +20,4 @@ export const requireEvalsConfig = (): Result<EvalsConfig, string> => {
 
 const describeMissing = (missing: ReadonlyArray<string>): string =>
   `Missing eval environment variables: ${missing.join(", ")}. ` +
-  "Export them in the shell that launches the eval run, or set them in .env.";
+  "Export them in the shell that launches the eval run, or set them in .env (or the file named by EVALS_ENV_FILE).";
