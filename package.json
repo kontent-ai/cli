@@ -65,14 +65,14 @@
     "tsdown": "^0.21.10",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@amplitude/analytics-node": "^1.5.59",
     "@clack/prompts": "^1.2.0",
     "@kontent-ai/core-sdk": "12.0.0-preview.43",
-    "@kontent-ai/core-sdk-v10": "npm:@kontent-ai/core-sdk@10.12.8",
-    "@kontent-ai/management-sdk": "^8.5.4",
+    "@kontent-ai/core-sdk-v10": "npm:@kontent-ai/core-sdk@10.12.11",
+    "@kontent-ai/management-sdk": "^8.5.7",
     "@napi-rs/keyring": "^1.2.0",
     "chalk": "^5.6.2",
     "ci-info": "^4.4.0",
@@ -81,6 +81,6 @@
     "openid-client": "^6.8.4",
     "ts-pattern": "^5.9.0",
     "yargs": "^18.1.0",
-    "zod": "^4.0.0"
+    "zod": "^4.6.5"
   }
 }
