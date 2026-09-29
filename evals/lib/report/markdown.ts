@@ -140,10 +140,13 @@ const renderDenied = (toolCalls: ReadonlyArray<ToolCall>): ReadonlyArray<string>
 };
 
 const renderHeader = (header: RunSummaryHeader): string =>
-  `# Eval run: ${header.model} @ ${header.envId} (${header.startedAt})\n\n` +
+  `# Eval run: ${header.model}${renderResolvedModels(header.resolvedModels)} @ ${header.envId} (${header.startedAt})\n\n` +
   `cli ${header.cliVersion}${renderCliPackage(header.cliPackage)} | git ${header.gitSha} | tools ${header.tools.join(", ")} | ` +
   `rules ${header.permissionRules.join(", ")} | max turns ${header.maxTurns} | ` +
   `preamble ${header.preambleHash}`;
+
+const renderResolvedModels = (models: ReadonlyArray<string>): string =>
+  models.length === 0 ? "" : ` (${models.join(", ")})`;
 
 const renderCliPackage = (cliPackage: string | undefined): string =>
   cliPackage === undefined ? "" : ` (${cliPackage})`;

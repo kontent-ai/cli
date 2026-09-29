@@ -86,6 +86,7 @@ const trace: TaskTrace = {
   docsLookupCount: 0,
   webFetchCount: 1,
   deniedCallCount: 1,
+  models: ["claude-opus-5-5"],
 };
 
 const assertions: ReadonlyArray<Assertion> = [
@@ -111,6 +112,7 @@ describe("renderRunReport", () => {
   const summary: RunSummary = {
     header: {
       model: "opus",
+      resolvedModels: ["claude-opus-5-5"],
       tools: ["Bash", "WebFetch"],
       permissionRules: ["Bash", "WebFetch(domain:kontent.ai)"],
       maxTurns: 40,
@@ -138,6 +140,7 @@ describe("renderRunReport", () => {
         outputTokens: 3000,
         durationMs: 90_000,
         stopReason: "completed",
+        models: ["claude-opus-5-5"],
       },
     ],
   };

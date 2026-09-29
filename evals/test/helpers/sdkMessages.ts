@@ -9,7 +9,7 @@ import { DENIAL_PREFIX } from "../../lib/policy.js";
 export const createAssistantText = (text: string): SDKAssistantMessage =>
   ({
     type: "assistant",
-    message: { content: [{ type: "text", text }] },
+    message: { model: "claude-test", content: [{ type: "text", text }] },
     parent_tool_use_id: null,
   }) as unknown as SDKAssistantMessage;
 
@@ -17,6 +17,7 @@ export const createAssistantBash = (toolUseId: string, command: string): SDKAssi
   ({
     type: "assistant",
     message: {
+      model: "claude-test",
       content: [{ type: "tool_use", id: toolUseId, name: "Bash", input: { command } }],
     },
     parent_tool_use_id: null,
@@ -30,6 +31,7 @@ export const createAssistantWebFetch = (
   ({
     type: "assistant",
     message: {
+      model: "claude-test",
       content: [{ type: "tool_use", id: toolUseId, name: "WebFetch", input: { url, prompt } }],
     },
     parent_tool_use_id: null,

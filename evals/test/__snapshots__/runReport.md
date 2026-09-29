@@ -1,4 +1,4 @@
-# Eval run: opus @ env-1 (2026-09-10T00:00:00.000Z)
+# Eval run: opus (claude-opus-5-5) @ env-1 (2026-09-10T00:00:00.000Z)
 
 cli 0.9.2 | git abc1234 | tools Bash, WebFetch | rules Bash, WebFetch(domain:kontent.ai) | max turns 40 | preamble deadbeef1234
 

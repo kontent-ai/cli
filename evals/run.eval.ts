@@ -118,17 +118,17 @@ describe.sequential("evals", () => {
 });
 
 afterAll(async () => {
+  const rows = outcomes.map(toSummaryRow);
   const header = await buildRunHeader({
     repoRoot,
     cliEntry: evalsContext.cliEntry,
     cliPackage: evalsContext.cliPackage,
     model: evalsContext.model,
+    resolvedModels: [...new Set(rows.flatMap((row) => row.models))],
     envId: evalsContext.envId,
     startedAt,
     maxTurns: MAX_TURNS,
   });
-
-  const rows = outcomes.map(toSummaryRow);
   const traces = outcomes.map(({ id, trace }) => ({ id, trace }));
 
   await writeRunSummary(evalsContext.runDir, { header, rows }, traces, evalsContext.mapiKey);
@@ -190,4 +190,5 @@ const toSummaryRow = ({ id, verdict, trace }: TaskOutcome): RunSummaryRow => ({
   outputTokens: trace.numbers.outputTokens,
   durationMs: trace.numbers.durationMs,
   stopReason: trace.stopReason,
+  models: trace.models,
 });
