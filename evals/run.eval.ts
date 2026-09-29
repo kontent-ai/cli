@@ -1,4 +1,4 @@
-import { mkdtemp, readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +58,7 @@ describe.sequential("evals", () => {
 
         const workspaceDir = await mkdtemp(join(tmpdir(), `kontent-eval-${task.id}-`));
         const configDir = await mkdtemp(join(tmpdir(), `kontent-eval-${task.id}-config-`));
+        await cp(evalsContext.configTemplateDir, configDir, { recursive: true });
         const prompt = buildTaskPrompt({
           workspaceDir,
           taskPrompt: task.prompt,
