@@ -39,6 +39,7 @@ export type TaskTrace = Readonly<{
   docsLookupCount: number;
   webFetchCount: number;
   deniedCallCount: number;
+  models: ReadonlyArray<string>;
 }>;
 
 export const buildTaskTrace = (
@@ -58,6 +59,7 @@ export const buildTaskTrace = (
     ...countInvocations(invocations),
     webFetchCount: toolCalls.filter((call) => call.tool === "WebFetch").length,
     deniedCallCount: toolCalls.filter((call) => call.outcome === "denied").length,
+    models: collectModels(run.messages),
   };
 };
 
@@ -142,3 +144,16 @@ const sumModelUsage = (usages: ReadonlyArray<ModelUsage>): typeof emptyTokenTota
     }),
     emptyTokenTotals,
   );
+
+// Every main-loop API response names the model that produced it, so a mid-run
+// fallback shows up here, unlike the alias the run was started with.
+const collectModels = (messages: ReadonlyArray<SDKMessage>): ReadonlyArray<string> => [
+  ...new Set(
+    messages
+      .filter(
+        (message): message is SDKAssistantMessage =>
+          message.type === "assistant" && message.parent_tool_use_id === null,
+      )
+      .map((message) => message.message.model),
+  ),
+];

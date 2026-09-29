@@ -14,6 +14,8 @@ const execFileAsync = promisify(execFile);
 
 export type RunSummaryHeader = Readonly<{
   model: string;
+  // What the `model` alias resolved to across every task; more than one means a switch or fallback.
+  resolvedModels: ReadonlyArray<string>;
   tools: ReadonlyArray<string>;
   permissionRules: ReadonlyArray<string>;
   maxTurns: number;
@@ -43,6 +45,7 @@ export type RunSummaryRow = Readonly<{
   outputTokens: number;
   durationMs: number;
   stopReason: string;
+  models: ReadonlyArray<string>;
 }>;
 
 export type RunSummary = Readonly<{
@@ -124,6 +127,7 @@ export const buildRunHeader = async (
     cliEntry: string;
     cliPackage: string | undefined;
     model: string;
+    resolvedModels: ReadonlyArray<string>;
     envId: string;
     startedAt: string;
     maxTurns: number;
@@ -136,6 +140,7 @@ export const buildRunHeader = async (
 
   return {
     model: params.model,
+    resolvedModels: params.resolvedModels,
     tools: AGENT_TOOLS,
     permissionRules: AGENT_PERMISSION_RULES,
     maxTurns: params.maxTurns,
