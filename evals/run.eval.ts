@@ -57,8 +57,8 @@ describe.sequential("evals", () => {
         }
 
         const workspaceDir = await mkdtemp(join(tmpdir(), `kontent-eval-${task.id}-`));
+        const configDir = await mkdtemp(join(tmpdir(), `kontent-eval-${task.id}-config-`));
         const prompt = buildTaskPrompt({
-          envId: evalsContext.envId,
           workspaceDir,
           taskPrompt: task.prompt,
         });
@@ -70,6 +70,7 @@ describe.sequential("evals", () => {
             model: evalsContext.model,
             workspaceDir,
             envId: evalsContext.envId,
+            configDir,
             mapiKey: evalsContext.mapiKey,
             cliBinDir: evalsContext.cliBinDir,
             invocationLogPath,

@@ -5,6 +5,7 @@ import { blob } from "node:stream/consumers";
 import { isatty } from "node:tty";
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
+import { type ResolvedEnvId, resolveEnvId } from "../../core/environment/resolve.js";
 import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
@@ -12,6 +13,7 @@ import { errorMessage } from "../../lib/error.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { parseMethod } from "../../lib/mapi/raw/method.js";
+import { isNone } from "../../lib/option.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
@@ -21,7 +23,7 @@ import { presentResponse } from "./presentResponse.js";
 type RequestArgs = LogOptions &
   Readonly<{
     endpoint: string;
-    envId: string;
+    envId?: string | undefined;
     mapiKey?: string | undefined;
     method?: string | undefined;
     header?: ReadonlyArray<string> | undefined;
@@ -40,12 +42,12 @@ export const register: RegisterCommand = (sub, deps) =>
           type: "string",
           demandOption: true,
           describe:
-            'API path under the environment, e.g. "types" or "types/codename/article". --envId is prepended for you; a path starting with "projects/" is sent as is',
+            'API path under the environment, e.g. "types" or "types/codename/article". The environment ID is prepended for you; a path starting with "projects/" is sent as is',
         })
         .option("envId", {
           type: "string",
-          demandOption: true,
-          describe: "Environment ID (Guid)",
+          describe:
+            "Environment ID (Guid). Falls back to the default set by `kontent environment use`",
         })
         .option("mapiKey", {
           type: "string",
@@ -97,7 +99,7 @@ export const register: RegisterCommand = (sub, deps) =>
           "Create a content type from a piped body",
         )
         .example("$0 mapi 'types/codename/article' --envId <id>", "Get a content type by codename")
-        .check((args) => (args.envId.trim() === "" ? "--envId must not be empty." : true))
+        .check((args) => (args.envId?.trim() === "" ? "--envId must not be empty." : true))
         .epilogue(
           "Not sure which endpoint or payload shape to use? Look it up first:\n" +
             '  kontent docs search "publish a variant"                                           find the right page\n' +
@@ -113,6 +115,17 @@ const runRequest = async (
   telemetry: Telemetry,
 ): Promise<void> => {
   const tracker = telemetry.startCommandTracking("mapi", logger);
+
+  const resolvedEnv = await resolveEnvId(args.envId, { logger });
+  if (isNone(resolvedEnv)) {
+    tracker.fail("missing-env-id");
+    logger.error(
+      "No environment ID. Pass --envId <id>, or set a default with `kontent environment use <id>`.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const env = resolvedEnv.value;
 
   const prepared = await prepareRequest(args);
   if (isErr(prepared)) {
@@ -139,7 +152,7 @@ const runRequest = async (
     {
       ...prepared.value,
       endpoint: args.endpoint,
-      envId: args.envId,
+      envId: env.envId,
     },
     { logger, client: createMapiRawClient({ token, logger }) },
   );
@@ -167,7 +180,7 @@ const runRequest = async (
       "status-code": result.value.statusCode,
       "auth-source": source,
     });
-    logger.error(formatFailure(result.value, source));
+    logger.error(formatFailure(result.value, { authSource: source, env }));
     process.exitCode = 1;
     return;
   }
@@ -303,18 +316,24 @@ const unreadable =
     message: `Failed to read ${label}: ${errorMessage(cause)}`,
   });
 
-const formatFailure = (response: MapiResponse, source: AuthSource): string => {
+type FailureContext = Readonly<{ authSource: AuthSource; env: ResolvedEnvId }>;
+
+const formatFailure = (response: MapiResponse, context: FailureContext): string => {
   const summary = `HTTP ${response.statusCode} ${response.statusText}`;
 
-  if (response.statusCode !== 401) {
-    return summary;
-  }
+  return match(response.statusCode)
+    .with(401, () => `${summary}\n${formatCredentialHint(context.authSource)}`)
+    .with(403, () =>
+      context.env.source === "stored"
+        ? `${summary}\nUsed the stored default environment ${context.env.envId}. If that's the wrong one, change it with \`kontent environment use <id>\`, or pass --envId <id> for this call only.`
+        : summary,
+    )
+    .otherwise(() => summary);
+};
 
-  const hint = match(source)
+const formatCredentialHint = (source: AuthSource): string =>
+  match(source)
     .with("header", () => "Check the Authorization header you supplied.")
     .with("mapi-key", () => "Check your Management API key.")
     .with("login", () => "Run `kontent login` to sign in again.")
     .exhaustive();
-
-  return `${summary}\n${hint}`;
-};

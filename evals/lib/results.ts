@@ -143,8 +143,8 @@ export const buildRunHeader = async (
     cliPackage: params.cliPackage,
     gitSha,
     envId: params.envId,
-    // Fixed dummy values so the hash tracks the wording only, not the per-run env id or workspace dir.
-    preambleHash: hashPreamble(buildPreamble("{{ENV_ID}}", "{{WORKSPACE_DIR}}")),
+    // A fixed dummy value so the hash tracks the wording only, not the per-task workspace dir.
+    preambleHash: hashPreamble(buildPreamble("{{WORKSPACE_DIR}}")),
     startedAt: params.startedAt,
     finishedAt: new Date().toISOString(),
   };

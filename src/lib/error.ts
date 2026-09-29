@@ -20,6 +20,13 @@ export const mapiErrorMessage = (cause: unknown): string => {
   );
 };
 
+// The SDK wraps an HTTP failure only when its body carries a MAPI error code or request id;
+// otherwise it rethrows the axios error itself, which still holds the response status.
+export const mapiErrorStatus = (cause: unknown): number | undefined =>
+  requestInfo(
+    cause instanceof SharedModels.ContentManagementBaseKontentError ? cause.originalError : cause,
+  ).status;
+
 // undici reports every transport failure as a bare "fetch failed" and puts the
 // reason (ENOTFOUND, ECONNREFUSED, a TLS failure) in `cause`, so the message the
 // user can act on is always one or more links down the chain.

@@ -10,10 +10,11 @@ export const performLogout = async (logger: Logger): Promise<Result<void, AuthEr
   if (isErr(cleared)) {
     return err(cleared.error);
   }
-  // Drop the cached userId so telemetry stops identifying the previous user.
-  const clearedUserId = await writeCliConfig({ userId: undefined });
-  if (isErr(clearedUserId)) {
-    logger.warning("standard", `Could not clear cached userId: ${clearedUserId.error}`);
+  // Drop what belongs to the previous user: the userId telemetry identifies them by,
+  // and the default environment they selected, which the next account may not reach.
+  const clearedUserData = await writeCliConfig({ userId: undefined, envId: undefined });
+  if (isErr(clearedUserData)) {
+    logger.warning("standard", `Could not clear cached user data: ${clearedUserData.error}`);
   }
   return ok(undefined);
 };
