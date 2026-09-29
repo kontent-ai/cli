@@ -1,12 +1,12 @@
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { TestProject } from "vitest/node";
 import { kontentManagementUrl } from "../src/lib/config/kontentUrl.js";
-import { isErr } from "../src/lib/result.js";
+import { isErr, tryAsync } from "../src/lib/result.js";
 import { cloneTestEnvironment, deleteTestEnvironment } from "../test/helpers/environment.js";
 import { requireEvalsConfig } from "./lib/config.js";
 import { createRunDirectory } from "./lib/results.js";
@@ -20,6 +20,8 @@ declare module "vitest" {
       // The EVALS_CLI_PACKAGE npm spec; undefined when the run uses the local build.
       cliPackage: string | undefined;
       runDir: string;
+      // A CLI config dir seeded with envId; each task runs on its own copy.
+      configTemplateDir: string;
       model: string;
       mapiKey: string;
     }>;
@@ -55,12 +57,20 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
   // Anything past this point that throws must still delete the clone: there
   // is no returned teardown yet for Vitest to call on our behalf.
   try {
+    const configTemplateDir = await seedConfigTemplate(environment.envId);
+    await probeDefaultEnvironment({
+      cliEntry,
+      cliPackage,
+      configTemplateDir,
+      envId: environment.envId,
+    });
     provide("evals", {
       envId: environment.envId,
       cliBinDir,
       cliEntry,
       cliPackage,
       runDir,
+      configTemplateDir,
       model,
       mapiKey: config.value.mapiKey,
     });
@@ -150,4 +160,52 @@ exec node "${join(repoRoot, "evals", "shim.ts")}" "${cliEntry}" "$@"
   );
   await chmod(shimPath, 0o755);
   return binDir;
+};
+
+// Written directly rather than through `kontent environment use`: `use` would verify the id
+// with the operator's machine-wide keychain login, which the harness must not depend on. The
+// probe below proves the CLI under test reads it. The path mirrors getCliConfigPath.
+const seedConfigTemplate = async (envId: string): Promise<string> => {
+  const templateDir = await mkdtemp(join(tmpdir(), "kontent-evals-config-"));
+  const configPath = join(templateDir, "kontent", "cli", "config.json");
+  const config = { envId, telemetryNoticeShown: true, telemetryEnabled: false };
+  await mkdir(dirname(configPath), { recursive: true });
+  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  return templateDir;
+};
+
+// Runs the entry directly rather than through the shim, so the probe stays out of the
+// invocation logs. An explicit env, never a spread of process.env, so harness credentials
+// cannot leak into the CLI.
+const probeDefaultEnvironment = async (
+  params: Readonly<{
+    cliEntry: string;
+    cliPackage: string | undefined;
+    configTemplateDir: string;
+    envId: string;
+  }>,
+): Promise<void> => {
+  const probe = await tryAsync(
+    () =>
+      execFileAsync(process.execPath, [params.cliEntry, "environment", "current"], {
+        env: {
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          TMPDIR: process.env.TMPDIR,
+          XDG_CONFIG_HOME: params.configTemplateDir,
+        },
+      }),
+    (cause): Readonly<{ stdout: string; stderr: string }> => {
+      const failed = cause as { stdout?: string; stderr?: string };
+      return { stdout: failed.stdout ?? "", stderr: failed.stderr ?? String(cause) };
+    },
+  );
+  const output = isErr(probe) ? probe.error : probe.value;
+  if (isErr(probe) || output.stdout.trim() !== params.envId) {
+    throw new Error(
+      `The CLI under test (${params.cliPackage ?? "local build"}) cannot read a default ` +
+        "environment; EVALS_CLI_PACKAGE must be a version that ships `kontent environment`.\n" +
+        `\`kontent environment current\` stderr:\n${output.stderr}\nstdout:\n${output.stdout}`,
+    );
+  }
 };

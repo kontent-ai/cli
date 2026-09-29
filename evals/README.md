@@ -76,8 +76,9 @@ taken at the start of the run):
   argv, key redacted), the source of the `cli`, `failed`, `help` and `docs` columns.
 
 Each task also gets its own workspace directory under the OS temp dir (`kontent-eval-<task>-*`),
-where the agent runs its commands. These are left in place after the run, not cleaned up, so they
-stay available for inspection.
+where the agent runs its commands, and its own CLI config dir (`kontent-eval-<task>-config-*`),
+copied from the template config dir setup seeds (`kontent-evals-config-*`). All of these are left in
+place after the run, not cleaned up, so they stay available for inspection.
 
 ## Adding a task
 
