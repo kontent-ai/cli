@@ -1,12 +1,11 @@
 export type BuildTaskPromptParams = Readonly<{
-  envId: string;
   workspaceDir: string;
   taskPrompt: string;
 }>;
 
-export const buildPreamble = (envId: string, workspaceDir: string): string =>
+export const buildPreamble = (workspaceDir: string): string =>
   [
-    `You are working with a Kontent.ai environment. Its id is ${envId}.`,
+    "You are working with a Kontent.ai environment.",
     "A Management API key for it is in the environment variable EVALS_MAPI_KEY. Never print, echo or paste it anywhere.",
     "The `kontent` CLI is installed and on PATH. Use it for everything you do with Kontent.ai.",
     `Work only inside ${workspaceDir}. You are forbidden to read, search, list or open any file or directory outside it, including source code, configuration and home directories on this machine. This includes commands like cat, ls, find, grep on other paths.`,
@@ -14,8 +13,5 @@ export const buildPreamble = (envId: string, workspaceDir: string): string =>
     "When finished, reply with: every command you ran in order, what was unclear or annoying, and anything you had to guess.",
   ].join("\n");
 
-export const buildTaskPrompt = ({
-  envId,
-  workspaceDir,
-  taskPrompt,
-}: BuildTaskPromptParams): string => `${buildPreamble(envId, workspaceDir)}\n\n${taskPrompt}`;
+export const buildTaskPrompt = ({ workspaceDir, taskPrompt }: BuildTaskPromptParams): string =>
+  `${buildPreamble(workspaceDir)}\n\n${taskPrompt}`;

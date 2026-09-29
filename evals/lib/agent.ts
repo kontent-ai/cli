@@ -1,10 +1,12 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import type {
   HookCallback,
   Options,
   query as queryFn,
   SDKMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { err, isErr, ok, type Result } from "../../src/lib/result.js";
+import { err, isErr, ok, type Result, tryAsync } from "../../src/lib/result.js";
 import { describeCause } from "./inspect.js";
 import { findResultMessage } from "./messages.js";
 import { AGENT_PERMISSION_RULES, AGENT_TOOLS, applyToolPolicy, type ToolPolicy } from "./policy.js";
@@ -20,6 +22,8 @@ export type RunTaskAgentParams = Readonly<{
   model: string;
   workspaceDir: string;
   envId: string;
+  // The CLI's XDG_CONFIG_HOME, seeded with envId as if the user had run `kontent environment use`.
+  configDir: string;
   mapiKey: string;
   cliBinDir: string;
   invocationLogPath: string;
@@ -36,6 +40,11 @@ export const runTaskAgent = async (
   params: RunTaskAgentParams,
   deps: Readonly<{ query: AgentSdkQuery }>,
 ): Promise<Result<AgentRun, string>> => {
+  const seeded = await seedCliConfig(params.configDir, params.envId);
+  if (isErr(seeded)) {
+    return seeded;
+  }
+
   const messages: SDKMessage[] = [];
   const stderrChunks: string[] = [];
   const abortController = new AbortController();
@@ -70,6 +79,20 @@ export const runTaskAgent = async (
   } finally {
     clearTimeout(timeoutId);
   }
+};
+
+// Written directly rather than through `kontent environment use`, which needs a login;
+// evals authenticate with EVALS_MAPI_KEY. The path mirrors getCliConfigPath.
+const seedCliConfig = async (configDir: string, envId: string): Promise<Result<void, string>> => {
+  const configPath = join(configDir, "kontent", "cli", "config.json");
+  const config = { envId, telemetryNoticeShown: true, telemetryEnabled: false };
+  return await tryAsync(
+    async () => {
+      await mkdir(dirname(configPath), { recursive: true });
+      await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    },
+    (cause) => `Seeding the CLI config failed: ${describeCause(cause)}`,
+  );
 };
 
 const buildOptions = (
@@ -113,6 +136,9 @@ const buildOptions = (
 const buildSubprocessEnv = (params: RunTaskAgentParams): Record<string, string | undefined> => ({
   PATH: `${params.cliBinDir}:${process.env.PATH ?? ""}`,
   HOME: process.env.HOME,
+  // The shim hands it to the CLI alone as XDG_CONFIG_HOME, so the agent's CLI never reads the
+  // operator's own config and its stored environment, while the claude process keeps its lookup.
+  EVALS_CLI_CONFIG_HOME: params.configDir,
   // Keys the macOS Keychain lookup for the stored login.
   USER: process.env.USER,
   // Where the CLI and node put temp files.

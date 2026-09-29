@@ -6,6 +6,14 @@
 - Resolving arguments into real inputs (reading the `--input` file, stdin) lives here.
 - A handler that logs starts with `const logger = createLoggerFromArgs(args)`; a payload-only handler takes none.
 
+## Environment id
+
+`kontent environment use` stores a default environment id (`envId` in the CLI config).
+
+- A plain `--envId` (one environment) falls back to the stored id, whether the command reads or writes.
+- `--sourceEnvId`/`--targetEnvId`, array flags and positional environment ids never fall back.
+- A command whose target is the environment itself (delete, mark as production) takes the id as a positional argument.
+
 ## Generated docs
 
 `pnpm docs:generate` runs `scripts/generateCommandDocs.ts`.

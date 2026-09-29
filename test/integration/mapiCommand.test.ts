@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -10,7 +10,7 @@ import type { MapiRequestParams } from "../../src/core/mapi/request.js";
 import { performRawMapiRequest } from "../../src/core/mapi/request.js";
 import { getValidAccessToken } from "../../src/lib/auth/tokenAccess.js";
 import { err, ok } from "../../src/lib/result.js";
-import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
+import type { Telemetry } from "../../src/lib/telemetry/tracking.js";
 
 vi.mock("../../src/core/mapi/request.js", () => ({
   performRawMapiRequest: vi.fn(async () =>
@@ -23,6 +23,13 @@ vi.mock("../../src/lib/auth/tokenAccess.js", () => ({
 }));
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
+const STORED_ENV_ID = "99999999-8888-7777-6666-555555555555";
+
+const trackFailure = vi.fn();
+const telemetry: Telemetry = {
+  startCommandTracking: () => ({ succeed: () => {}, fail: trackFailure }),
+  flush: async () => {},
+};
 
 type CommandRun = Readonly<{ failure: string | undefined; stdout: string; stderr: string }>;
 
@@ -37,7 +44,7 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<CommandRun> => {
       .exitProcess(false)
       .fail(false),
     {
-      telemetry: noopTelemetry,
+      telemetry,
     },
   );
   const stdout = captureStream("stdout");
@@ -71,19 +78,32 @@ const lastParams = (): MapiRequestParams =>
 
 describe("kontent mapi argument handling", () => {
   let tempDir: string;
+  let configHome: string;
+
+  // A real config file under a temp XDG_CONFIG_HOME rather than a mocked reader, so the
+  // developer's own config never leaks in and a stored value still goes through parsing.
+  const storeConfig = async (config: Readonly<Record<string, unknown>>): Promise<void> => {
+    const dir = join(configHome, "kontent", "cli");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "config.json"), JSON.stringify(config));
+  };
 
   beforeAll(async () => {
     tempDir = await mkdtemp(join(tmpdir(), "kontent-mapi-"));
+    configHome = join(tempDir, "config");
   });
 
   afterAll(async () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     process.exitCode = undefined;
     vi.mocked(performRawMapiRequest).mockClear();
+    trackFailure.mockClear();
     vi.unstubAllEnvs();
+    vi.stubEnv("XDG_CONFIG_HOME", configHome);
+    await rm(configHome, { recursive: true, force: true });
   });
 
   it("keeps -H from swallowing the endpoint positional", async () => {
@@ -283,5 +303,81 @@ describe("kontent mapi argument handling", () => {
 
     expect(failure).toContain("--envId must not be empty.");
     expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("prefers --envId over the stored environment", async () => {
+    await storeConfig({ envId: STORED_ENV_ID });
+    const { stderr } = await runCommand(["types", "--envId", ENV_ID]);
+
+    expect(lastParams().envId).toBe(ENV_ID);
+    expect(stderr).not.toContain(STORED_ENV_ID);
+  });
+
+  it("falls back to the stored environment and says so on stderr", async () => {
+    await storeConfig({ envId: STORED_ENV_ID });
+    const { stdout, stderr } = await runCommand(["types"]);
+
+    expect(lastParams().envId).toBe(STORED_ENV_ID);
+    expect(stderr).toContain(`Using the stored default environment ${STORED_ENV_ID}.`);
+    expect(stdout).not.toContain(STORED_ENV_ID);
+  });
+
+  it("fails with missing-env-id when neither --envId nor a stored environment is present", async () => {
+    const { failure, stderr } = await runCommand(["types"]);
+
+    expect(failure).toBeUndefined();
+    expect(stderr).toContain("--envId <id>");
+    expect(stderr).toContain("kontent environment use <id>");
+    expect(trackFailure).toHaveBeenCalledWith("missing-env-id");
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("treats a stored value that is not a GUID as unset", async () => {
+    await storeConfig({ envId: "../projects/other" });
+    const { stderr } = await runCommand(["types"]);
+
+    expect(trackFailure).toHaveBeenCalledWith("missing-env-id");
+    expect(stderr).not.toContain("Using the stored default environment");
+    expect(process.exitCode).toBe(1);
+    expect(performRawMapiRequest).not.toHaveBeenCalled();
+  });
+
+  it("points at the stored environment on 403", async () => {
+    await storeConfig({ envId: STORED_ENV_ID });
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 403, statusText: "Forbidden", headers: [], body: null }),
+    );
+    const { stderr } = await runCommand(["types"]);
+
+    expect(stderr).toContain(
+      `Used the stored default environment ${STORED_ENV_ID}. If that's the wrong one, change it with \`kontent environment use <id>\`, or pass --envId <id> for this call only.`,
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("leaves the stored environment out of a 401 and points at the credential", async () => {
+    vi.stubEnv("KONTENT_MAPI_KEY", "");
+    await storeConfig({ envId: STORED_ENV_ID });
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 401, statusText: "Unauthorized", headers: [], body: null }),
+    );
+    const { stderr } = await runCommand(["types"]);
+
+    expect(stderr).toContain("Run `kontent login` to sign in again.");
+    expect(stderr).not.toContain("Used the stored default environment");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("leaves the stored-environment hint out when --envId was passed", async () => {
+    await storeConfig({ envId: STORED_ENV_ID });
+    vi.mocked(performRawMapiRequest).mockResolvedValueOnce(
+      ok({ statusCode: 403, statusText: "Forbidden", headers: [], body: null }),
+    );
+    const { stderr } = await runCommand(["types", "--envId", ENV_ID]);
+
+    expect(stderr).toContain("HTTP 403 Forbidden");
+    expect(stderr).not.toContain("Used the stored default environment");
+    expect(process.exitCode).toBe(1);
   });
 });

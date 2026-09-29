@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { errorMessage } from "../error.js";
+import { isGuid } from "../guid.js";
 import { err, ok, type Result } from "../result.js";
 
 export type CliConfig = Readonly<{
@@ -10,6 +11,8 @@ export type CliConfig = Readonly<{
   telemetryNoticeShown?: boolean;
   userId?: string;
   deviceId?: string;
+  // Only a GUID reads back, so a hand-edited value never reaches a request URL.
+  envId?: string;
 }>;
 
 export const getCliConfigPath = (): string =>
@@ -48,6 +51,7 @@ const parseCliConfig = (parsed: unknown): CliConfig => {
       : {}),
     ...(typeof raw.userId === "string" ? { userId: raw.userId } : {}),
     ...(typeof raw.deviceId === "string" ? { deviceId: raw.deviceId } : {}),
+    ...(typeof raw.envId === "string" && isGuid(raw.envId) ? { envId: raw.envId } : {}),
   };
 };
 

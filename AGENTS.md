@@ -46,6 +46,7 @@ Dependencies point downward only: `commands -> core -> lib`.
 - Comments only for non-obvious why: no restating code, no justifying changes to the reviewer.
 - Exports first, then private helpers in call order, depth-first; a private constant sits directly above its one user.
 - No barrel files except a deliberate public API.
+- Prefer public MAPI endpoints; use IAPI only where MAPI has no equivalent.
 
 ## Telemetry
 

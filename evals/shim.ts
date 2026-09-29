@@ -11,7 +11,14 @@ if (cliEntry === undefined) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [cliEntry, ...args], { stdio: "inherit" });
+const cliConfigHome = process.env.EVALS_CLI_CONFIG_HOME;
+const result = spawnSync(process.execPath, [cliEntry, ...args], {
+  stdio: "inherit",
+  env:
+    cliConfigHome === undefined || cliConfigHome === ""
+      ? process.env
+      : { ...process.env, XDG_CONFIG_HOME: cliConfigHome },
+});
 // null status means the child died from a signal; still a failure.
 const exitCode = result.status ?? 1;
 
