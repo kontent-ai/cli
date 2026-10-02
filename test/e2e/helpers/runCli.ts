@@ -61,9 +61,23 @@ export const parseStdout = (result: CliResult): JsonValue => {
 
 const cliEntryPath = fileURLToPath(new URL("../../../dist/index.mjs", import.meta.url));
 
+// USERPROFILE and APPDATA are the Windows counterparts of HOME for the home and
+// config directories; SystemRoot is needed by Node networking on Windows.
+const passedThroughVars = [
+  "PATH",
+  "HOME",
+  "USERPROFILE",
+  "APPDATA",
+  "SystemRoot",
+  "KONTENT_URL",
+] as const;
+
 const curatedEnv = (): Record<string, string> => ({
-  ...(process.env.PATH === undefined ? {} : { PATH: process.env.PATH }),
-  ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }),
-  ...(process.env.KONTENT_URL === undefined ? {} : { KONTENT_URL: process.env.KONTENT_URL }),
+  ...Object.fromEntries(
+    passedThroughVars.flatMap((name) => {
+      const value = process.env[name];
+      return value === undefined ? [] : [[name, value]];
+    }),
+  ),
   DO_NOT_TRACK: "1",
 });
