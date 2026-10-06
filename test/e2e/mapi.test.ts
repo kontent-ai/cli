@@ -2,18 +2,13 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  cloneTestEnvironment,
-  deleteTestEnvironment,
-  randomSuffix,
-  type TestEnvironment,
-} from "../helpers/environment.js";
+import { describe, expect, inject, it } from "vitest";
+import { randomSuffix } from "../helpers/environment.js";
 import { requireE2eConfig } from "./helpers/config.js";
-import { recordEnvironmentId } from "./helpers/environment.js";
 import { type CliRunOptions, parseStdout, runCli } from "./helpers/runCli.js";
 
 const config = requireE2eConfig();
+const { envId } = inject("e2e");
 
 const runSuffix = randomSuffix();
 const taxonomyCodename = `colors_${runSuffix}`;
@@ -23,33 +18,14 @@ const itemCodename = `hello_${runSuffix}`;
 const imageFixturePath = fileURLToPath(new URL("./fixtures/kailogo.png", import.meta.url));
 
 describe("kontent mapi e2e", () => {
-  let env: TestEnvironment | undefined;
   let itemId: string;
   let assetId: string;
 
-  const requireEnv = (): TestEnvironment => {
-    if (env === undefined) {
-      throw new Error("The test environment was not cloned.");
-    }
-    return env;
-  };
-
   const mapi = (endpoint: string, extraArgs: ReadonlyArray<string> = [], options?: CliRunOptions) =>
     runCli(
-      ["mapi", endpoint, "--envId", requireEnv().envId, "--mapiKey", config.mapiKey, ...extraArgs],
+      ["mapi", endpoint, "--envId", envId, "--mapiKey", config.mapiKey, ...extraArgs],
       options,
     );
-
-  beforeAll(async () => {
-    env = await cloneTestEnvironment(config, "e2e");
-    await recordEnvironmentId(env.envId);
-  });
-
-  afterAll(async () => {
-    if (env !== undefined) {
-      await deleteTestEnvironment(config, env.envId);
-    }
-  });
 
   it("starts from an empty clone", async () => {
     const types = await mapi("types");

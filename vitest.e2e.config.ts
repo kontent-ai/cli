@@ -25,7 +25,8 @@ export default defineConfig({
     globalSetup: ["test/e2e/globalSetup.ts"],
     fileParallelism: false,
     testTimeout: 30_000,
-    // Covers environment cloning, which the API performs asynchronously.
-    hookTimeout: 300_000,
+    // Covers globalSetup's teardown (deleting the clone), which the default
+    // 10s would kill mid-delete. Vitest puts no timeout on globalSetup itself.
+    teardownTimeout: 120_000,
   },
 });
