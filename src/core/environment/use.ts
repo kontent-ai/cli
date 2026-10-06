@@ -1,9 +1,10 @@
 import { writeCliConfig } from "../../lib/config/cliConfig.js";
-import { mapiErrorMessage, mapiErrorStatus } from "../../lib/error.js";
 import { isGuid } from "../../lib/guid.js";
 import type { MapiClient } from "../../lib/mapi/client.js";
+import { mapiErrorMessage, mapiErrorStatus } from "../../lib/mapi/error.js";
 import { isNone, type Option } from "../../lib/option.js";
 import { err, isErr, mapErr, ok, type Result, tryAsync } from "../../lib/result.js";
+import { invalidEnvIdMessage } from "./envId.js";
 
 export type SelectedEnvironment =
   | Readonly<{ kind: "verified"; envId: string; projectName: string; environmentName: string }>
@@ -13,9 +14,6 @@ export type SelectEnvironmentError =
   | Readonly<{ kind: "invalid-env-id"; message: string }>
   | Readonly<{ kind: "environment-info-failed"; status: number | undefined; message: string }>
   | Readonly<{ kind: "config-write-failed"; message: string }>;
-
-export const invalidEnvIdMessage = (envId: string): string =>
-  `"${envId}" is not an environment ID. Expected a GUID such as 11111111-2222-3333-4444-555555555555.`;
 
 /**
  * Stores the default environment. Given a Management API client, verifies the id through it

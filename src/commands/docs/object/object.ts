@@ -1,7 +1,5 @@
-import { getObjectDetails } from "../../../core/docs/learn.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 import { withDocsOptions } from "../cliOptions.js";
-import { runDocsCommand } from "../runDocsCommand.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({
@@ -24,11 +22,14 @@ export const register: RegisterCommand = (sub, deps) =>
           "$0 docs object 'text element' --api delivery_api",
           "Describe the element as the Delivery API returns it",
         ),
-    handler: async (args) =>
+    handler: async (args) => {
+      const { runDocsCommand } = await import("../runDocsCommand.js");
+      const { getObjectDetails } = await import("../../../core/docs/learn.js");
       await runDocsCommand("docs object", args, deps.telemetry, async (docsDeps) =>
         getObjectDetails(
           { query: args.query, limit: args.limit, apiReference: args.api },
           docsDeps,
         ),
-      ),
+      );
+    },
   });
