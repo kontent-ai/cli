@@ -55,7 +55,7 @@ export const isNotFoundError = (error: unknown): boolean => {
 };
 
 const POLL_DELAY_MS = 2000;
-// Stays under the suite's 5-minute hookTimeout so the timeout error below wins.
+// Both suites clone in globalSetup, which Vitest never times out, so this is the only bound.
 const MAX_POLL_ATTEMPTS = 120;
 
 const waitUntilCloned = async (config: EnvironmentCredentials, envId: string): Promise<void> => {

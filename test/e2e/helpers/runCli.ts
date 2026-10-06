@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import type { JsonValue } from "@kontent-ai/core-sdk";
+import { inject } from "vitest";
 
 export type CliResult = Readonly<{
   exitCode: number;
@@ -21,7 +21,7 @@ export const runCli = (
   options: CliRunOptions = {},
 ): Promise<CliResult> =>
   new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [cliEntryPath, ...args], {
+    const child = spawn(process.execPath, [inject("e2e").cliEntry, ...args], {
       env: { ...curatedEnv(), ...options.env },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -58,8 +58,6 @@ export const parseStdout = (result: CliResult): JsonValue => {
     throw new Error(`stdout is not valid JSON:\n${result.stdout}`);
   }
 };
-
-const cliEntryPath = fileURLToPath(new URL("../../../dist/index.mjs", import.meta.url));
 
 // USERPROFILE and APPDATA are the Windows counterparts of HOME for the home and
 // config directories; SystemRoot is needed by Node networking on Windows.

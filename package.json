@@ -34,7 +34,7 @@
     "evals:run:release": "EVALS_ENV_FILE=.env.evals.release vitest run --config vitest.evals.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "pnpm build && vitest run --config vitest.e2e.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
