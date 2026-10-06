@@ -1,7 +1,5 @@
-import { getEndpointDetails } from "../../../core/docs/learn.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 import { withDocsOptions } from "../cliOptions.js";
-import { runDocsCommand } from "../runDocsCommand.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({
@@ -24,11 +22,14 @@ export const register: RegisterCommand = (sub, deps) =>
           "$0 docs endpoint 'add a content type' --api content_management_api_v2 --limit 3",
           "Compare the three best-scoring endpoints",
         ),
-    handler: async (args) =>
+    handler: async (args) => {
+      const { runDocsCommand } = await import("../runDocsCommand.js");
+      const { getEndpointDetails } = await import("../../../core/docs/learn.js");
       await runDocsCommand("docs endpoint", args, deps.telemetry, async (docsDeps) =>
         getEndpointDetails(
           { query: args.query, limit: args.limit, apiReference: args.api },
           docsDeps,
         ),
-      ),
+      );
+    },
   });

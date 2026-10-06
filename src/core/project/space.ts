@@ -1,6 +1,6 @@
 import type { PreviewContracts, SpaceModels } from "@kontent-ai/management-sdk";
-import { mapiErrorMessage } from "../../lib/error.js";
 import type { MapiClient } from "../../lib/mapi/client.js";
+import { mapiErrorMessage } from "../../lib/mapi/error.js";
 import { isErr, ok, type Result, tryAsync } from "../../lib/result.js";
 import type { PreviewSpaceConfig } from "./samples.js";
 

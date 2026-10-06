@@ -46,6 +46,7 @@ const emptyYargs = yargs(hideBin(process.argv));
 const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
   .scriptName("kontent")
+  .locale("en")
   .epilogue("Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai")
   .demandCommand(1, chalk.red("You need to provide a command to run."))
   .strict()

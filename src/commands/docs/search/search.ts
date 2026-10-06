@@ -1,7 +1,5 @@
-import { searchDocs } from "../../../core/docs/learn.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 import { MAX_LIMIT, withDocsOptions } from "../cliOptions.js";
-import { runDocsCommand } from "../runDocsCommand.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({
@@ -26,8 +24,11 @@ export const register: RegisterCommand = (sub, deps) =>
           "$0 docs search 'content item' --api delivery_api",
           "Keep only Delivery API reference pages, no conceptual guides",
         ),
-    handler: async (args) =>
+    handler: async (args) => {
+      const { runDocsCommand } = await import("../runDocsCommand.js");
+      const { searchDocs } = await import("../../../core/docs/learn.js");
       await runDocsCommand("docs search", args, deps.telemetry, async (docsDeps) =>
         searchDocs({ query: args.query, limit: args.limit, apiReference: args.api }, docsDeps),
-      ),
+      );
+    },
   });
