@@ -86,6 +86,7 @@ Environment variables are read individually where they apply — they are not
 mapped onto option names, so an unrelated `KONTENT_*` variable in your shell
 never reaches the parser.
 
+- `KONTENT_URL` selects the deployment the CLI talks to (default `kontent.ai`): a Kontent.ai domain, whose internal API is `app.<domain>` and Management API `manage.<domain>`, or the address of one host that serves both APIs, such as a locally running stack (`http://localhost:29595`) or an internal on-demand test environment (`https://<label>-draft.devkontentmasters.com`)
 - `KONTENT_MAPI_KEY` — Management API key for [`kontent mapi`](src/commands/mapi/README.md), used when `--mapiKey` is absent
 - `DO_NOT_TRACK`, `KONTENT_DO_NOT_TRACK`, `KONTENT_TELEMETRY_DEBUG` — see [TELEMETRY.md](./TELEMETRY.md)
 
