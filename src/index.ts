@@ -4,7 +4,7 @@ import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { commandsToRegister } from "./commands/registry.js";
-import { getKontentBaseDomain, validateKontentDomain } from "./lib/config/kontentUrl.js";
+import { getKontentUrl, validateKontentUrl } from "./lib/config/kontentUrl.js";
 import { isErr } from "./lib/result.js";
 import { cliVersion } from "./lib/telemetry/context.js";
 import {
@@ -58,9 +58,9 @@ const initialYargs = emptyYargs
 
 const withLogLevel = addLogLevelOptions(initialYargs);
 
-const kontentDomainResult = validateKontentDomain(getKontentBaseDomain());
-if (isErr(kontentDomainResult)) {
-  console.error(`${chalkStderr.red("Error:")} ${kontentDomainResult.error}`);
+const kontentUrlResult = validateKontentUrl(getKontentUrl());
+if (isErr(kontentUrlResult)) {
+  console.error(`${chalkStderr.red("Error:")} ${kontentUrlResult.error}`);
   process.exit(1);
 }
 
