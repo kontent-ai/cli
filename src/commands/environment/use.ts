@@ -2,7 +2,7 @@ import { invalidEnvIdMessage } from "../../core/environment/envId.js";
 import { isGuid } from "../../lib/guid.js";
 import type { RegisterCommand } from "../../types/yargs.js";
 
-export const register: RegisterCommand = (sub) =>
+export const register: RegisterCommand = (sub, deps) =>
   sub.command({
     command: "use <envId>",
     describe: "Set the default environment used when --envId is omitted",
@@ -17,6 +17,6 @@ export const register: RegisterCommand = (sub) =>
         .check((args) => (isGuid(args.envId.trim()) ? true : invalidEnvIdMessage(args.envId))),
     handler: async (args) => {
       const { runUse } = await import("./runUse.js");
-      await runUse(args);
+      await runUse(args, deps.kontentTarget);
     },
   });

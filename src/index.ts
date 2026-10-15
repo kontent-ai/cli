@@ -4,7 +4,7 @@ import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { commandsToRegister } from "./commands/registry.js";
-import { getKontentUrl, validateKontentUrl } from "./lib/config/kontentUrl.js";
+import { resolveKontentTarget } from "./lib/config/kontentUrl.js";
 import { isErr } from "./lib/result.js";
 import { cliVersion } from "./lib/telemetry/context.js";
 import {
@@ -58,14 +58,14 @@ const initialYargs = emptyYargs
 
 const withLogLevel = addLogLevelOptions(initialYargs);
 
-const kontentUrlResult = validateKontentUrl(getKontentUrl());
-if (isErr(kontentUrlResult)) {
-  console.error(`${chalkStderr.red("Error:")} ${kontentUrlResult.error}`);
+const kontentTarget = resolveKontentTarget(process.env);
+if (isErr(kontentTarget)) {
+  console.error(`${chalkStderr.red("Error:")} ${kontentTarget.error}`);
   process.exit(1);
 }
 
 const { telemetry, mode } = await createTelemetry();
-const deps: CommandDeps = { telemetry };
+const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
 registerTelemetrySignalFlush(telemetry);
 
 // Runs after parsing (so --verbose is known) and before the command handler.

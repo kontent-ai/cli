@@ -8,7 +8,7 @@ import {
 
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../package.json" with { type: "json" };
-import { iapiBaseUrl } from "../config/iapiUrl.js";
+import { originOf } from "../baseUrl.js";
 
 const iapiSdkInfo: SdkInfo = {
   name: pkg.name,
@@ -16,8 +16,7 @@ const iapiSdkInfo: SdkInfo = {
   host: "npmjs.com",
 };
 
-export const iapiEndpointUrl = (base: BaseUrl, path: string): URL =>
-  new URL(path, `${base.protocol}://${base.host}`);
+export const iapiEndpointUrl = (base: BaseUrl, path: string): URL => new URL(path, originOf(base));
 
 export type IapiClient = Readonly<{
   config: SdkConfig;
@@ -28,15 +27,15 @@ export type IapiClient = Readonly<{
 
 export const createIapiClient = ({
   token,
-  baseUrl = iapiBaseUrl,
+  baseUrl,
 }: {
   readonly token: string;
-  readonly baseUrl?: BaseUrl;
+  readonly baseUrl: BaseUrl;
 }): IapiClient => ({
   config: {
     baseUrl,
     httpService: getDefaultHttpService({
-      requestHeaders: [{ name: "Origin", value: `${baseUrl.protocol}://${baseUrl.host}` }],
+      requestHeaders: [{ name: "Origin", value: originOf(baseUrl) }],
       retryStrategy: {
         maxRetries: 3,
         canRetryAdapterError: () => true,

@@ -6,6 +6,7 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 import { afterAll, describe, expect, inject, it } from "vitest";
 import { createMapiClient } from "../src/lib/mapi/client.js";
 import { isErr } from "../src/lib/result.js";
+import { mapiUrlFromEnv } from "../test/helpers/environment.js";
 import type { AgentRun } from "./lib/agent.js";
 import { runTaskAgent } from "./lib/agent.js";
 import { parseInvocationLog } from "./lib/invocations.js";
@@ -98,6 +99,7 @@ describe.sequential("evals", () => {
         const mapiClient = createMapiClient({
           token: evalsContext.mapiKey,
           envId: evalsContext.envId,
+          baseUrl: mapiUrlFromEnv(),
         });
         const checkResult = await task.check(mapiClient);
 

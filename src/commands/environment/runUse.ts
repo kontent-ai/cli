@@ -2,12 +2,16 @@ import { match, P } from "ts-pattern";
 import { type SelectEnvironmentError, selectEnvironment } from "../../core/environment/use.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { getValidAccessToken } from "../../lib/auth/tokenAccess.js";
+import { type KontentTarget, mapiBaseUrl } from "../../lib/config/kontentUrl.js";
 import { createMapiClient } from "../../lib/mapi/client.js";
 import { none, some } from "../../lib/option.js";
 import { isErr } from "../../lib/result.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 
-export const runUse = async (args: LogOptions & Readonly<{ envId: string }>): Promise<void> => {
+export const runUse = async (
+  args: LogOptions & Readonly<{ envId: string }>,
+  kontentTarget: KontentTarget,
+): Promise<void> => {
   const logger = createLoggerFromArgs(args);
   const envId = args.envId.trim();
 
@@ -18,7 +22,9 @@ export const runUse = async (args: LogOptions & Readonly<{ envId: string }>): Pr
     return;
   }
 
-  const mapiClient = isErr(token) ? none : some(createMapiClient({ token: token.value, envId }));
+  const mapiClient = isErr(token)
+    ? none
+    : some(createMapiClient({ token: token.value, envId, baseUrl: mapiBaseUrl(kontentTarget) }));
   const result = await selectEnvironment(envId, { mapiClient });
   if (isErr(result)) {
     logger.error(formatSelectError(result.error, envId));

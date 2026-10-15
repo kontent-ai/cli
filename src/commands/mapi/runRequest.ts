@@ -9,14 +9,15 @@ import { type ResolvedEnvId, resolveEnvId } from "../../core/environment/resolve
 import { type MapiResponse, performRawMapiRequest } from "../../core/mapi/request.js";
 import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { type AuthSource, resolveMapiCredential } from "../../lib/auth/mapiCredential.js";
+import { mapiBaseUrl } from "../../lib/config/kontentUrl.js";
 import { errorMessage } from "../../lib/error.js";
 import { createMapiRawClient } from "../../lib/mapi/raw/client.js";
 import { parseHeaders } from "../../lib/mapi/raw/headers.js";
 import { parseMethod } from "../../lib/mapi/raw/method.js";
 import { isNone } from "../../lib/option.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../lib/result.js";
-import type { Telemetry } from "../../lib/telemetry/tracking.js";
 import type { Logger, LogOptions } from "../../log.js";
+import type { CommandDeps } from "../../types/yargs.js";
 import { presentResponse } from "./presentResponse.js";
 
 type RequestArgs = LogOptions &
@@ -33,9 +34,9 @@ type RequestArgs = LogOptions &
 export const runRequest = async (
   args: RequestArgs,
   logger: Logger,
-  telemetry: Telemetry,
+  deps: CommandDeps,
 ): Promise<void> => {
-  const tracker = telemetry.startCommandTracking("mapi", logger);
+  const tracker = deps.telemetry.startCommandTracking("mapi", logger);
 
   const resolvedEnv = await resolveEnvId(args.envId, { logger });
   if (isNone(resolvedEnv)) {
@@ -75,7 +76,10 @@ export const runRequest = async (
       endpoint: args.endpoint,
       envId: env.envId,
     },
-    { logger, client: createMapiRawClient({ token, logger }) },
+    {
+      logger,
+      client: createMapiRawClient({ token, logger, baseUrl: mapiBaseUrl(deps.kontentTarget) }),
+    },
   );
 
   if (isErr(result)) {

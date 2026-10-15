@@ -19,6 +19,6 @@ export const register: RegisterCommand = (sub, deps) =>
         }),
     handler: async (args) => {
       const { runBootstrap } = await import("./runBootstrap.js");
-      await runBootstrap(args, createLoggerFromArgs(args), deps.telemetry);
+      await runBootstrap(args, createLoggerFromArgs(args), deps);
     },
   });

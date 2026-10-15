@@ -1,4 +1,5 @@
 import type { CommandModule } from "yargs";
+import type { KontentTarget } from "../lib/config/kontentUrl.js";
 import type { Telemetry } from "../lib/telemetry/tracking.js";
 import type { LogOptions } from "../log.js";
 
@@ -11,6 +12,7 @@ export type StandaloneCommandModule<T = unknown, U = unknown> = MakeRequired<
 
 export type CommandDeps = Readonly<{
   telemetry: Telemetry;
+  kontentTarget: KontentTarget;
 }>;
 
 export type RegisterCommand = <Result, InitialParams extends LogOptions = LogOptions>(

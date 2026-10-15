@@ -35,6 +35,7 @@ const runStatus = async (argv: ReadonlyArray<string>) => {
       ),
       {
         telemetry: noopTelemetry,
+        kontentTarget: { kind: "domain", domain: "kontent.ai" },
       },
     ).parseAsync([...argv]);
   } finally {

@@ -1,19 +1,15 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  kontentAppBaseUrl,
-  kontentManagementUrl,
-  validateKontentUrl,
-} from "../../src/lib/config/kontentUrl.js";
+import { describe, expect, it } from "vitest";
+import { iapiBaseUrl, mapiBaseUrl, resolveKontentTarget } from "../../src/lib/config/kontentUrl.js";
+import { map, ok } from "../../src/lib/result.js";
 
-describe("validateKontentUrl", () => {
+const resolve = (kontentUrl: string) => resolveKontentTarget({ KONTENT_URL: kontentUrl });
+
+describe("resolveKontentTarget", () => {
   it.each([
     { input: "kontent.ai" },
-    { input: "eu-01.kontent.ai" },
     { input: "devkontentmasters.com" },
-    { input: "sub.devkontentmasters.com" },
   ] as const)("accepts allowed bare host $input", ({ input }) => {
-    const result = validateKontentUrl(input);
-    expect(result).toEqual({ kind: "ok", value: { kind: "domain", domain: input } });
+    expect(resolve(input)).toEqual(ok({ kind: "domain", domain: input }));
   });
 
   it.each([
@@ -26,8 +22,7 @@ describe("validateKontentUrl", () => {
     { input: "https://127.0.0.1:8443", expected: { protocol: "https", host: "127.0.0.1:8443" } },
     { input: "http://[::1]:3000", expected: { protocol: "http", host: "[::1]:3000" } },
   ] as const)("accepts the host address $input", ({ input, expected }) => {
-    const result = validateKontentUrl(input);
-    expect(result).toEqual({ kind: "ok", value: { kind: "host", ...expected } });
+    expect(resolve(input)).toEqual(ok({ kind: "host", baseUrl: expected }));
   });
 
   it.each([
@@ -37,6 +32,10 @@ describe("validateKontentUrl", () => {
     { input: "kontent.ai.evil.com" },
     { input: "notdevkontentmasters.com" },
     { input: "" },
+    // Subdomains: a domain is only ever one of the allowed domains themselves.
+    { input: "eu-01.kontent.ai" },
+    { input: "sub.devkontentmasters.com" },
+    { input: "status.kontent.ai" },
     // A bare host carries no path; a host address carries no path either.
     { input: "kontent.ai/" },
     { input: "kontent.ai/path" },
@@ -46,8 +45,16 @@ describe("validateKontentUrl", () => {
     // Plain http and ports only on this machine.
     { input: "http://kontent.ai" },
     { input: "https://kontent.ai:8080" },
+    { input: "http://my-feature-draft.devkontentmasters.com" },
+    { input: "https://my-feature-draft.devkontentmasters.com:8443" },
     { input: "https://example.com" },
-    // The domain form written with a scheme: these hosts serve the two APIs separately.
+    // A host address on an allowed domain other than an on-demand environment: a subdomain
+    // can be served by a third party (status.kontent.ai is a hosted status page).
+    { input: "https://status.kontent.ai" },
+    { input: "https://eu-01.kontent.ai" },
+    { input: "https://a.b-draft.devkontentmasters.com" },
+    { input: "https://my-feature-draft.kontent.ai" },
+    // The domain form written with a scheme.
     { input: "https://kontent.ai" },
     { input: "https://app.kontent.ai" },
     { input: "https://manage.devkontentmasters.com" },
@@ -74,26 +81,11 @@ describe("validateKontentUrl", () => {
     { input: "http://localhost:29595/?x=1" },
     { input: "http://localhost:29595/#top" },
   ] as const)("rejects disallowed input $input", ({ input }) => {
-    expect(validateKontentUrl(input).kind).toBe("err");
-  });
-
-  it.each([
-    { input: "https://kontent.ai", domain: "kontent.ai" },
-    { input: "https://app.kontent.ai", domain: "kontent.ai" },
-    { input: "https://manage.devkontentmasters.com", domain: "devkontentmasters.com" },
-  ] as const)("points $input to the domain form", ({ input, domain }) => {
-    expect(validateKontentUrl(input)).toEqual({
-      kind: "err",
-      error: expect.stringContaining(`Set KONTENT_URL=${domain}`),
-    });
+    expect(resolve(input).kind).toBe("err");
   });
 });
 
 describe("derived API URLs", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   it.each([
     {
       kontentUrl: "kontent.ai",
@@ -116,9 +108,7 @@ describe("derived API URLs", () => {
       management: "http://localhost:29595/manageApi/v2",
     },
   ] as const)("KONTENT_URL=$kontentUrl", ({ kontentUrl, app, management }) => {
-    vi.stubEnv("KONTENT_URL", kontentUrl);
-
-    expect(kontentAppBaseUrl()).toEqual(app);
-    expect(kontentManagementUrl()).toBe(management);
+    expect(map(resolve(kontentUrl), iapiBaseUrl)).toEqual(ok(app));
+    expect(map(resolve(kontentUrl), mapiBaseUrl)).toEqual(ok(management));
   });
 });
