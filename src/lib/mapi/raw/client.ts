@@ -16,7 +16,6 @@ import { match, P } from "ts-pattern";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../../package.json" with { type: "json" };
 import type { Logger } from "../../../log.js";
-import { kontentManagementUrl } from "../../config/kontentUrl.js";
 import { errorMessage } from "../../error.js";
 import { err, ok, type Result } from "../../result.js";
 
@@ -69,7 +68,7 @@ export const createMapiRawClient = (
     logger: Logger;
     // Absent when the caller carries its own Authorization header; the client then adds none.
     token?: string | undefined;
-    baseUrl?: string;
+    baseUrl: string;
     adapter?: HttpAdapter;
   }>,
 ): MapiRawClient => {
@@ -82,7 +81,7 @@ export const createMapiRawClient = (
         ];
 
   return {
-    baseUrl: params.baseUrl ?? kontentManagementUrl(),
+    baseUrl: params.baseUrl,
     requestHeaders,
     httpService: getDefaultHttpService({
       requestHeaders,

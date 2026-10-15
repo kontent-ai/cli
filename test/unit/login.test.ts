@@ -34,6 +34,7 @@ const FRESH_TOKENS: TokenSet = {
 };
 
 const logger = createLogger("none");
+const kontentTarget = { kind: "domain", domain: "kontent.ai" } as const;
 
 const fakeStorage = (stored: TokenSet | null) => ({
   read: vi.fn(async () => ok(stored)),
@@ -53,7 +54,7 @@ describe("performLogin with a rejected refresh token", () => {
     const storage = fakeStorage(EXPIRED_TOKENS);
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
 
-    const result = await performLogin(logger);
+    const result = await performLogin(logger, kontentTarget);
 
     expect(loginViaDeviceFlow).toHaveBeenCalledOnce();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
@@ -63,7 +64,7 @@ describe("performLogin with a rejected refresh token", () => {
     const storage = fakeStorage(EXPIRED_TOKENS);
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
 
-    await performLogin(logger);
+    await performLogin(logger, kontentTarget);
 
     expect(storage.clear).toHaveBeenCalledOnce();
     expect(storage.write).toHaveBeenCalledWith(FRESH_TOKENS);
@@ -77,7 +78,7 @@ describe("performLogin when the refresh fails transiently", () => {
     const transientError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") } as const;
     vi.mocked(refreshTokens).mockResolvedValue(err(transientError));
 
-    const result = await performLogin(logger);
+    const result = await performLogin(logger, kontentTarget);
 
     expect(loginViaDeviceFlow).not.toHaveBeenCalled();
     expect(storage.clear).not.toHaveBeenCalled();
@@ -91,7 +92,7 @@ describe("performLogin when the refresh succeeds", () => {
     vi.mocked(createKeyringStorage).mockReturnValue(storage);
     vi.mocked(refreshTokens).mockResolvedValue(ok(FRESH_TOKENS));
 
-    const result = await performLogin(logger);
+    const result = await performLogin(logger, kontentTarget);
 
     expect(loginViaDeviceFlow).not.toHaveBeenCalled();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));

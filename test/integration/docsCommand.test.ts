@@ -19,7 +19,7 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<string | undefin
       .strict()
       .exitProcess(false)
       .fail(false),
-    { telemetry: noopTelemetry },
+    { telemetry: noopTelemetry, kontentTarget: { kind: "domain", domain: "kontent.ai" } },
   );
   try {
     await parser.parseAsync([...argv]);

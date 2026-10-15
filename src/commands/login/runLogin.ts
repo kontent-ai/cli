@@ -8,7 +8,7 @@ export const runLogin = async (args: LogOptions, deps: CommandDeps): Promise<voi
   const logger = createLoggerFromArgs(args);
   const tracker = deps.telemetry.startCommandTracking("login", logger);
 
-  const result = await performLogin(logger);
+  const result = await performLogin(logger, deps.kontentTarget);
   if (isErr(result)) {
     tracker.fail(result.error.kind);
     logger.error(formatAuthError(result.error));

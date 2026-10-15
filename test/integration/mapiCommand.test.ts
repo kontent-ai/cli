@@ -45,6 +45,7 @@ const runCommand = async (argv: ReadonlyArray<string>): Promise<CommandRun> => {
       .fail(false),
     {
       telemetry,
+      kontentTarget: { kind: "domain", domain: "kontent.ai" },
     },
   );
   const stdout = captureStream("stdout");

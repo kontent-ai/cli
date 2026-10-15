@@ -78,6 +78,6 @@ export const register: RegisterCommand = (sub, deps) =>
         ),
     handler: async (args) => {
       const { runRequest } = await import("./runRequest.js");
-      await runRequest(args, createLoggerFromArgs(args), deps.telemetry);
+      await runRequest(args, createLoggerFromArgs(args), deps);
     },
   });

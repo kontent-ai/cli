@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import type { BaseUrl } from "@kontent-ai/core-sdk";
 import open from "open";
 import { match } from "ts-pattern";
 import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../lib/auth/auth0.js";
@@ -7,6 +8,7 @@ import { formatAuthError } from "../../lib/auth/formatAuthError.js";
 import { createKeyringStorage, type TokenStorage } from "../../lib/auth/storage.js";
 import { decideAuth, refreshOrClear } from "../../lib/auth/tokenAccess.js";
 import type { AuthError, TokenSet } from "../../lib/auth/types.js";
+import { iapiBaseUrl, type KontentTarget } from "../../lib/config/kontentUrl.js";
 import { errorMessage } from "../../lib/error.js";
 import { createIapiClient } from "../../lib/iapi/client.js";
 import { err, isErr, isOk, ok, type Result } from "../../lib/result.js";
@@ -18,9 +20,13 @@ export type LoginOutcome = Readonly<{
   identifier: string | null;
 }>;
 
-export const performLogin = async (logger: Logger): Promise<Result<LoginOutcome, AuthError>> => {
+export const performLogin = async (
+  logger: Logger,
+  kontentTarget: KontentTarget,
+): Promise<Result<LoginOutcome, AuthError>> => {
   const config = getAuth0Config();
   const storage = createKeyringStorage();
+  const baseUrl = iapiBaseUrl(kontentTarget);
 
   const stored = await storage.read();
   if (isErr(stored)) {
@@ -34,7 +40,7 @@ export const performLogin = async (logger: Logger): Promise<Result<LoginOutcome,
     .with({ type: "use-existing-token" }, async () => {
       if (storedTokens !== null) {
         await ensureUserIdCached(logger, {
-          client: createIapiClient({ token: storedTokens.accessToken }),
+          client: createIapiClient({ token: storedTokens.accessToken, baseUrl }),
         });
       }
       return ok({ isAlreadyAuthenticated: true, identifier: identifierFromTokens(storedTokens) });
@@ -49,18 +55,18 @@ export const performLogin = async (logger: Logger): Promise<Result<LoginOutcome,
         }
         logger.info("standard", "Saved session expired, starting a new sign-in.");
         logger.warning("verbose", formatAuthError(refreshed.error));
-        return await runDeviceFlow(logger, storage, config);
+        return await runDeviceFlow(logger, storage, config, baseUrl);
       }
       await persistTokens(logger, storage, refreshed.value);
       await ensureUserIdCached(logger, {
-        client: createIapiClient({ token: refreshed.value.accessToken }),
+        client: createIapiClient({ token: refreshed.value.accessToken, baseUrl }),
       });
       return ok({
         isAlreadyAuthenticated: false,
         identifier: identifierFromTokens(refreshed.value),
       });
     })
-    .with({ type: "login" }, async () => runDeviceFlow(logger, storage, config))
+    .with({ type: "login" }, async () => runDeviceFlow(logger, storage, config, baseUrl))
     .exhaustive();
 };
 
@@ -68,6 +74,7 @@ const runDeviceFlow = async (
   logger: Logger,
   storage: TokenStorage,
   config: Auth0Config,
+  baseUrl: BaseUrl,
 ): Promise<Result<LoginOutcome, AuthError>> => {
   const result = await loginViaDeviceFlow(config, deviceFlowDeps(logger));
   if (isErr(result)) {
@@ -76,7 +83,7 @@ const runDeviceFlow = async (
   await persistTokens(logger, storage, result.value);
   // Fresh login may be a different account, so overwrite the cached userId.
   await ensureUserIdCached(logger, {
-    client: createIapiClient({ token: result.value.accessToken }),
+    client: createIapiClient({ token: result.value.accessToken, baseUrl }),
     shouldForceRefresh: true,
   });
   return ok({

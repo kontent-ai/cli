@@ -12,6 +12,7 @@ import {
 } from "@kontent-ai/core-sdk";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../package.json" with { type: "json" };
+import { originOf } from "../baseUrl.js";
 import type { ApiReference } from "./apiReference.js";
 
 /** The Learn-MCP service needs no auth, so the client carries no token. */
@@ -50,7 +51,7 @@ export const createLearnQuery = <TPayload extends JsonValue>(
   params: LearnQueryParams,
   schema: SchemaInput<TPayload>,
 ): FetchQuery<TPayload> => {
-  const url = new URL(path, `${client.baseUrl.protocol}://${client.baseUrl.host}`);
+  const url = new URL(path, originOf(client.baseUrl));
   url.searchParams.set("text", params.text);
   if (params.apiReference !== undefined) {
     url.searchParams.set("apiReference", params.apiReference);

@@ -58,7 +58,11 @@ const listKeysRoute = (reply: IapiRoute["reply"]): IapiRoute => ({
 
 // mapi is unused by the Kickstart sample (no preview space); a real client is fine since
 // construction does no I/O and nothing here invokes it.
-const mapiClient = createMapiClient({ token: "test-token", envId: ENV_ID });
+const mapiClient = createMapiClient({
+  token: "test-token",
+  envId: ENV_ID,
+  baseUrl: "https://mapi.test/v2",
+});
 
 let targetDir = "";
 

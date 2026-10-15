@@ -7,22 +7,23 @@ import {
 } from "../../../../core/project/bootstrap.js";
 import { supportedProjectTypes } from "../../../../core/project/samples.js";
 import { formatAuthError } from "../../../../lib/auth/formatAuthError.js";
+import { mapiBaseUrl } from "../../../../lib/config/kontentUrl.js";
 import { formatIapiError } from "../../../../lib/iapi/formatIapiError.js";
 import { createMapiClient } from "../../../../lib/mapi/client.js";
 import { isErr } from "../../../../lib/result.js";
-import type { Telemetry } from "../../../../lib/telemetry/tracking.js";
 import { intro, note, outro } from "../../../../lib/ui/prompts.js";
 import type { Logger } from "../../../../log.js";
+import type { CommandDeps } from "../../../../types/yargs.js";
 
 export const runBootstrap = async (
   params: BootstrapParams,
   logger: Logger,
-  telemetry: Telemetry,
+  deps: CommandDeps,
 ): Promise<void> => {
-  const tracker = telemetry.startCommandTracking("project sample bootstrap", logger);
+  const tracker = deps.telemetry.startCommandTracking("project sample bootstrap", logger);
   intro("Bootstrap a Kontent.ai project");
 
-  const clientResult = await getAuthenticatedIapiClient(logger);
+  const clientResult = await getAuthenticatedIapiClient(logger, deps.kontentTarget);
   if (isErr(clientResult)) {
     tracker.fail(`auth:${clientResult.error.kind}`, { project: params.envId });
     logger.error(formatAuthError(clientResult.error));
@@ -30,7 +31,11 @@ export const runBootstrap = async (
     return;
   }
   const iapiClient = clientResult.value;
-  const mapiClient = createMapiClient({ token: iapiClient.token, envId: params.envId });
+  const mapiClient = createMapiClient({
+    token: iapiClient.token,
+    envId: params.envId,
+    baseUrl: mapiBaseUrl(deps.kontentTarget),
+  });
 
   const result = await performBootstrap(params, { logger, iapiClient, mapiClient });
   if (isErr(result)) {

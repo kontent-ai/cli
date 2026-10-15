@@ -1,5 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { mapiBaseUrl, resolveKontentTarget } from "../../src/lib/config/kontentUrl.js";
 import { createMapiClient } from "../../src/lib/mapi/client.js";
+import { isErr } from "../../src/lib/result.js";
 
 export type EnvironmentCredentials = Readonly<{
   mapiKey: string;
@@ -11,13 +13,26 @@ export type TestEnvironment = Readonly<{
   name: string;
 }>;
 
+// The Management API that KONTENT_URL selects, the same one the CLI under test calls.
+export const mapiUrlFromEnv = (): string => {
+  const target = resolveKontentTarget(process.env);
+  if (isErr(target)) {
+    throw new Error(target.error);
+  }
+  return mapiBaseUrl(target.value);
+};
+
 // `namePrefix` tells a stray clone apart by the harness that made it.
 export const cloneTestEnvironment = async (
   config: EnvironmentCredentials,
   namePrefix: string,
 ): Promise<TestEnvironment> => {
   const name = `${namePrefix}-${Math.floor(Date.now() / 1000)}-${randomSuffix()}`;
-  const sourceClient = createMapiClient({ token: config.mapiKey, envId: config.sourceEnvId });
+  const sourceClient = createMapiClient({
+    token: config.mapiKey,
+    envId: config.sourceEnvId,
+    baseUrl: mapiUrlFromEnv(),
+  });
   const cloned = await sourceClient.cloneEnvironment().withData({ name }).toPromise();
 
   await waitUntilCloned(config, cloned.data.id);
@@ -30,7 +45,9 @@ export const deleteTestEnvironment = async (
   envId: string,
 ): Promise<void> => {
   try {
-    await createMapiClient({ token: config.mapiKey, envId }).deleteEnvironment().toPromise();
+    await createMapiClient({ token: config.mapiKey, envId, baseUrl: mapiUrlFromEnv() })
+      .deleteEnvironment()
+      .toPromise();
   } catch (error) {
     // A missing environment means an earlier cleanup already won the race.
     if (isNotFoundError(error)) {
@@ -59,7 +76,7 @@ const POLL_DELAY_MS = 2000;
 const MAX_POLL_ATTEMPTS = 120;
 
 const waitUntilCloned = async (config: EnvironmentCredentials, envId: string): Promise<void> => {
-  const client = createMapiClient({ token: config.mapiKey, envId });
+  const client = createMapiClient({ token: config.mapiKey, envId, baseUrl: mapiUrlFromEnv() });
 
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     const state = await client.getEnvironmentCloningState().toPromise();
