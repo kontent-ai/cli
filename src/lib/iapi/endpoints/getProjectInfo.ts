@@ -19,8 +19,6 @@ export const ProjectResponseSchema = z.object({
   projectLocationId: z.string(),
 });
 
-export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
-
 export const getProjectInfo = (c: IapiClient, environmentId: string) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, `/api/project-management/${environmentId}`),

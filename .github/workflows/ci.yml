@@ -24,6 +24,8 @@ jobs:
         run: pnpm lint
       - name: Biome
         run: pnpm biome:check
+      - name: Knip
+        run: pnpm knip
       # git add -A first: a brand-new README the generator creates is untracked,
       # and plain `git diff --exit-code` would not see it.
       - name: Docs freshness

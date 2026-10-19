@@ -18,8 +18,6 @@ export const ApiKeyDetailSchema = z.object({
   management_api_key_capabilities: jsonValueSchema,
 });
 
-export type ApiKeyDetail = z.infer<typeof ApiKeyDetailSchema>;
-
 export const getApiKeyDetail = (c: IapiClient, containerId: string, tokenSeedId: string) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, `/api/project-container/${containerId}/keys/${tokenSeedId}`),
