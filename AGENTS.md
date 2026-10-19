@@ -5,7 +5,7 @@ The Kontent.ai CLI (`kontent` bin, entry `src/index.ts`): ESM, TypeScript, pnpm.
 ## After changing code, before handing off
 
 ```
-pnpm typecheck && pnpm lint && pnpm biome:check && pnpm test
+pnpm typecheck && pnpm lint && pnpm biome:check && pnpm knip && pnpm test
 ```
 
 - Autofix: `pnpm lint:fix`, `pnpm biome:fix`. Build: `pnpm build`.
@@ -47,6 +47,12 @@ Dependencies point downward only: `commands -> core -> lib`.
 - Exports first, then private helpers in call order, depth-first; a private constant sits directly above its one user.
 - No barrel files except a deliberate public API.
 - Prefer public MAPI endpoints; use IAPI only where MAPI has no equivalent.
+
+## Dead code
+
+- `pnpm knip` (`knip.jsonc`) fails on unused files, exports, types and dependencies, unlisted dependencies, and runtime import cycles (type-only cycles pass). An export used only in its own file passes.
+- A finding that is dead: delete it. A finding that is live in a way Knip cannot see (run by path, loaded at runtime): add it to `knip.jsonc` with a one-line reason.
+- Never silence a finding by re-exporting the symbol or by ignoring a whole folder.
 
 ## Telemetry
 

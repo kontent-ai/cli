@@ -11,8 +11,6 @@ export const ProjectPropertySchema = z.object({
 
 export const ProjectPropertyListSchema = z.array(ProjectPropertySchema);
 
-export type ProjectProperty = z.infer<typeof ProjectPropertySchema>;
-
 export const listProjectProperties = (c: IapiClient, environmentId: string) =>
   createFetchQuery({
     url: iapiEndpointUrl(c.urlBase, `/api/project/${environmentId}/property`),

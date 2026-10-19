@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // A redundant `export` is noise, not dead code: gate only on code nothing uses.
+  "ignoreExportsUsedInFile": true,
+  // Count exports reached only through `import * as` too.
+  "include": ["nsExports", "nsTypes"],
+  // globalSetup.ts runs it by path, so no import reaches it.
+  "entry": ["evals/shim.ts"],
+  "ignoreIssues": {
+    // Primitives kept whole on purpose, unused helpers included.
+    "src/lib/option.ts": ["exports", "types"],
+    "src/lib/result.ts": ["exports", "types"]
+  }
+}
