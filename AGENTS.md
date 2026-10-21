@@ -13,15 +13,13 @@ pnpm typecheck && pnpm lint && pnpm biome:check && pnpm knip && pnpm test
 
 ## Layers
 
-Dependencies point inward: `cli/commands -> cli/adapters -> core` and `cli/commands -> core`. `core` imports nothing from `cli`.
+Dependencies point inward: `cli/commands -> cli/adapters -> core` and `cli/commands -> core`. `core` never imports from `cli`.
 
-- `src/cli/commands/**` yargs wiring, orchestration (`perform*.ts`, `shared/`) and presentation.
-- `src/cli/adapters/**` I/O: API clients, keyring, config file, telemetry, prompts.
-- `src/core/**` pure domain code, with generic primitives in `core/lib`.
-- Nested `AGENTS.md` files hold the details: `src/cli/commands/`, `src/cli/adapters/`, `src/core/`, `test/`, `evals/`. Read the one covering a folder before editing in it.
+- `src/core/**` pure domain logic, one folder per domain; generic primitives in `core/lib`.
+- `src/cli/commands/**` yargs wiring, workflows and presentation, one folder per command.
+- `src/cli/adapters/**` thin I/O, one folder per external system.
+- Nested `AGENTS.md` files hold the details: `src/core/`, `src/cli/commands/`, `src/cli/adapters/`, `test/`, `evals/`. Read the one covering a folder before editing in it.
 - Editing `scripts/generateCommandDocs.ts`: the generated-docs rules are in `src/cli/commands/AGENTS.md`.
-- Commands obtain API clients and pass them into the orchestration; operations take clients as input.
-- Orchestration reports recoverable failures as `Result` and never writes to the console (exception: interactive flows, see the commands file). The `run*.ts` files own presentation and exit codes.
 
 ## Auth
 
