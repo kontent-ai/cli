@@ -1,6 +1,6 @@
 import { getDefaultHttpAdapter } from "@kontent-ai/core-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isJsonContentType } from "../../src/lib/mapi/raw/contentType.js";
+import { isJsonContentType } from "../../src/core/mapi/raw/contentType.js";
 
 // isJsonContentType duplicates core-sdk's unexported parse rule, so the two can
 // drift apart on a version bump. Driving the real adapter over a stubbed fetch

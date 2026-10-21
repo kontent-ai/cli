@@ -13,15 +13,15 @@ pnpm typecheck && pnpm lint && pnpm biome:check && pnpm knip && pnpm test
 
 ## Layers
 
-Dependencies point downward only: `commands -> core -> lib`.
+Dependencies point inward: `cli/commands -> cli/adapters -> core` and `cli/commands -> core`. `core` imports nothing from `cli`.
 
-- `src/commands/**` yargs wiring and presentation.
-- `src/core/**` orchestration of business logic.
-- `src/lib/**` reusable primitives.
-- Nested `AGENTS.md` files hold the details: `src/commands/`, `src/core/`, `src/lib/`, `test/`, `evals/`. Read the one covering a folder before editing in it.
-- Editing `scripts/generateCommandDocs.ts`: the generated-docs rules are in `src/commands/AGENTS.md`.
-- Commands obtain API clients and pass them into core; core operations take clients as input.
-- Core reports recoverable failures as `Result` and never writes to the console (exception: interactive flows, see core's file). Commands own presentation and exit codes.
+- `src/cli/commands/**` yargs wiring, orchestration (`perform*.ts`, `shared/`) and presentation.
+- `src/cli/adapters/**` I/O: API clients, keyring, config file, telemetry, prompts.
+- `src/core/**` pure domain code, with generic primitives in `core/lib`.
+- Nested `AGENTS.md` files hold the details: `src/cli/commands/`, `src/cli/adapters/`, `src/core/`, `test/`, `evals/`. Read the one covering a folder before editing in it.
+- Editing `scripts/generateCommandDocs.ts`: the generated-docs rules are in `src/cli/commands/AGENTS.md`.
+- Commands obtain API clients and pass them into the orchestration; operations take clients as input.
+- Orchestration reports recoverable failures as `Result` and never writes to the console (exception: interactive flows, see the commands file). The `run*.ts` files own presentation and exit codes.
 
 ## Auth
 
@@ -31,12 +31,12 @@ Dependencies point downward only: `commands -> core -> lib`.
 
 - stdout: only the command's payload (response body, token, list). `--logLevel none` still prints it.
 - stderr: progress, warnings, errors, verbose traces. Never the payload.
-- `createLoggerFromArgs` (`src/log.ts`) is the only place resolving `--logLevel`/`--verbose`.
+- `createLoggerFromArgs` (`src/cli/log.ts`) is the only place resolving `--logLevel`/`--verbose`.
 
 ## Conventions
 
 - Functional, not OOP. No classes. Branch with `match` (`ts-pattern`), not `switch`.
-- Errors are values: `Result` (`src/lib/result.ts`), `Option` (`src/lib/option.ts`); convert thrown errors at boundaries with `tryAsync`/`fromThrowable`.
+- Errors are values: `Result` (`src/core/lib/result.ts`), `Option` (`src/core/lib/option.ts`); convert thrown errors at boundaries with `tryAsync`/`fromThrowable`.
 - Boolean names start with is/has/can/should/was.
 - `const` over `let`.
 - No `return` on the same line as its condition.

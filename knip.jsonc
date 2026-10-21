@@ -8,7 +8,7 @@
   "entry": ["evals/shim.ts"],
   "ignoreIssues": {
     // Primitives kept whole on purpose, unused helpers included.
-    "src/lib/option.ts": ["exports", "types"],
-    "src/lib/result.ts": ["exports", "types"]
+    "src/core/lib/option.ts": ["exports", "types"],
+    "src/core/lib/result.ts": ["exports", "types"]
   }
 }

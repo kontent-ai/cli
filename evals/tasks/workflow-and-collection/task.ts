@@ -1,4 +1,4 @@
-import { isErr, ok } from "../../../src/lib/result.js";
+import { isErr, ok } from "../../../src/core/lib/result.js";
 import { DEFAULT_CODENAME } from "../../lib/codenames.js";
 import { describeList, lookup } from "../../lib/inspect.js";
 import type { EvalTask } from "../../lib/types.js";

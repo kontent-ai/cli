@@ -1,6 +1,6 @@
 import { KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
-import { formatIapiError } from "../../src/lib/iapi/formatIapiError.js";
+import { formatIapiError } from "../../src/cli/adapters/iapi/formatIapiError.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const NOISE_HEADER = "x-served-by";

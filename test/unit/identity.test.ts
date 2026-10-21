@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { createKeyringStorage } from "../../src/lib/auth/storage.js";
-import type { AuthError, TokenSet } from "../../src/lib/auth/types.js";
-import { readCliConfig, writeCliConfig } from "../../src/lib/config/cliConfig.js";
-import { err, ok } from "../../src/lib/result.js";
-import { resolveIdentity } from "../../src/lib/telemetry/identity.js";
+import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
+import { readCliConfig, writeCliConfig } from "../../src/cli/adapters/config/cliConfig.js";
+import { resolveIdentity } from "../../src/cli/adapters/telemetry/identity.js";
+import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
+import { err, ok } from "../../src/core/lib/result.js";
 
-vi.mock("../../src/lib/auth/storage.js", () => ({
+vi.mock("../../src/cli/adapters/auth/storage.js", () => ({
   createKeyringStorage: vi.fn(),
 }));
 
-vi.mock("../../src/lib/config/cliConfig.js", () => ({
+vi.mock("../../src/cli/adapters/config/cliConfig.js", () => ({
   readCliConfig: vi.fn(),
   writeCliConfig: vi.fn(),
 }));

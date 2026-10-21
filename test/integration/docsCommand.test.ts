@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
-import { register } from "../../src/commands/docs/docs.js";
-import { getEndpointDetails, getObjectDetails, searchDocs } from "../../src/core/docs/learn.js";
-import { err, ok } from "../../src/lib/result.js";
-import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
+import { noopTelemetry } from "../../src/cli/adapters/telemetry/tracking.js";
+import { register } from "../../src/cli/commands/docs/docs.js";
+import {
+  getEndpointDetails,
+  getObjectDetails,
+  searchDocs,
+} from "../../src/cli/commands/docs/learn.js";
+import { err, ok } from "../../src/core/lib/result.js";
 
-vi.mock("../../src/core/docs/learn.js", () => ({
+vi.mock("../../src/cli/commands/docs/learn.js", () => ({
   searchDocs: vi.fn(async () => ok([{ title: "Filter by taxonomy" }])),
   getEndpointDetails: vi.fn(async () => ok([{ title: "Upsert a language variant" }])),
   getObjectDetails: vi.fn(async () => ok([{ title: "Language variant" }])),

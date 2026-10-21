@@ -5,20 +5,20 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
-import { register as registerMapiCommand } from "../../src/commands/mapi/request.js";
-import type { MapiRequestParams } from "../../src/core/mapi/request.js";
-import { performRawMapiRequest } from "../../src/core/mapi/request.js";
-import { getValidAccessToken } from "../../src/lib/auth/tokenAccess.js";
-import { err, ok } from "../../src/lib/result.js";
-import type { Telemetry } from "../../src/lib/telemetry/tracking.js";
+import { getValidAccessToken } from "../../src/cli/adapters/auth/tokenAccess.js";
+import type { Telemetry } from "../../src/cli/adapters/telemetry/tracking.js";
+import type { MapiRequestParams } from "../../src/cli/commands/mapi/performRequest.js";
+import { performRawMapiRequest } from "../../src/cli/commands/mapi/performRequest.js";
+import { register as registerMapiCommand } from "../../src/cli/commands/mapi/request.js";
+import { err, ok } from "../../src/core/lib/result.js";
 
-vi.mock("../../src/core/mapi/request.js", () => ({
+vi.mock("../../src/cli/commands/mapi/performRequest.js", () => ({
   performRawMapiRequest: vi.fn(async () =>
     ok({ statusCode: 200, statusText: "OK", headers: [], body: null }),
   ),
 }));
 
-vi.mock("../../src/lib/auth/tokenAccess.js", () => ({
+vi.mock("../../src/cli/adapters/auth/tokenAccess.js", () => ({
   getValidAccessToken: vi.fn(async () => ok("stored-login-token")),
 }));
 

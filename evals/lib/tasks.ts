@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "../../src/lib/result.js";
+import { err, ok, type Result } from "../../src/core/lib/result.js";
 
 export type TaskNode = Readonly<{ id: string; dependsOn: ReadonlyArray<string> }>;
 

@@ -4,9 +4,9 @@ import {
   pollDeviceAuthorizationGrant,
 } from "openid-client";
 import { describe, expect, it, vi } from "vitest";
-import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../src/lib/auth/auth0.js";
-import type { Auth0Config } from "../../src/lib/auth/config.js";
-import { err } from "../../src/lib/result.js";
+import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../src/cli/adapters/auth/auth0.js";
+import type { Auth0Config } from "../../src/cli/adapters/auth/config.js";
+import { err } from "../../src/core/lib/result.js";
 
 // The real error classes stay: mapPollError branches on instanceof.
 vi.mock("openid-client", async (importOriginal) => ({

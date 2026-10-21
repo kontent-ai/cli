@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import yargs from "yargs";
-import { register } from "../../src/commands/telemetry/status.js";
-import { noopTelemetry } from "../../src/lib/telemetry/tracking.js";
-import { addLogLevelOptions } from "../../src/log.js";
+import { noopTelemetry } from "../../src/cli/adapters/telemetry/tracking.js";
+import { register } from "../../src/cli/commands/telemetry/status.js";
+import { addLogLevelOptions } from "../../src/cli/log.js";
 
-vi.mock("../../src/lib/config/cliConfig.js", () => ({
+vi.mock("../../src/cli/adapters/config/cliConfig.js", () => ({
   readCliConfig: vi.fn(async () => ({ telemetryEnabled: true, telemetryNoticeShown: true })),
   getCliConfigPath: () => "/tmp/kontent/config.json",
 }));
@@ -12,7 +12,7 @@ vi.mock("../../src/lib/config/cliConfig.js", () => ({
 vi.mock("ci-info", () => ({ isCI: false }));
 
 // A build without an Amplitude key reports telemetry off whatever the config says.
-vi.mock("../../src/lib/telemetry/context.js", () => ({
+vi.mock("../../src/cli/adapters/telemetry/context.js", () => ({
   amplitudeApiKey: "test-key",
   cliVersion: "0.0.0-test",
 }));

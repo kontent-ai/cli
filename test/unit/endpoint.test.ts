@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveEndpoint } from "../../src/lib/mapi/raw/endpoint.js";
+import { resolveEndpoint } from "../../src/core/mapi/raw/endpoint.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const params = { baseUrl: "https://manage.kontent.ai/v2", envId: ENV_ID } as const;

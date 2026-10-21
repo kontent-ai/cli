@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../package.json" with { type: "json" };
-import { type MapiRequestParams, performRawMapiRequest } from "../../src/core/mapi/request.js";
-import { createMapiRawClient } from "../../src/lib/mapi/raw/client.js";
-import { createLogger } from "../../src/log.js";
+import { createMapiRawClient } from "../../src/cli/adapters/mapi/raw/client.js";
+import {
+  type MapiRequestParams,
+  performRawMapiRequest,
+} from "../../src/cli/commands/mapi/performRequest.js";
+import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
 

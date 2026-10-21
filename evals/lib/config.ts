@@ -1,4 +1,4 @@
-import { err, isErr, ok, type Result } from "../../src/lib/result.js";
+import { err, isErr, ok, type Result } from "../../src/core/lib/result.js";
 import { readRequiredEnvVars } from "../../test/helpers/requiredEnv.js";
 
 export type EvalsConfig = Readonly<{

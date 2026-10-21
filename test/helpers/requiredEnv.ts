@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "../../src/lib/result.js";
+import { err, ok, type Result } from "../../src/core/lib/result.js";
 
 // Shared by the e2e suite (E2E_*) and the eval harness (EVALS_*): the rule about
 // what counts as unset has to be identical, only the variable names differ.

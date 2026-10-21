@@ -3,17 +3,17 @@
 import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { commandsToRegister } from "./commands/registry.js";
-import { resolveKontentTarget } from "./lib/config/kontentUrl.js";
-import { isErr } from "./lib/result.js";
-import { cliVersion } from "./lib/telemetry/context.js";
+import { cliVersion } from "./cli/adapters/telemetry/context.js";
 import {
   createTelemetry,
   formatTelemetryMode,
   registerTelemetrySignalFlush,
-} from "./lib/telemetry/tracking.js";
-import { addLogLevelOptions, createLoggerFromArgs } from "./log.js";
-import type { CommandDeps } from "./types/yargs.js";
+} from "./cli/adapters/telemetry/tracking.js";
+import { commandsToRegister } from "./cli/commands/registry.js";
+import { addLogLevelOptions, createLoggerFromArgs } from "./cli/log.js";
+import type { CommandDeps } from "./cli/types/yargs.js";
+import { resolveKontentTarget } from "./core/kontentUrl/kontentUrl.js";
+import { isErr } from "./core/lib/result.js";
 
 // A reader that stops early (`... | head`) exits and takes the read end of the
 // pipe with it, while we are still writing. The write then fails with EPIPE and
@@ -41,8 +41,8 @@ const emptyYargs = yargs(hideBin(process.argv));
 // Deliberately no .env() prefix mapping: it turns every KONTENT_* variable in
 // the shell into a flag, and .strict() then rejects the ones a given command
 // does not declare - an unrelated KONTENT_PROJECT_ID would break the whole CLI.
-// Each variable is read where it is used instead (lib/config/kontentUrl.ts,
-// lib/auth/config.ts, lib/telemetry/consent.ts, commands/mapi/request.ts).
+// Each variable is read where it is used instead (core/kontentUrl/kontentUrl.ts,
+// cli/adapters/auth/config.ts, cli/adapters/telemetry/consent.ts, cli/commands/mapi/request.ts).
 const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
   .scriptName("kontent")

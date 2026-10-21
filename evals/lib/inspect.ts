@@ -5,8 +5,8 @@ import type {
   TaxonomyModels,
   WorkflowModels,
 } from "@kontent-ai/management-sdk";
-import { none, type Option, some } from "../../src/lib/option.js";
-import { err, ok, type Result, tryAsync } from "../../src/lib/result.js";
+import { none, type Option, some } from "../../src/core/lib/option.js";
+import { err, ok, type Result, tryAsync } from "../../src/core/lib/result.js";
 import { isNotFoundError } from "../../test/helpers/environment.js";
 import type { Assertion } from "./types.js";
 
