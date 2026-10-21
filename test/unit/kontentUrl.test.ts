@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { iapiBaseUrl, mapiBaseUrl, resolveKontentTarget } from "../../src/lib/config/kontentUrl.js";
-import { map, ok } from "../../src/lib/result.js";
+import {
+  iapiBaseUrl,
+  mapiBaseUrl,
+  resolveKontentTarget,
+} from "../../src/core/kontentUrl/kontentUrl.js";
+import { map, ok } from "../../src/core/lib/result.js";
 
 const resolve = (kontentUrl: string) => resolveKontentTarget({ KONTENT_URL: kontentUrl });
 

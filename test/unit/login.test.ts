@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { performLogin } from "../../src/core/login/login.js";
-import { loginViaDeviceFlow, refreshTokens } from "../../src/lib/auth/auth0.js";
-import { createKeyringStorage } from "../../src/lib/auth/storage.js";
-import type { TokenSet } from "../../src/lib/auth/types.js";
-import { err, ok } from "../../src/lib/result.js";
-import { createLogger } from "../../src/log.js";
+import { loginViaDeviceFlow, refreshTokens } from "../../src/cli/adapters/auth/auth0.js";
+import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
+import { performLogin } from "../../src/cli/commands/login/performLogin.js";
+import { createLogger } from "../../src/cli/log.js";
+import type { TokenSet } from "../../src/core/auth/types.js";
+import { err, ok } from "../../src/core/lib/result.js";
 
-vi.mock("../../src/lib/auth/storage.js", () => ({
+vi.mock("../../src/cli/adapters/auth/storage.js", () => ({
   createKeyringStorage: vi.fn(),
 }));
 
-vi.mock("../../src/lib/auth/auth0.js", () => ({
+vi.mock("../../src/cli/adapters/auth/auth0.js", () => ({
   refreshTokens: vi.fn(),
   loginViaDeviceFlow: vi.fn(),
 }));
 
-vi.mock("../../src/core/user/user.js", () => ({
+vi.mock("../../src/cli/commands/shared/user.js", () => ({
   ensureUserIdCached: vi.fn(async () => {}),
 }));
 

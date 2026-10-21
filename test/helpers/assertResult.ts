@@ -1,4 +1,4 @@
-import type { Result } from "../../src/lib/result.js";
+import type { Result } from "../../src/core/lib/result.js";
 
 export function assertOk<T, E>(
   result: Result<T, E>,

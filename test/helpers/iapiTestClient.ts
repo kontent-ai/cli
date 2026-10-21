@@ -1,5 +1,5 @@
 import { getDefaultHttpService, type HttpAdapter, type JsonValue } from "@kontent-ai/core-sdk";
-import type { IapiClient } from "../../src/lib/iapi/client.js";
+import type { IapiClient } from "../../src/cli/adapters/iapi/client.js";
 
 const testBaseUrl = { protocol: "https", host: "iapi.test" } as const;
 const testSdkInfo = { name: "kontent-test", version: "0.0.0", host: "npmjs.com" } as const;

@@ -1,7 +1,7 @@
 import type { BashInput, WebFetchInput } from "@anthropic-ai/claude-agent-sdk/sdk-tools";
 import * as z from "zod/mini";
-import { isNone, isSome, none, type Option, some } from "../../src/lib/option.js";
-import { err, isErr, ok, type Result } from "../../src/lib/result.js";
+import { isNone, isSome, none, type Option, some } from "../../src/core/lib/option.js";
+import { err, isErr, ok, type Result } from "../../src/core/lib/result.js";
 
 export const AGENT_TOOLS: ReadonlyArray<string> = ["Bash", "WebFetch"];
 

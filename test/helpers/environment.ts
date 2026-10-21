@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { mapiBaseUrl, resolveKontentTarget } from "../../src/lib/config/kontentUrl.js";
-import { createMapiClient } from "../../src/lib/mapi/client.js";
-import { isErr } from "../../src/lib/result.js";
+import { createMapiClient } from "../../src/cli/adapters/mapi/client.js";
+import { mapiBaseUrl, resolveKontentTarget } from "../../src/core/kontentUrl/kontentUrl.js";
+import { isErr } from "../../src/core/lib/result.js";
 
 export type EnvironmentCredentials = Readonly<{
   mapiKey: string;

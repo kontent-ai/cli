@@ -4,9 +4,9 @@ import path from "node:path";
 import { confirm, isCancel, select } from "@clack/prompts";
 import { downloadTemplate } from "giget";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { performBootstrap } from "../../src/core/project/bootstrap.js";
-import { createMapiClient } from "../../src/lib/mapi/client.js";
-import { createLogger } from "../../src/log.js";
+import { createMapiClient } from "../../src/cli/adapters/mapi/client.js";
+import { performBootstrap } from "../../src/cli/commands/project/sample/bootstrap/performBootstrap.js";
+import { createLogger } from "../../src/cli/log.js";
 import { type IapiRoute, iapiTestClient } from "../helpers/iapiTestClient.js";
 
 vi.mock("@clack/prompts", () => ({

@@ -1,5 +1,5 @@
-import { isSome } from "../../../src/lib/option.js";
-import { isErr, ok } from "../../../src/lib/result.js";
+import { isSome } from "../../../src/core/lib/option.js";
+import { isErr, ok } from "../../../src/core/lib/result.js";
 import { DEFAULT_CODENAME, SCHEDULED_STEP_CODENAME } from "../../lib/codenames.js";
 import {
   describeList,

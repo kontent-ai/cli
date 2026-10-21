@@ -4,7 +4,7 @@ import type {
   query as queryFn,
   SDKMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { err, isErr, ok, type Result } from "../../src/lib/result.js";
+import { err, isErr, ok, type Result } from "../../src/core/lib/result.js";
 import { describeCause } from "./inspect.js";
 import { findResultMessage } from "./messages.js";
 import { AGENT_PERMISSION_RULES, AGENT_TOOLS, applyToolPolicy, type ToolPolicy } from "./policy.js";

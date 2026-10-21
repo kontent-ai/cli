@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { errorMessage } from "../../src/lib/error.js";
+import { errorMessage } from "../../src/core/lib/error.js";
 
 describe("errorMessage", () => {
   it("returns the message of a lone error", () => {

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { TestProject } from "vitest/node";
-import { isErr, tryAsync } from "../src/lib/result.js";
+import { isErr, tryAsync } from "../src/core/lib/result.js";
 import {
   cloneTestEnvironment,
   deleteTestEnvironment,

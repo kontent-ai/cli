@@ -1,8 +1,8 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { commandsToRegister } from "../src/commands/registry.js";
-import type { CommandDeps } from "../src/types/yargs.js";
+import { commandsToRegister } from "../src/cli/commands/registry.js";
+import type { CommandDeps } from "../src/cli/types/yargs.js";
 
 type OptionConfig = Readonly<{
   type?: string;
@@ -37,7 +37,7 @@ const scriptName = "kontent";
 // README without appearing in the root README's command index, and vice versa.
 const commandsWithoutPage: ReadonlySet<string> = new Set([]);
 const commandsWithoutIndexEntry: ReadonlySet<string> = new Set(["telemetry"]);
-const commandsRoot = "src/commands";
+const commandsRoot = "src/cli/commands";
 const readmeTableStart = "<!-- commands:start -->";
 const readmeTableEnd = "<!-- commands:end -->";
 const referenceStart = "<!-- reference:start -->";

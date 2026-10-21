@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { err, ok } from "../../src/lib/result.js";
+import { err, ok } from "../../src/core/lib/result.js";
 import { applyToolPolicy, DENIAL_PREFIX, type ToolPolicy } from "../lib/policy.js";
 
 const workspace = "/var/folders/ab/kontent-eval-x";

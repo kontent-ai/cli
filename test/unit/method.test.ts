@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMethod } from "../../src/lib/mapi/raw/method.js";
+import { parseMethod } from "../../src/core/mapi/raw/method.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 describe("parseMethod", () => {

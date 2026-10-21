@@ -1,8 +1,12 @@
 import type { BaseUrl, JsonValue } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
-import { getEndpointDetails, getObjectDetails, searchDocs } from "../../src/core/docs/learn.js";
-import { createLearnClient } from "../../src/lib/learn/client.js";
-import { createLogger } from "../../src/log.js";
+import { createLearnClient } from "../../src/cli/adapters/learn/client.js";
+import {
+  getEndpointDetails,
+  getObjectDetails,
+  searchDocs,
+} from "../../src/cli/commands/docs/learn.js";
+import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
 

@@ -1,6 +1,6 @@
 import type { TaxonomyModels } from "@kontent-ai/management-sdk";
-import { isNone } from "../../../src/lib/option.js";
-import { isErr, ok } from "../../../src/lib/result.js";
+import { isNone } from "../../../src/core/lib/option.js";
+import { isErr, ok } from "../../../src/core/lib/result.js";
 import {
   describeList,
   flattenTaxonomyTerms,

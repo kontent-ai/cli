@@ -1,7 +1,7 @@
 import { KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
-import { formatLearnError } from "../../src/lib/learn/formatLearnError.js";
+import { formatLearnError } from "../../src/cli/adapters/learn/formatLearnError.js";
 
 const URL_TEXT = "https://learn-mcp.kontent.ai/search?text=roles";
 

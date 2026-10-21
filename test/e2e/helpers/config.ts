@@ -1,4 +1,4 @@
-import { isErr } from "../../../src/lib/result.js";
+import { isErr } from "../../../src/core/lib/result.js";
 import { readRequiredEnvVars } from "../../helpers/requiredEnv.js";
 
 export type E2eConfig = Readonly<{

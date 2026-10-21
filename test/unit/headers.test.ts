@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseHeaders } from "../../src/lib/mapi/raw/headers.js";
+import { parseHeaders } from "../../src/core/mapi/raw/headers.js";
 
 describe("parseHeaders", () => {
   it("returns an empty list for no entries", () => {

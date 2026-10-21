@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { resolveMapiCredential } from "../../src/lib/auth/mapiCredential.js";
-import { ok } from "../../src/lib/result.js";
+import { resolveMapiCredential } from "../../src/cli/adapters/auth/mapiCredential.js";
+import { ok } from "../../src/core/lib/result.js";
 import { assertOk } from "../helpers/assertResult.js";
 
-vi.mock("../../src/lib/auth/tokenAccess.js", () => ({
+vi.mock("../../src/cli/adapters/auth/tokenAccess.js", () => ({
   getValidAccessToken: vi.fn(async () => ok("stored-login-token")),
 }));
 

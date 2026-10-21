@@ -1,5 +1,5 @@
-import { isNone } from "../../../src/lib/option.js";
-import { isErr, ok } from "../../../src/lib/result.js";
+import { isNone } from "../../../src/core/lib/option.js";
+import { isErr, ok } from "../../../src/core/lib/result.js";
 import { articleElementCodenames } from "../../lib/codenames.js";
 import {
   describeList,

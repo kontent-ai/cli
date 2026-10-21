@@ -1,5 +1,5 @@
-import type { MapiClient } from "../../src/lib/mapi/client.js";
-import type { Result } from "../../src/lib/result.js";
+import type { MapiClient } from "../../src/cli/adapters/mapi/client.js";
+import type { Result } from "../../src/core/lib/result.js";
 
 export type Assertion = Readonly<{
   id: string;

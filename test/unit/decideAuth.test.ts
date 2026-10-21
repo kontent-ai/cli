@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { decideAuth, EXPIRY_SKEW_MS } from "../../src/lib/auth/tokenAccess.js";
-import type { TokenSet } from "../../src/lib/auth/types.js";
+import { decideAuth, EXPIRY_SKEW_MS } from "../../src/cli/adapters/auth/tokenAccess.js";
+import type { TokenSet } from "../../src/core/auth/types.js";
 
 const NOW = 1_000_000;
 
