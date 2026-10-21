@@ -12,4 +12,26 @@ export default defineConfig([
       },
     },
   },
+  {
+    files: ["src/core/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        { patterns: [{ group: ["**/cli/**"], message: "core never imports from cli." }] },
+      ],
+    },
+  },
+  {
+    files: ["src/cli/adapters/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["**/commands/**"], message: "adapters never import from commands." },
+          ],
+        },
+      ],
+    },
+  },
 ]);
