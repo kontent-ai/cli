@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { MapiResponse } from "../../src/cli/commands/mapi/performRequest.js";
-import { presentResponse } from "../../src/cli/commands/mapi/presentResponse.js";
+import { presentResponse } from "../../src/cli/commands/mapi/request/presentResponse.js";
+import type { MapiResponse } from "../../src/core/mapi/raw/response.js";
 
 const response = (overrides: Partial<MapiResponse> = {}): MapiResponse => ({
   statusCode: 200,

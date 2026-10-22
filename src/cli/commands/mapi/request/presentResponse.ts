@@ -1,5 +1,5 @@
-import { isJsonContentType } from "../../adapters/mapi/raw/contentType.js";
-import type { MapiResponse } from "./performRequest.js";
+import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
+import { isJsonContentType } from "../../../adapters/mapi/raw/contentType.js";
 
 export type PresentedResponse = Readonly<{
   /** Everything destined for stdout, ready to be written in one go. */

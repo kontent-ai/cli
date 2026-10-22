@@ -2,6 +2,7 @@
 
 - A command has a register file `<cmd>.ts` and, when it does work, a `run<Cmd>.ts`.
 - `<cmd>.ts` is yargs registration only. Its handler lazy-imports `run<Cmd>.ts` (`await import(...)`), so a command's dependencies load only when it runs.
+- A command whose options have behavior of their own (`nargs`, arrays, `.check`) exports its definition (`command`, `describe`, `builder`) as `<cmd>Command` next to `register`; parser tests reuse it with a capturing handler.
 - `run<Cmd>.ts` exports two functions:
   - `<cmd>(effects)`: the workflow. Effects in, `Result` out; sequences the effects and calls core.
   - `run<Cmd>(args, deps)`: builds the real effects from adapters, calls the workflow, and presents the result: messages, streams, `process.exitCode`, the telemetry tracker.

@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../package.json" with { type: "json" };
-import { createMapiRawClient } from "../../src/cli/adapters/mapi/raw/client.js";
-import {
-  type MapiRequestParams,
-  performRawMapiRequest,
-} from "../../src/cli/commands/mapi/performRequest.js";
+import { createRawMapi, type RawRequest } from "../../src/cli/adapters/mapi/raw/client.js";
 import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
@@ -17,9 +13,8 @@ const MAX_RETRY_DELAY_MS = 60_000;
 
 const logger = createLogger("none");
 
-const makeParams = (overrides: Partial<MapiRequestParams> = {}): MapiRequestParams => ({
-  endpoint: "types",
-  envId: ENV_ID,
+const makeRequest = (overrides: Partial<RawRequest> = {}): RawRequest => ({
+  url: new URL(`${BASE_URL}/projects/${ENV_ID}/types`),
   method: "GET",
   headers: [],
   body: null,
@@ -27,20 +22,16 @@ const makeParams = (overrides: Partial<MapiRequestParams> = {}): MapiRequestPara
 });
 
 type RunOptions = Readonly<{
-  params?: Partial<MapiRequestParams>;
+  request?: Partial<RawRequest>;
   token?: string | undefined;
 }>;
 
 const run = async (routes: ReadonlyArray<HttpRoute>, options: RunOptions = {}) => {
   const { adapter, requests } = httpTestAdapter(routes);
-  const client = createMapiRawClient({
-    // `token: undefined` means an explicitly tokenless client, distinct from omitting it.
-    token: "token" in options ? options.token : "secret-token",
-    baseUrl: BASE_URL,
-    adapter,
-    logger,
-  });
-  const result = await performRawMapiRequest(makeParams(options.params), { logger, client });
+  const mapi = createRawMapi({ adapter, logger });
+  // `token: undefined` means an explicitly tokenless request, distinct from omitting it.
+  const token = "token" in options ? options.token : "secret-token";
+  const result = await mapi.send(makeRequest(options.request), token);
   return { result, requests };
 };
 
@@ -50,14 +41,14 @@ const typesRoute: HttpRoute = {
   replies: [{ payload: { types: [] } }],
 };
 
-describe("performRawMapiRequest", () => {
-  it("sends an authenticated GET to the environment-scoped endpoint", async () => {
+describe("createRawMapi", () => {
+  it("sends an authenticated GET with the SDK id", async () => {
     const { result, requests } = await run([typesRoute]);
 
     assertOk(result);
-    expect(result.value.statusCode).toBe(200);
+    expect(result.value.status).toBe(200);
     expect(result.value.statusText).toBe("OK");
-    expect(result.value.body).toEqual({ types: [] });
+    expect(result.value.payload).toEqual({ types: [] });
     expect(requests).toHaveLength(1);
     expect(requests[0]?.url.toString()).toBe(`${BASE_URL}/projects/${ENV_ID}/types`);
     expect(requests[0]?.requestHeaders).toContainEqual({
@@ -72,7 +63,7 @@ describe("performRawMapiRequest", () => {
 
   it("sends one header per name, the last occurrence winning", async () => {
     const { requests } = await run([typesRoute], {
-      params: {
+      request: {
         headers: [
           { name: "Content-Type", value: "application/json" },
           { name: "content-type", value: "text/plain" },
@@ -89,7 +80,7 @@ describe("performRawMapiRequest", () => {
   it("sends a caller-supplied Authorization header as the only one", async () => {
     const { requests } = await run([typesRoute], {
       token: undefined,
-      params: { headers: [{ name: "Authorization", value: "Bearer caller-token" }] },
+      request: { headers: [{ name: "Authorization", value: "Bearer caller-token" }] },
     });
 
     const authorizations = (requests[0]?.requestHeaders ?? []).filter(
@@ -102,7 +93,7 @@ describe("performRawMapiRequest", () => {
     const { requests } = await run(
       [{ method: "POST", path: /\/types$/, replies: [{ status: 201 }] }],
       {
-        params: {
+        request: {
           method: "POST",
           body: new Blob(['{"codename":"x"}']),
         },
@@ -130,8 +121,8 @@ describe("performRawMapiRequest", () => {
     ]);
 
     assertOk(result);
-    expect(result.value.statusCode).toBe(404);
-    expect(result.value.body).toEqual({
+    expect(result.value.status).toBe(404);
+    expect(result.value.payload).toEqual({
       message: "The requested content type was not found.",
     });
   });
@@ -154,7 +145,7 @@ describe("performRawMapiRequest", () => {
 
     expect(requests).toHaveLength(2);
     assertOk(result);
-    expect(result.value.statusCode).toBe(200);
+    expect(result.value.status).toBe(200);
   });
 
   it("gives up on a persistent 429 after the retry budget", async () => {
@@ -174,7 +165,7 @@ describe("performRawMapiRequest", () => {
 
     expect(requests).toHaveLength(4);
     assertOk(result);
-    expect(result.value.statusCode).toBe(429);
+    expect(result.value.status).toBe(429);
   });
 
   it("clamps a Retry-After that asks for longer than the retry limit", async () => {
@@ -194,13 +185,7 @@ describe("performRawMapiRequest", () => {
           ],
         },
       ]);
-      const client = createMapiRawClient({
-        token: "secret-token",
-        baseUrl: BASE_URL,
-        adapter,
-        logger,
-      });
-      const pending = performRawMapiRequest(makeParams(), { logger, client });
+      const pending = createRawMapi({ adapter, logger }).send(makeRequest(), "secret-token");
 
       // The API asked for an hour; the wait ends at the cap, not at what it asked for.
       await vi.advanceTimersByTimeAsync(MAX_RETRY_DELAY_MS - 1);
@@ -210,7 +195,7 @@ describe("performRawMapiRequest", () => {
       const result = await pending;
       expect(requests).toHaveLength(2);
       assertOk(result);
-      expect(result.value.statusCode).toBe(200);
+      expect(result.value.status).toBe(200);
     } finally {
       vi.useRealTimers();
     }
@@ -234,7 +219,7 @@ describe("performRawMapiRequest", () => {
           ],
         },
       ],
-      { params: { abortSignal: controller.signal } },
+      { request: { abortSignal: controller.signal } },
     );
     setTimeout(() => controller.abort(), 20);
 
@@ -242,7 +227,7 @@ describe("performRawMapiRequest", () => {
 
     expect(requests).toHaveLength(1);
     assertErr(result);
-    expect(result.error).toEqual({ kind: "transport", message: "The request was aborted." });
+    expect(result.error).toBe("The request was aborted.");
   });
 
   it("does not retry a non-429 failure", async () => {
@@ -255,12 +240,12 @@ describe("performRawMapiRequest", () => {
           replies: [{ status: 503, statusText: "Service Unavailable" }, { status: 201 }],
         },
       ],
-      { params: { method: "POST", body: new Blob(["{}"]) } },
+      { request: { method: "POST", body: new Blob(["{}"]) } },
     );
 
     expect(requests).toHaveLength(1);
     assertOk(result);
-    expect(result.value.statusCode).toBe(503);
+    expect(result.value.status).toBe(503);
   });
 
   it("reports a failed request as a transport error", async () => {
@@ -272,19 +257,6 @@ describe("performRawMapiRequest", () => {
       },
     ]);
 
-    expect(result).toEqual({
-      kind: "err",
-      error: { kind: "transport", message: "socket hang up" },
-    });
-  });
-
-  it("rejects an absolute endpoint before any request is made", async () => {
-    const { result, requests } = await run([typesRoute], {
-      params: { endpoint: "https://evil.example.com/types" },
-    });
-
-    expect(requests).toHaveLength(0);
-    assertErr(result);
-    expect(result.error.kind).toBe("invalid-endpoint");
+    expect(result).toEqual({ kind: "err", error: "socket hang up" });
   });
 });

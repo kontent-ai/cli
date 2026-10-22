@@ -39,8 +39,7 @@ const mapiSdkInfo: SdkInfo = {
  * for anything else, which is all this needs: the Management API answers JSON on
  * every status, and binary only ever travels request-side, on an asset upload.
  */
-export type MapiRawClient = Readonly<{
-  baseUrl: string;
+type MapiRawClient = Readonly<{
   // The headers the service adds to every request; kept for the verbose trace,
   // which has to show what goes on the wire, not just what the caller passed.
   requestHeaders: ReadonlyArray<Header>;
@@ -63,12 +62,24 @@ export type RawResponse = Readonly<{
   payload: JsonValue;
 }>;
 
-export const createMapiRawClient = (
+/** What a workflow is handed: one call per request, sent with that request's credential. */
+export type RawMapi = Readonly<{
+  // Absent when the caller carries its own Authorization header; the client then adds none.
+  send: (request: RawRequest, token: string | undefined) => Promise<Result<RawResponse, string>>;
+}>;
+
+export const createRawMapi = (
+  params: Readonly<{ logger: Logger; adapter?: HttpAdapter }>,
+): RawMapi => ({
+  send: async (request, token) =>
+    executeRawRequest(createMapiRawClient({ ...params, token }), request, params.logger),
+});
+
+const createMapiRawClient = (
   params: Readonly<{
     logger: Logger;
     // Absent when the caller carries its own Authorization header; the client then adds none.
     token?: string | undefined;
-    baseUrl: string;
     adapter?: HttpAdapter;
   }>,
 ): MapiRawClient => {
@@ -81,7 +92,6 @@ export const createMapiRawClient = (
         ];
 
   return {
-    baseUrl: params.baseUrl,
     requestHeaders,
     httpService: getDefaultHttpService({
       requestHeaders,
@@ -105,7 +115,7 @@ export const createMapiRawClient = (
  * Sends the request and hands back whatever came off the wire. A 4xx/5xx is a
  * result, not an error - only a request that could not be made at all fails.
  */
-export const executeRawRequest = async (
+const executeRawRequest = async (
   client: MapiRawClient,
   request: RawRequest,
   logger: Logger,
