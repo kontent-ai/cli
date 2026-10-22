@@ -1,44 +1,9 @@
 import { match } from "ts-pattern";
 import { isTruthyEnv } from "../../../core/lib/env.js";
-import type { CliConfig } from "../config/cliConfig.js";
-
-export type TelemetryOffReason =
-  | "do-not-track-env"
-  | "kontent-do-not-track-env"
-  | "config-disabled"
-  | "ci"
-  | "missing-api-key";
-
-export type TelemetryConsent =
-  | { readonly isEnabled: true }
-  | { readonly isEnabled: false; readonly reason: TelemetryOffReason };
+import type { TelemetryOffReason } from "../../../core/telemetry/consent.js";
 
 export const isTelemetryDebug = (env: NodeJS.ProcessEnv): boolean =>
   isTruthyEnv(env.KONTENT_TELEMETRY_DEBUG);
-
-export const resolveTelemetryConsent = (
-  env: NodeJS.ProcessEnv,
-  config: CliConfig,
-  amplitudeApiKey: string,
-  isCiRun: boolean,
-): TelemetryConsent => {
-  if (isTruthyEnv(env.DO_NOT_TRACK)) {
-    return { isEnabled: false, reason: "do-not-track-env" };
-  }
-  if (isTruthyEnv(env.KONTENT_DO_NOT_TRACK)) {
-    return { isEnabled: false, reason: "kontent-do-not-track-env" };
-  }
-  if (config.telemetryEnabled === false) {
-    return { isEnabled: false, reason: "config-disabled" };
-  }
-  if (isCiRun) {
-    return { isEnabled: false, reason: "ci" };
-  }
-  if (amplitudeApiKey === "") {
-    return { isEnabled: false, reason: "missing-api-key" };
-  }
-  return { isEnabled: true };
-};
 
 export const formatTelemetryOffReason = (reason: TelemetryOffReason): string =>
   match(reason)

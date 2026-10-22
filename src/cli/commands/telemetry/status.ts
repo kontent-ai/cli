@@ -1,5 +1,4 @@
 import type { RegisterCommand } from "../../types/yargs.js";
-import { buildTelemetryStatusReport } from "./settings.js";
 
 export const register: RegisterCommand = (sub) =>
   sub.command({
@@ -7,6 +6,7 @@ export const register: RegisterCommand = (sub) =>
     describe: "Show whether telemetry is enabled and why",
     builder: (b) => b,
     handler: async () => {
-      process.stdout.write(`${await buildTelemetryStatusReport()}\n`);
+      const { runStatus } = await import("./runTelemetry.js");
+      await runStatus();
     },
   });

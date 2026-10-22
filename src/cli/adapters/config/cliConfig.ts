@@ -77,8 +77,13 @@ export const writeCliConfig = async (patch: Partial<CliConfig>): Promise<Result<
 };
 
 export type CliConfigStore = Readonly<{
+  path: () => string;
   read: () => Promise<CliConfig>;
   write: (patch: Partial<CliConfig>) => Promise<Result<void, string>>;
 }>;
 
-export const cliConfigStore: CliConfigStore = { read: readCliConfig, write: writeCliConfig };
+export const cliConfigStore: CliConfigStore = {
+  path: getCliConfigPath,
+  read: readCliConfig,
+  write: writeCliConfig,
+};

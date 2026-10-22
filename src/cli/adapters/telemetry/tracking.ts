@@ -2,18 +2,17 @@ import { isCI } from "ci-info";
 import { match } from "ts-pattern";
 import { isOk } from "../../../core/lib/result.js";
 import {
+  decideTelemetryConsent,
+  type TelemetryOffReason,
+} from "../../../core/telemetry/consent.js";
+import {
   type CommandOutcome,
   type EventProperties,
   toEventType,
 } from "../../../core/telemetry/events.js";
 import type { Logger } from "../../log.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
-import {
-  formatTelemetryOffReason,
-  isTelemetryDebug,
-  resolveTelemetryConsent,
-  type TelemetryOffReason,
-} from "./consent.js";
+import { formatTelemetryOffReason, isTelemetryDebug } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
 import { resolveIdentity } from "./identity.js";
 import {
@@ -134,7 +133,12 @@ type SinkResolution = Readonly<{
 
 const resolveSink = async (): Promise<SinkResolution> => {
   const config = await readCliConfig();
-  const consent = resolveTelemetryConsent(process.env, config, amplitudeApiKey, isCI);
+  const consent = decideTelemetryConsent({
+    env: process.env,
+    telemetryEnabled: config.telemetryEnabled,
+    amplitudeApiKey,
+    isCiRun: isCI,
+  });
 
   if (isTelemetryDebug(process.env)) {
     const decisionText = consent.isEnabled ? "enabled" : `disabled (${consent.reason})`;
