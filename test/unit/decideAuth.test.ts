@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { decideAuth, EXPIRY_SKEW_MS } from "../../src/cli/adapters/auth/tokenAccess.js";
+import {
+  decideAfterRefreshFailure,
+  decideAuth,
+  EXPIRY_SKEW_MS,
+} from "../../src/core/auth/decideAuth.js";
 import type { TokenSet } from "../../src/core/auth/types.js";
 
 const NOW = 1_000_000;
@@ -47,5 +51,15 @@ describe("decideAuth", () => {
 
   it("logs in when the token expired and no refresh token is stored", () => {
     expect(decideAuth(tokenSet({ expiresAt: NOW - 1 }), NOW)).toEqual({ type: "login" });
+  });
+});
+
+describe("decideAfterRefreshFailure", () => {
+  it.each([
+    [{ kind: "refresh-rejected", cause: new Error("invalid_grant") }, "sign-in-again"],
+    [{ kind: "refresh-failed", cause: new Error("ETIMEDOUT") }, "keep-session"],
+    [{ kind: "discovery-failed", cause: new Error("ENOTFOUND") }, "keep-session"],
+  ] as const)("maps %o to %s", (error, expected) => {
+    expect(decideAfterRefreshFailure(error)).toBe(expected);
   });
 });

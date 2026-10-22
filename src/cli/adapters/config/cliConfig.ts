@@ -75,3 +75,10 @@ export const writeCliConfig = async (patch: Partial<CliConfig>): Promise<Result<
     return err(errorMessage(cause));
   }
 };
+
+export type CliConfigStore = Readonly<{
+  read: () => Promise<CliConfig>;
+  write: (patch: Partial<CliConfig>) => Promise<Result<void, string>>;
+}>;
+
+export const cliConfigStore: CliConfigStore = { read: readCliConfig, write: writeCliConfig };

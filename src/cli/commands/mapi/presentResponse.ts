@@ -1,4 +1,4 @@
-import { isJsonContentType } from "../../../core/mapi/raw/contentType.js";
+import { isJsonContentType } from "../../adapters/mapi/raw/contentType.js";
 import type { MapiResponse } from "./performRequest.js";
 
 export type PresentedResponse = Readonly<{

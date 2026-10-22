@@ -1,30 +1,10 @@
 import { match } from "ts-pattern";
-import type { AuthDecision, AuthError, TokenSet } from "../../../core/auth/types.js";
+import { decideAuth } from "../../../core/auth/decideAuth.js";
+import type { AuthError, TokenSet } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
 import { refreshTokens } from "./auth0.js";
 import { type Auth0Config, getAuth0Config } from "./config.js";
 import { createKeyringStorage, type TokenStorage } from "./storage.js";
-
-export const EXPIRY_SKEW_MS = 60_000;
-
-export const decideAuth = (tokens: TokenSet | null, nowMs: number): AuthDecision => {
-  if (tokens === null) {
-    return { type: "login" };
-  }
-
-  const isAccessTokenLive =
-    tokens.expiresAt === undefined || tokens.expiresAt - EXPIRY_SKEW_MS > nowMs;
-
-  if (isAccessTokenLive) {
-    return { type: "use-existing-token", accessToken: tokens.accessToken };
-  }
-
-  if (tokens.refreshToken !== undefined) {
-    return { type: "refresh-token", refreshToken: tokens.refreshToken };
-  }
-
-  return { type: "login" };
-};
 
 /**
  * Refreshes the token set. Clears stored tokens only when Auth0 rejects the

@@ -1,10 +1,10 @@
-import { invalidEnvIdMessage } from "../../../core/environment/envId.js";
 import { isGuid } from "../../../core/lib/guid.js";
 import { isNone, type Option } from "../../../core/lib/option.js";
 import { err, isErr, mapErr, ok, type Result, tryAsync } from "../../../core/lib/result.js";
 import { writeCliConfig } from "../../adapters/config/cliConfig.js";
 import type { MapiClient } from "../../adapters/mapi/client.js";
 import { mapiErrorMessage, mapiErrorStatus } from "../../adapters/mapi/error.js";
+import { invalidEnvIdMessage } from "./invalidEnvIdMessage.js";
 
 export type SelectedEnvironment =
   | Readonly<{ kind: "verified"; envId: string; projectName: string; environmentName: string }>

@@ -2,12 +2,12 @@ import { match } from "ts-pattern";
 import { mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
 import { isErr } from "../../../../../core/lib/result.js";
 import { supportedProjectTypes } from "../../../../../core/project/samples.js";
+import { getAuthenticatedIapiClient } from "../../../../adapters/auth/authenticatedClient.js";
 import { formatIapiError } from "../../../../adapters/iapi/formatIapiError.js";
 import { createMapiClient } from "../../../../adapters/mapi/client.js";
 import { intro, note, outro } from "../../../../adapters/prompts/prompts.js";
 import type { Logger } from "../../../../log.js";
 import type { CommandDeps } from "../../../../types/yargs.js";
-import { getAuthenticatedIapiClient } from "../../../shared/authenticatedClient.js";
 import { formatAuthError } from "../../../shared/formatAuthError.js";
 import { type BootstrapError, type BootstrapParams, performBootstrap } from "./performBootstrap.js";
 

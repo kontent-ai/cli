@@ -1,23 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loginViaDeviceFlow, refreshTokens } from "../../src/cli/adapters/auth/auth0.js";
-import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
-import { performLogin } from "../../src/cli/commands/login/performLogin.js";
+import { describe, expect, it } from "vitest";
+import { type LoginEffects, login } from "../../src/cli/commands/login/runLogin.js";
 import { createLogger } from "../../src/cli/log.js";
-import type { TokenSet } from "../../src/core/auth/types.js";
+import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok } from "../../src/core/lib/result.js";
-
-vi.mock("../../src/cli/adapters/auth/storage.js", () => ({
-  createKeyringStorage: vi.fn(),
-}));
-
-vi.mock("../../src/cli/adapters/auth/auth0.js", () => ({
-  refreshTokens: vi.fn(),
-  loginViaDeviceFlow: vi.fn(),
-}));
-
-vi.mock("../../src/cli/commands/shared/user.js", () => ({
-  ensureUserIdCached: vi.fn(async () => {}),
-}));
+import { fakeAuth0, fakeTokenStorage, fakeUserIdCache } from "../helpers/authFakes.js";
 
 const EXPIRED_TOKENS: TokenSet = {
   accessToken: "stale-access-token",
@@ -33,68 +19,63 @@ const FRESH_TOKENS: TokenSet = {
   identifier: "new@example.com",
 };
 
-const logger = createLogger("none");
-const kontentTarget = { kind: "domain", domain: "kontent.ai" } as const;
+const REJECTED: AuthError = { kind: "refresh-rejected", cause: new Error("invalid_grant") };
+const TRANSIENT: AuthError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") };
 
-const fakeStorage = (stored: TokenSet | null) => ({
-  read: vi.fn(async () => ok(stored)),
-  write: vi.fn(async () => ok(undefined)),
-  clear: vi.fn(async () => ok(undefined)),
-});
+const effectsWith = (auth: ReturnType<typeof fakeAuth0>) =>
+  ({
+    logger: createLogger("none"),
+    clock: { now: () => 1_000 },
+    tokens: fakeTokenStorage(EXPIRED_TOKENS),
+    auth,
+    userIds: fakeUserIdCache(),
+  }) satisfies LoginEffects;
 
-describe("performLogin with a rejected refresh token", () => {
-  beforeEach(() => {
-    vi.mocked(refreshTokens).mockResolvedValue(
-      err({ kind: "refresh-rejected", cause: new Error("invalid_grant") }),
-    );
-    vi.mocked(loginViaDeviceFlow).mockResolvedValue(ok(FRESH_TOKENS));
-  });
+describe("login with a rejected refresh token", () => {
+  const rejectedAuth = () =>
+    fakeAuth0({ refresh: err(REJECTED), signInWithDeviceFlow: ok(FRESH_TOKENS) });
 
   it("falls back to the device flow instead of failing the command", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
+    const effects = effectsWith(rejectedAuth());
 
-    const result = await performLogin(logger, kontentTarget);
+    const result = await login(effects);
 
-    expect(loginViaDeviceFlow).toHaveBeenCalledOnce();
+    expect(effects.auth.signInWithDeviceFlow).toHaveBeenCalledOnce();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
   });
 
   it("clears the dead tokens and persists the ones from the device flow", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
+    const effects = effectsWith(rejectedAuth());
 
-    await performLogin(logger, kontentTarget);
+    await login(effects);
 
-    expect(storage.clear).toHaveBeenCalledOnce();
-    expect(storage.write).toHaveBeenCalledWith(FRESH_TOKENS);
+    expect(effects.tokens.clear).toHaveBeenCalledOnce();
+    expect(effects.tokens.write).toHaveBeenCalledWith(FRESH_TOKENS);
+    expect(effects.userIds.ensure).toHaveBeenCalledWith("new-access-token", {
+      shouldForceRefresh: true,
+    });
   });
 });
 
-describe("performLogin when the refresh fails transiently", () => {
+describe("login when the refresh fails transiently", () => {
   it("keeps the stored session and surfaces the error without a device flow", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
-    const transientError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") } as const;
-    vi.mocked(refreshTokens).mockResolvedValue(err(transientError));
+    const effects = effectsWith(fakeAuth0({ refresh: err(TRANSIENT) }));
 
-    const result = await performLogin(logger, kontentTarget);
+    const result = await login(effects);
 
-    expect(loginViaDeviceFlow).not.toHaveBeenCalled();
-    expect(storage.clear).not.toHaveBeenCalled();
-    expect(result).toEqual(err(transientError));
+    expect(effects.auth.signInWithDeviceFlow).not.toHaveBeenCalled();
+    expect(effects.tokens.clear).not.toHaveBeenCalled();
+    expect(result).toEqual(err(TRANSIENT));
   });
 });
 
-describe("performLogin when the refresh succeeds", () => {
+describe("login when the refresh succeeds", () => {
   it("does not start a device flow", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
-    vi.mocked(refreshTokens).mockResolvedValue(ok(FRESH_TOKENS));
+    const effects = effectsWith(fakeAuth0({ refresh: ok(FRESH_TOKENS) }));
 
-    const result = await performLogin(logger, kontentTarget);
+    const result = await login(effects);
 
-    expect(loginViaDeviceFlow).not.toHaveBeenCalled();
+    expect(effects.auth.signInWithDeviceFlow).not.toHaveBeenCalled();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
   });
 });

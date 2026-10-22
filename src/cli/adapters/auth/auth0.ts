@@ -99,6 +99,16 @@ export const loginViaDeviceFlow = async (
   }
 };
 
+export type Auth0 = Readonly<{
+  refresh: (refreshToken: string) => Promise<Result<TokenSet, AuthError>>;
+  signInWithDeviceFlow: () => Promise<Result<TokenSet, AuthError>>;
+}>;
+
+export const createAuth0 = (config: Auth0Config, deviceFlow: DeviceFlowDeps): Auth0 => ({
+  refresh: async (refreshToken) => refreshTokens(config, refreshToken),
+  signInWithDeviceFlow: async () => loginViaDeviceFlow(config, deviceFlow),
+});
+
 // Pins the ID token signature algorithm, which would otherwise widen to whatever the
 // tenant advertises in its discovery document.
 const CLIENT_METADATA = { id_token_signed_response_alg: "RS256" };
