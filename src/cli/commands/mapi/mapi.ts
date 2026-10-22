@@ -1,5 +1,5 @@
 import type { RegisterCommand } from "../../types/yargs.js";
-import { register as registerRequest } from "./request.js";
+import { register as registerRequest } from "./request/request.js";
 
 // A parent with a default child, not a flat `mapi <endpoint>`: flat siblings would
 // both key on `mapi`, and the later registration would silently swallow every
