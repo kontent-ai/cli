@@ -62,3 +62,9 @@ export const getValidAccessToken = async (): Promise<Result<string, AuthError>> 
     )
     .exhaustive();
 };
+
+export type Session = Readonly<{
+  accessToken: () => Promise<Result<string, AuthError>>;
+}>;
+
+export const session: Session = { accessToken: getValidAccessToken };

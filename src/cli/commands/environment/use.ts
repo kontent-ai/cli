@@ -16,7 +16,7 @@ export const register: RegisterCommand = (sub, deps) =>
         // Checked here too, so a malformed id is reported before any credential lookup.
         .check((args) => (isGuid(args.envId.trim()) ? true : invalidEnvIdMessage(args.envId))),
     handler: async (args) => {
-      const { runUse } = await import("./runUse.js");
+      const { runUse } = await import("./runEnvironment.js");
       await runUse(args, deps.kontentTarget);
     },
   });
