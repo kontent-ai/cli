@@ -11,7 +11,7 @@
 
 ## Workflows
 
-- Effects arrive as one `<Cmd>Effects` parameter, defined next to the workflow. Each port is as narrow as the workflow uses (`fetchUserId`, not the whole `IapiClient`). Add a port only where a test needs a fake.
+- Effects arrive as one `<Cmd>Effects` parameter, defined next to the workflow. Pass capability objects from adapters (e.g. `TokenStorage`), typed down with `Pick` to the methods the workflow uses. When an adapter has none yet, add one there instead of wrapping a function in the wiring.
 - Never touch adapters, Node I/O, `process.env` or the clock directly: everything goes through `effects`.
 - No domain decisions. Branch only to dispatch on what core returned, or to stop on an `err` or a cancelled prompt. Anything worth a table test belongs in core.
 - Never write to stdout; the payload is returned and `run<Cmd>` prints it. Logging, prompts, spinners and notes are effects. Prompts go through `src/cli/adapters/prompts/prompts.ts`, which forces stderr; clack on its own writes to stdout.

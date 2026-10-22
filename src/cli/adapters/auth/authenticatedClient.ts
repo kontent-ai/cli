@@ -1,10 +1,10 @@
 import type { AuthError } from "../../../core/auth/types.js";
 import { iapiBaseUrl, type KontentTarget } from "../../../core/kontentUrl/kontentUrl.js";
 import { isErr, ok, type Result } from "../../../core/lib/result.js";
-import { getValidAccessToken } from "../../adapters/auth/tokenAccess.js";
-import { createIapiClient, type IapiClient } from "../../adapters/iapi/client.js";
 import type { Logger } from "../../log.js";
-import { ensureUserIdCached } from "./user.js";
+import { createIapiClient, type IapiClient } from "../iapi/client.js";
+import { getValidAccessToken } from "./tokenAccess.js";
+import { ensureUserIdCached } from "./userId.js";
 
 export const getAuthenticatedIapiClient = async (
   logger: Logger,

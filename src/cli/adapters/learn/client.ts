@@ -12,8 +12,8 @@ import {
 } from "@kontent-ai/core-sdk";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../../package.json" with { type: "json" };
-import type { ApiReference } from "../../../core/docs/apiReference.js";
 import { originOf } from "../../../core/lib/baseUrl.js";
+import type { ApiReference } from "./apiReference.js";
 
 /** The Learn-MCP service needs no auth, so the client carries no token. */
 export type LearnClient = Readonly<{

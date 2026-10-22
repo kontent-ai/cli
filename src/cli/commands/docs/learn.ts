@@ -1,6 +1,6 @@
 import type { FetchQuery, JsonValue } from "@kontent-ai/core-sdk";
-import type { ApiReference } from "../../../core/docs/apiReference.js";
 import { err, flatMap, ok, type Result } from "../../../core/lib/result.js";
+import type { ApiReference } from "../../adapters/learn/apiReference.js";
 import type { LearnClient, LearnQueryParams } from "../../adapters/learn/client.js";
 import {
   type EndpointDetails,

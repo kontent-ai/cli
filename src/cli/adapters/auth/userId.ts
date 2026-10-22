@@ -1,11 +1,11 @@
-import type { KontentSdkError } from "@kontent-ai/core-sdk";
+import type { BaseUrl, KontentSdkError } from "@kontent-ai/core-sdk";
 
 import type { AuthError } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
-import { readCliConfig, writeCliConfig } from "../../adapters/config/cliConfig.js";
-import type { IapiClient } from "../../adapters/iapi/client.js";
-import { getUser, type UserInfo } from "../../adapters/iapi/endpoints/getUser.js";
 import type { Logger } from "../../log.js";
+import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
+import { createIapiClient, type IapiClient } from "../iapi/client.js";
+import { getUser, type UserInfo } from "../iapi/endpoints/getUser.js";
 
 export type UserError =
   | { readonly kind: "auth-failed"; readonly authError: AuthError }
@@ -34,6 +34,21 @@ export const ensureUserIdCached = async (
     logger.warning("verbose", `Could not persist userId: ${written.error}`);
   }
 };
+
+export type UserIdCache = Readonly<{
+  ensure: (
+    accessToken: string,
+    options: Readonly<{ shouldForceRefresh: boolean }>,
+  ) => Promise<void>;
+}>;
+
+export const createUserIdCache = (logger: Logger, baseUrl: BaseUrl): UserIdCache => ({
+  ensure: async (accessToken, { shouldForceRefresh }) =>
+    ensureUserIdCached(logger, {
+      client: createIapiClient({ token: accessToken, baseUrl }),
+      shouldForceRefresh,
+    }),
+});
 
 const fetchUser = async (client: IapiClient): Promise<Result<UserInfo, UserError>> => {
   const result = await getUser(client).fetchSafe();

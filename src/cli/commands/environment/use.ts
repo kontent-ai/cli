@@ -1,6 +1,6 @@
-import { invalidEnvIdMessage } from "../../../core/environment/envId.js";
 import { isGuid } from "../../../core/lib/guid.js";
 import type { RegisterCommand } from "../../types/yargs.js";
+import { invalidEnvIdMessage } from "./invalidEnvIdMessage.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({

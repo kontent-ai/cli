@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { API_REFERENCES } from "../../../core/docs/apiReference.js";
+import { API_REFERENCES } from "../../adapters/learn/apiReference.js";
 
 // The service ranks and returns at most this many results; the slice is client-side.
 export const MAX_LIMIT = 10;
