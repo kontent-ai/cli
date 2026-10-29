@@ -25,7 +25,7 @@ const formatGenericIapiError = (error: KontentSdkError, context: IapiErrorContex
 
   const lines = [
     `[${details.reason}] ${error.message}`,
-    "status" in details ? `status: ${details.status} ${details.statusText}` : undefined,
+    "status" in details ? statusLine(details.status, details.statusText) : undefined,
     apiResponse?.message ? `message: ${apiResponse.message}` : undefined,
     apiResponse?.request_id ? `request-id: ${apiResponse.request_id}` : undefined,
     // String(): Node's URL declares no toString of its own, unlike the DOM interface.
@@ -37,3 +37,7 @@ const formatGenericIapiError = (error: KontentSdkError, context: IapiErrorContex
 
   return lines.filter((line) => line !== undefined).join("\n");
 };
+
+// HTTP/2 carries no reason phrase, so the line ends at the code when none was sent.
+const statusLine = (status: number, statusText: string): string =>
+  statusText === "" ? `status: ${status}` : `status: ${status} ${statusText}`;

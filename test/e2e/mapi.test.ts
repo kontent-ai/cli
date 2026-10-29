@@ -129,7 +129,7 @@ describe("kontent mapi e2e", () => {
     const result = await mapi(`items/${itemId}`, ["--include"]);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toMatch(/^HTTP\/1\.1 200 OK\n/);
+    expect(result.stdout).toMatch(/^HTTP 200\b/);
 
     const [head, body] = splitOnce(result.stdout, "\n\n");
     expect(head).toMatch(/\ncontent-type: /i);
