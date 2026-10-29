@@ -53,7 +53,7 @@
   ],
   "author": "Kontent.ai <devrel@kontent.ai>",
   "license": "MIT",
-  "packageManager": "pnpm@11.8.0",
+  "packageManager": "pnpm@12.16.1",
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.284",
     "@biomejs/biome": "^2.4.12",
