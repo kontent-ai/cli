@@ -5,7 +5,7 @@ const KEY = "amplitude-key";
 
 const consentFor = (inputs: Partial<ConsentInputs>) =>
   decideTelemetryConsent({
-    env: {},
+    optOutVariables: { doNotTrack: undefined, kontentDoNotTrack: undefined },
     telemetryEnabled: undefined,
     amplitudeApiKey: KEY,
     isCiRun: false,
@@ -14,16 +14,18 @@ const consentFor = (inputs: Partial<ConsentInputs>) =>
 
 describe("decideTelemetryConsent", () => {
   it("DO_NOT_TRACK wins over an enabled config", () => {
-    const env = { DO_NOT_TRACK: "1", KONTENT_DO_NOT_TRACK: "1" };
+    const optOutVariables = { doNotTrack: "1", kontentDoNotTrack: "1" };
 
-    expect(consentFor({ env, telemetryEnabled: true })).toEqual({
+    expect(consentFor({ optOutVariables, telemetryEnabled: true })).toEqual({
       isEnabled: false,
       reason: "do-not-track-env",
     });
   });
 
   it("KONTENT_DO_NOT_TRACK opts out", () => {
-    expect(consentFor({ env: { KONTENT_DO_NOT_TRACK: "1" } })).toEqual({
+    expect(
+      consentFor({ optOutVariables: { doNotTrack: undefined, kontentDoNotTrack: "1" } }),
+    ).toEqual({
       isEnabled: false,
       reason: "kontent-do-not-track-env",
     });

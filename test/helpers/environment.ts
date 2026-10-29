@@ -15,7 +15,7 @@ export type TestEnvironment = Readonly<{
 
 // The Management API that KONTENT_URL selects, the same one the CLI under test calls.
 export const mapiUrlFromEnv = (): string => {
-  const target = resolveKontentTarget(process.env);
+  const target = resolveKontentTarget({ fromEnv: process.env.KONTENT_URL, baked: undefined });
   if (isErr(target)) {
     throw new Error(target.error);
   }

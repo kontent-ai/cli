@@ -6,7 +6,8 @@ import {
 } from "../../src/core/kontentUrl/kontentUrl.js";
 import { map, ok } from "../../src/core/lib/result.js";
 
-const resolve = (kontentUrl: string) => resolveKontentTarget({ KONTENT_URL: kontentUrl });
+const resolve = (kontentUrl: string) =>
+  resolveKontentTarget({ fromEnv: kontentUrl, baked: undefined });
 
 describe("resolveKontentTarget", () => {
   it.each([

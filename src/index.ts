@@ -41,8 +41,9 @@ const emptyYargs = yargs(hideBin(process.argv));
 // Deliberately no .env() prefix mapping: it turns every KONTENT_* variable in
 // the shell into a flag, and .strict() then rejects the ones a given command
 // does not declare - an unrelated KONTENT_PROJECT_ID would break the whole CLI.
-// Each variable is read where it is used instead (core/kontentUrl/kontentUrl.ts,
-// cli/adapters/auth/config.ts, cli/adapters/telemetry/consent.ts, cli/commands/mapi/request.ts).
+// Each variable is read where it is used instead (KONTENT_URL below,
+// cli/adapters/auth/config.ts, cli/adapters/telemetry/consent.ts,
+// cli/commands/mapi/request/runRequest.ts).
 const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
   .scriptName("kontent")
@@ -58,7 +59,15 @@ const initialYargs = emptyYargs
 
 const withLogLevel = addLogLevelOptions(initialYargs);
 
-const kontentTarget = resolveKontentTarget(process.env);
+// Baked at build time by tsdown from KONTENT_URL; "" when unset. typeof guards the
+// undeclared case (tsx).
+declare const __KONTENT_URL__: string | undefined;
+
+const kontentTarget = resolveKontentTarget({
+  fromEnv: process.env.KONTENT_URL,
+  baked:
+    typeof __KONTENT_URL__ === "string" && __KONTENT_URL__ !== "" ? __KONTENT_URL__ : undefined,
+});
 if (isErr(kontentTarget)) {
   console.error(`${chalkStderr.red("Error:")} ${kontentTarget.error}`);
   process.exit(1);

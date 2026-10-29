@@ -86,7 +86,7 @@ Environment variables are read individually where they apply — they are not
 mapped onto option names, so an unrelated `KONTENT_*` variable in your shell
 never reaches the parser.
 
-- `KONTENT_MAPI_KEY` — Management API key for [`kontent mapi`](src/commands/mapi/README.md), used when `--mapiKey` is absent
+- `KONTENT_MAPI_KEY` — Management API key for [`kontent mapi`](src/cli/commands/mapi/README.md), used when `--mapiKey` is absent
 - `DO_NOT_TRACK`, `KONTENT_DO_NOT_TRACK`, `KONTENT_TELEMETRY_DEBUG` — see [TELEMETRY.md](./TELEMETRY.md)
 
 ## Telemetry

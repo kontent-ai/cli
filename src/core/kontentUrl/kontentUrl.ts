@@ -3,8 +3,6 @@ import { match } from "ts-pattern";
 import { originOf } from "../lib/baseUrl.js";
 import { err, flatMap, fromThrowable, ok, type Result } from "../lib/result.js";
 
-declare const __KONTENT_URL__: string | undefined;
-
 const DEFAULT_KONTENT_DOMAIN = "kontent.ai";
 
 // The only domains the CLI may talk to, besides on-demand environments and this machine's
@@ -21,11 +19,10 @@ export type KontentTarget =
   | Readonly<{ kind: "domain"; domain: string }>
   | Readonly<{ kind: "host"; baseUrl: BaseUrl }>;
 
-const bakedUrl =
-  typeof __KONTENT_URL__ === "string" && __KONTENT_URL__ !== "" ? __KONTENT_URL__ : undefined;
-
-export const resolveKontentTarget = (env: NodeJS.ProcessEnv): Result<KontentTarget, string> =>
-  validateKontentUrl(env.KONTENT_URL ?? bakedUrl ?? DEFAULT_KONTENT_DOMAIN);
+export const resolveKontentTarget = (
+  urls: Readonly<{ fromEnv: string | undefined; baked: string | undefined }>,
+): Result<KontentTarget, string> =>
+  validateKontentUrl(urls.fromEnv ?? urls.baked ?? DEFAULT_KONTENT_DOMAIN);
 
 export const iapiBaseUrl = (target: KontentTarget): BaseUrl =>
   match(target)

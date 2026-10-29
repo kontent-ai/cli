@@ -3,10 +3,11 @@ import { isErr, type Result } from "../../../core/lib/result.js";
 import {
   activeEnvOptOuts,
   decideTelemetryConsent,
+  type OptOutVariables,
   type TelemetryConsent,
 } from "../../../core/telemetry/consent.js";
 import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliConfig.js";
-import { formatTelemetryOffReason } from "../../adapters/telemetry/consent.js";
+import { formatTelemetryOffReason, readOptOutVariables } from "../../adapters/telemetry/consent.js";
 import { amplitudeApiKey } from "../../adapters/telemetry/context.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 
@@ -17,7 +18,7 @@ import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 export const runStatus = async (): Promise<void> => {
   const status = await telemetryStatus(
     { config: cliConfigStore },
-    { env: process.env, isCiRun: isCI, amplitudeApiKey },
+    { optOutVariables: readOptOutVariables(process.env), isCiRun: isCI, amplitudeApiKey },
   );
   process.stdout.write(`${formatStatusReport(status)}\n`);
 };
@@ -33,14 +34,14 @@ export const runSetTelemetry = async (args: LogOptions, isEnabled: boolean): Pro
   }
   logger.info("standard", isEnabled ? "Telemetry enabled." : "Telemetry disabled.");
   if (isEnabled) {
-    for (const name of activeEnvOptOuts(process.env)) {
+    for (const name of activeEnvOptOuts(readOptOutVariables(process.env))) {
       logger.warning("standard", `${name} is set, so telemetry stays off in this environment.`);
     }
   }
 };
 
 type TelemetryRuntime = Readonly<{
-  env: NodeJS.ProcessEnv;
+  optOutVariables: OptOutVariables;
   isCiRun: boolean;
   amplitudeApiKey: string;
 }>;
