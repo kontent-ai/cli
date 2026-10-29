@@ -11,23 +11,29 @@ export type TelemetryConsent =
   | { readonly isEnabled: true }
   | { readonly isEnabled: false; readonly reason: TelemetryOffReason };
 
+/** The raw values of the DO_NOT_TRACK and KONTENT_DO_NOT_TRACK environment variables. */
+export type OptOutVariables = Readonly<{
+  doNotTrack: string | undefined;
+  kontentDoNotTrack: string | undefined;
+}>;
+
 export type ConsentInputs = Readonly<{
-  env: NodeJS.ProcessEnv;
+  optOutVariables: OptOutVariables;
   telemetryEnabled: boolean | undefined;
   amplitudeApiKey: string;
   isCiRun: boolean;
 }>;
 
 export const decideTelemetryConsent = ({
-  env,
+  optOutVariables,
   telemetryEnabled,
   amplitudeApiKey,
   isCiRun,
 }: ConsentInputs): TelemetryConsent => {
-  if (isTruthyEnv(env.DO_NOT_TRACK)) {
+  if (isTruthyEnv(optOutVariables.doNotTrack)) {
     return { isEnabled: false, reason: "do-not-track-env" };
   }
-  if (isTruthyEnv(env.KONTENT_DO_NOT_TRACK)) {
+  if (isTruthyEnv(optOutVariables.kontentDoNotTrack)) {
     return { isEnabled: false, reason: "kontent-do-not-track-env" };
   }
   if (telemetryEnabled === false) {
@@ -45,5 +51,7 @@ export const decideTelemetryConsent = ({
 type EnvOptOut = "DO_NOT_TRACK" | "KONTENT_DO_NOT_TRACK";
 
 // Opt-outs that keep telemetry off whatever the config says.
-export const activeEnvOptOuts = (env: NodeJS.ProcessEnv): ReadonlyArray<EnvOptOut> =>
-  (["DO_NOT_TRACK", "KONTENT_DO_NOT_TRACK"] as const).filter((name) => isTruthyEnv(env[name]));
+export const activeEnvOptOuts = (optOutVariables: OptOutVariables): ReadonlyArray<EnvOptOut> => [
+  ...(isTruthyEnv(optOutVariables.doNotTrack) ? (["DO_NOT_TRACK"] as const) : []),
+  ...(isTruthyEnv(optOutVariables.kontentDoNotTrack) ? (["KONTENT_DO_NOT_TRACK"] as const) : []),
+];

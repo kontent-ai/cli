@@ -12,7 +12,7 @@ import {
 } from "../../../core/telemetry/events.js";
 import type { Logger } from "../../log.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
-import { formatTelemetryOffReason, isTelemetryDebug } from "./consent.js";
+import { formatTelemetryOffReason, isTelemetryDebug, readOptOutVariables } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
 import { resolveIdentity, systemIdentityEffects } from "./identity.js";
 import {
@@ -134,7 +134,7 @@ type SinkResolution = Readonly<{
 const resolveSink = async (): Promise<SinkResolution> => {
   const config = await readCliConfig();
   const consent = decideTelemetryConsent({
-    env: process.env,
+    optOutVariables: readOptOutVariables(process.env),
     telemetryEnabled: config.telemetryEnabled,
     amplitudeApiKey,
     isCiRun: isCI,

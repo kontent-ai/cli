@@ -1,6 +1,11 @@
 import { match } from "ts-pattern";
 import { isTruthyEnv } from "../../../core/lib/env.js";
-import type { TelemetryOffReason } from "../../../core/telemetry/consent.js";
+import type { OptOutVariables, TelemetryOffReason } from "../../../core/telemetry/consent.js";
+
+export const readOptOutVariables = (env: NodeJS.ProcessEnv): OptOutVariables => ({
+  doNotTrack: env.DO_NOT_TRACK,
+  kontentDoNotTrack: env.KONTENT_DO_NOT_TRACK,
+});
 
 export const isTelemetryDebug = (env: NodeJS.ProcessEnv): boolean =>
   isTruthyEnv(env.KONTENT_TELEMETRY_DEBUG);
