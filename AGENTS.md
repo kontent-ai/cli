@@ -9,7 +9,6 @@ pnpm typecheck && pnpm lint && pnpm biome:check && pnpm knip && pnpm test
 ```
 
 - Autofix: `pnpm lint:fix`, `pnpm biome:fix`. Build: `pnpm build`.
-- Node is `lts`; `.nvmrc` and CI `runtime:` must stay in step.
 
 ## Layers
 
