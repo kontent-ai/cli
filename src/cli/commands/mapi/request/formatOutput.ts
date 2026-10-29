@@ -20,7 +20,7 @@ export type RequestOutput = Readonly<{
 }>;
 
 /** Everything the command writes, decided as data so the streams can be asserted on. */
-export const planRequestOutput = (
+export const formatRequestOutput = (
   result: Result<RequestOutcome, RequestError>,
   shouldIncludeHeaders: boolean,
 ): RequestOutput =>
