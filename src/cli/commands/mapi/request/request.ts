@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { createLoggerFromArgs, type LogOptions } from "../../../log.js";
+import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 
 export const requestCommand = {
@@ -85,6 +85,6 @@ export const register: RegisterCommand = (sub, deps) =>
     builder: (b) => requestCommand.builder(b),
     handler: async (args) => {
       const { runRequest } = await import("./runRequest.js");
-      await runRequest(args, createLoggerFromArgs(args), deps);
+      await runRequest(args, deps);
     },
   });

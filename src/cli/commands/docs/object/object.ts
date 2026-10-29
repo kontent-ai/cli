@@ -31,9 +31,7 @@ export const register: RegisterCommand = (sub, deps) =>
     describe: objectCommand.describe,
     builder: (b) => objectCommand.builder(b),
     handler: async (args) => {
-      const { runDocs, getObjectDetails } = await import("../runDocs.js");
-      await runDocs("docs object", args, deps.telemetry, async (effects) =>
-        getObjectDetails(effects, { query: args.query, limit: args.limit, apiReference: args.api }),
-      );
+      const { runObject } = await import("../runDocs.js");
+      await runObject(args, deps);
     },
   });

@@ -1,7 +1,7 @@
 import { match, P } from "ts-pattern";
 import type { AuthError } from "../../../core/auth/types.js";
 import { decideVerification } from "../../../core/environment/decideVerification.js";
-import { type KontentTarget, mapiBaseUrl } from "../../../core/kontentUrl/kontentUrl.js";
+import { mapiBaseUrl } from "../../../core/kontentUrl/kontentUrl.js";
 import { isGuid } from "../../../core/lib/guid.js";
 import { fromNullable, isNone, type Option } from "../../../core/lib/option.js";
 import { err, isErr, mapErr, ok, type Result } from "../../../core/lib/result.js";
@@ -9,6 +9,7 @@ import { type Session, session } from "../../adapters/auth/tokenAccess.js";
 import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliConfig.js";
 import { createEnvironments, type Environments } from "../../adapters/mapi/environments.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
+import type { CommandDeps } from "../../types/yargs.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
 import { invalidEnvIdMessage } from "./invalidEnvIdMessage.js";
 
@@ -77,7 +78,7 @@ export const selectEnvironment = async (
 
 export const runUse = async (
   args: LogOptions & Readonly<{ envId: string }>,
-  kontentTarget: KontentTarget,
+  deps: CommandDeps,
 ): Promise<void> => {
   const logger = createLoggerFromArgs(args);
   const envId = args.envId.trim();
@@ -85,7 +86,7 @@ export const runUse = async (
   const result = await selectEnvironment(
     {
       session,
-      environments: createEnvironments(mapiBaseUrl(kontentTarget)),
+      environments: createEnvironments(mapiBaseUrl(deps.kontentTarget)),
       config: cliConfigStore,
     },
     envId,

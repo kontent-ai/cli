@@ -7,6 +7,7 @@ import type { ObjectDetails } from "../../adapters/learn/endpoints/objectDetails
 import type { SearchResult } from "../../adapters/learn/endpoints/search.js";
 import type { Telemetry } from "../../adapters/telemetry/tracking.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
+import type { CommandDeps } from "../../types/yargs.js";
 import { formatDocsOutput } from "./formatOutput.js";
 
 export type DocsEffects = Readonly<{ docs: Docs }>;
@@ -59,33 +60,23 @@ export const getObjectDetails = async (
     runSearchHint(query),
   );
 
-export const runDocs = async <T extends Readonly<Record<string, unknown>>>(
-  commandName: string,
-  args: LogOptions & Readonly<{ compact?: boolean }>,
-  telemetry: Telemetry,
-  lookUpDocs: (effects: DocsEffects) => Promise<Result<ReadonlyArray<T>, DocsError>>,
-): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = telemetry.startCommandTracking(commandName, logger);
+type DocsArgs = LogOptions &
+  Readonly<{ query: string; limit: number; api?: ApiReference | undefined; compact?: boolean }>;
 
-  const output = formatDocsOutput(
-    await lookUpDocs({ docs: createDocs({ logger }) }),
-    args.compact === true,
+export const runSearch = async (args: DocsArgs, deps: CommandDeps): Promise<void> =>
+  runDocs("docs search", args, deps.telemetry, async (effects) =>
+    searchDocs(effects, toQuery(args)),
   );
-  if (output.stdout !== "") {
-    process.stdout.write(output.stdout);
-  }
-  if (output.error !== undefined) {
-    logger.error(output.error);
-  }
-  match(output.telemetry)
-    .with({ outcome: "succeed" }, () => tracker.succeed())
-    .with({ outcome: "fail" }, ({ errorCode }) => tracker.fail(errorCode))
-    .exhaustive();
-  if (output.isFailure) {
-    process.exitCode = 1;
-  }
-};
+
+export const runEndpoint = async (args: DocsArgs, deps: CommandDeps): Promise<void> =>
+  runDocs("docs endpoint", args, deps.telemetry, async (effects) =>
+    getEndpointDetails(effects, toQuery(args)),
+  );
+
+export const runObject = async (args: DocsArgs, deps: CommandDeps): Promise<void> =>
+  runDocs("docs object", args, deps.telemetry, async (effects) =>
+    getObjectDetails(effects, toQuery(args)),
+  );
 
 const fetchCandidates = async <T>(
   fetchFromDocs: (
@@ -136,3 +127,37 @@ const searchAgainHint = (query: DocsQuery): string =>
 
 const runSearchHint = (query: DocsQuery): string =>
   `Try different wording, or run kontent docs search "${query.query}" to see what the docs cover.`;
+
+const runDocs = async <T extends Readonly<Record<string, unknown>>>(
+  commandName: string,
+  args: DocsArgs,
+  telemetry: Telemetry,
+  lookUpDocs: (effects: DocsEffects) => Promise<Result<ReadonlyArray<T>, DocsError>>,
+): Promise<void> => {
+  const logger = createLoggerFromArgs(args);
+  const tracker = telemetry.startCommandTracking(commandName, logger);
+
+  const output = formatDocsOutput(
+    await lookUpDocs({ docs: createDocs({ logger }) }),
+    args.compact === true,
+  );
+  if (output.stdout !== "") {
+    process.stdout.write(output.stdout);
+  }
+  if (output.error !== undefined) {
+    logger.error(output.error);
+  }
+  match(output.telemetry)
+    .with({ outcome: "succeed" }, () => tracker.succeed())
+    .with({ outcome: "fail" }, ({ errorCode }) => tracker.fail(errorCode))
+    .exhaustive();
+  if (output.isFailure) {
+    process.exitCode = 1;
+  }
+};
+
+const toQuery = (args: DocsArgs): DocsQuery => ({
+  query: args.query,
+  limit: args.limit,
+  apiReference: args.api,
+});

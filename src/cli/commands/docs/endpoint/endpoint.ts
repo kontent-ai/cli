@@ -31,13 +31,7 @@ export const register: RegisterCommand = (sub, deps) =>
     describe: endpointCommand.describe,
     builder: (b) => endpointCommand.builder(b),
     handler: async (args) => {
-      const { runDocs, getEndpointDetails } = await import("../runDocs.js");
-      await runDocs("docs endpoint", args, deps.telemetry, async (effects) =>
-        getEndpointDetails(effects, {
-          query: args.query,
-          limit: args.limit,
-          apiReference: args.api,
-        }),
-      );
+      const { runEndpoint } = await import("../runDocs.js");
+      await runEndpoint(args, deps);
     },
   });

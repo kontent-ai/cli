@@ -33,9 +33,7 @@ export const register: RegisterCommand = (sub, deps) =>
     describe: searchCommand.describe,
     builder: (b) => searchCommand.builder(b),
     handler: async (args) => {
-      const { runDocs, searchDocs } = await import("../runDocs.js");
-      await runDocs("docs search", args, deps.telemetry, async (effects) =>
-        searchDocs(effects, { query: args.query, limit: args.limit, apiReference: args.api }),
-      );
+      const { runSearch } = await import("../runDocs.js");
+      await runSearch(args, deps);
     },
   });

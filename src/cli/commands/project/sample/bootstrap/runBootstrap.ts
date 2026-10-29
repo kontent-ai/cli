@@ -32,7 +32,7 @@ import {
 import { createSpaces, type Spaces } from "../../../../adapters/mapi/spaces.js";
 import { type Prompts, prompts } from "../../../../adapters/prompts/prompts.js";
 import { type Templates, templates } from "../../../../adapters/templates/templates.js";
-import type { Logger } from "../../../../log.js";
+import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../../log.js";
 import type { CommandDeps } from "../../../../types/yargs.js";
 import { formatAuthError } from "../../../shared/formatAuthError.js";
 import { ensureLocalhostSpace, type SpaceSetupError } from "./space.js";
@@ -125,16 +125,16 @@ export const bootstrap = async (
 };
 
 export const runBootstrap = async (
-  params: BootstrapParams,
-  logger: Logger,
+  args: LogOptions & BootstrapParams,
   deps: CommandDeps,
 ): Promise<void> => {
+  const logger = createLoggerFromArgs(args);
   const tracker = deps.telemetry.startCommandTracking("project sample bootstrap", logger);
   prompts.intro("Bootstrap a Kontent.ai project");
 
   const clientResult = await getAuthenticatedIapiClient(logger, deps.kontentTarget);
   if (isErr(clientResult)) {
-    tracker.fail(`auth:${clientResult.error.kind}`, { project: params.envId });
+    tracker.fail(`auth:${clientResult.error.kind}`, { project: args.envId });
     logger.error(formatAuthError(clientResult.error));
     process.exitCode = 1;
     return;
@@ -142,7 +142,7 @@ export const runBootstrap = async (
   const iapiClient = clientResult.value;
   const mapiClient = createMapiClient({
     token: iapiClient.token,
-    envId: params.envId,
+    envId: args.envId,
     baseUrl: mapiBaseUrl(deps.kontentTarget),
   });
 
@@ -158,20 +158,20 @@ export const runBootstrap = async (
       spaces: createSpaces(mapiClient),
       previewConfiguration: createPreviewConfigurationStore(mapiClient),
     },
-    params,
+    args,
   );
   if (isErr(result)) {
-    tracker.fail(bootstrapErrorCode(result.error), { project: params.envId });
-    handleBootstrapError(params, logger, result.error);
+    tracker.fail(bootstrapErrorCode(result.error), { project: args.envId });
+    handleBootstrapError(args, logger, result.error);
     return;
   }
 
   tracker.succeed({
-    project: params.envId,
+    project: args.envId,
     subscription: result.value.subscriptionId,
     "sample-project-type": result.value.sampleProjectType,
   });
-  prompts.note(`cd ${params.path}\nnpm ci\nnpm run dev:https`, "Next steps");
+  prompts.note(`cd ${args.path}\nnpm ci\nnpm run dev:https`, "Next steps");
   prompts.outro("Done.");
 };
 
