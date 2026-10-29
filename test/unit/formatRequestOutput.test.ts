@@ -54,7 +54,7 @@ describe("formatRequestOutput", () => {
     );
 
     expect(output.stdout).toBe("");
-    expect(output.stderr).toEqual([{ level: "info", text: "HTTP 204 No Content" }]);
+    expect(output.stderr).toEqual([{ level: "info", text: "HTTP 204" }]);
     expect(output.isFailure).toBe(false);
   });
 
@@ -70,7 +70,7 @@ describe("formatRequestOutput", () => {
     );
 
     expect(output.stdout).toContain("The requested content type was not found.");
-    expect(stderrText(output)).toContain("HTTP 404 Not Found");
+    expect(stderrText(output)).toContain("HTTP 404");
     expect(stderrText(output)).not.toContain("The requested content type was not found.");
     expect(output.telemetry).toEqual({
       outcome: "fail",
@@ -141,6 +141,6 @@ describe("formatRequestOutput", () => {
       false,
     );
 
-    expect(stderrText(output)).toBe("HTTP 403 Forbidden");
+    expect(stderrText(output)).toBe("HTTP 403");
   });
 });

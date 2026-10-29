@@ -90,8 +90,15 @@ describe("presentResponse", () => {
     const presented = presentResponse(response(), true);
 
     expect(presented.payload).toBe(
-      'HTTP/1.1 200 OK\ncontent-type: application/json\n\n{\n  "name": "Article"\n}\n',
+      'HTTP 200 OK\ncontent-type: application/json\n\n{\n  "name": "Article"\n}\n',
     );
+  });
+
+  // HTTP/2 carries no reason phrase, so the line ends at the code.
+  it("writes the status line without a reason phrase the server did not send", () => {
+    const presented = presentResponse(response({ statusText: "" }), true);
+
+    expect(presented.payload.startsWith("HTTP 200\ncontent-type: application/json\n")).toBe(true);
   });
 
   it("still writes the status line when the body was dropped", () => {
@@ -105,7 +112,7 @@ describe("presentResponse", () => {
       true,
     );
 
-    expect(presented.payload).toBe("HTTP/1.1 502 Bad Gateway\nContent-Type: text/html\n\n");
+    expect(presented.payload).toBe("HTTP 502 Bad Gateway\nContent-Type: text/html\n\n");
     expect(presented.droppedBodyWarning).toContain("text/html");
   });
 });

@@ -18,7 +18,7 @@ export const formatLearnError = (error: KontentSdkError): string =>
     .otherwise((details) =>
       joinLines([
         `[${details.reason}] ${error.message}`,
-        "status" in details ? `status: ${details.status} ${details.statusText}` : undefined,
+        "status" in details ? statusLine(details.status, details.statusText) : undefined,
         urlLine(error),
       ]),
     );
@@ -27,3 +27,7 @@ const urlLine = (error: KontentSdkError): string => `url: ${String(error.url)}`;
 
 const joinLines = (lines: ReadonlyArray<string | undefined>): string =>
   lines.filter((line) => line !== undefined).join("\n");
+
+// HTTP/2 carries no reason phrase, so the line ends at the code when none was sent.
+const statusLine = (status: number, statusText: string): string =>
+  statusText === "" ? `status: ${status}` : `status: ${status} ${statusText}`;

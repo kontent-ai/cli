@@ -80,7 +80,7 @@ const planResponseOutput = (
       ? []
       : [{ level: "warning" as const, text: presented.droppedBodyWarning }]),
     ...(presented.payload === "" && !isHttpFailure
-      ? [{ level: "info" as const, text: `HTTP ${response.statusCode} ${response.statusText}` }]
+      ? [{ level: "info" as const, text: `HTTP ${response.statusCode}` }]
       : []),
     ...(isHttpFailure
       ? [{ level: "error" as const, text: formatFailure(response, authSource, env) }]
@@ -102,7 +102,7 @@ const formatFailure = (
   authSource: AuthSource,
   env: ResolvedEnvId,
 ): string => {
-  const summary = `HTTP ${response.statusCode} ${response.statusText}`;
+  const summary = `HTTP ${response.statusCode}`;
 
   return match(response.statusCode)
     .with(401, () => `${summary}\n${formatCredentialHint(authSource)}`)

@@ -42,10 +42,13 @@ export const presentResponse = (
   };
 };
 
-// The version is not the negotiated one: Node's fetch does not expose it.
+// Only what came off the wire: fetch does not expose the negotiated protocol version, and a
+// reason phrase appears only when the server sent one.
 const formatStatusBlock = (response: MapiResponse): string =>
   [
-    `HTTP/1.1 ${response.statusCode} ${response.statusText}`,
+    response.statusText === ""
+      ? `HTTP ${response.statusCode}`
+      : `HTTP ${response.statusCode} ${response.statusText}`,
     ...response.headers.map((header) => `${header.name}: ${header.value}`),
     "",
     "",
