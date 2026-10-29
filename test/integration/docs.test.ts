@@ -1,11 +1,11 @@
 import type { BaseUrl, JsonValue } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
-import { createLearnClient } from "../../src/cli/adapters/learn/client.js";
+import { createDocs } from "../../src/cli/adapters/learn/docs.js";
 import {
   getEndpointDetails,
   getObjectDetails,
   searchDocs,
-} from "../../src/cli/commands/docs/learn.js";
+} from "../../src/cli/commands/docs/runDocs.js";
 import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
@@ -25,7 +25,7 @@ const searchItem = (title: string) => ({
 
 const run = (routes: ReadonlyArray<HttpRoute>) => {
   const { adapter, requests } = httpTestAdapter(routes);
-  return { deps: { logger, client: createLearnClient({ adapter, baseUrl: BASE_URL }) }, requests };
+  return { effects: { docs: createDocs({ logger, adapter, baseUrl: BASE_URL }) }, requests };
 };
 
 const endpointItem = (title: string) => ({
@@ -52,9 +52,9 @@ const searchRoute = (payload: JsonValue): HttpRoute => route(/^\/search$/, paylo
 
 describe("docs queries", () => {
   it("sends the trimmed query as the text parameter and unwraps the envelope", async () => {
-    const { deps, requests } = run([searchRoute({ json: [searchItem("Taxonomy")] })]);
+    const { effects, requests } = run([searchRoute({ json: [searchItem("Taxonomy")] })]);
 
-    const result = await searchDocs({ query: "  taxonomy  ", limit: 10 }, deps);
+    const result = await searchDocs(effects, { query: "  taxonomy  ", limit: 10 });
 
     assertOk(result);
     expect(result.value).toEqual([searchItem("Taxonomy")]);
@@ -63,11 +63,11 @@ describe("docs queries", () => {
   });
 
   it("keeps only the requested number of results", async () => {
-    const { deps } = run([
+    const { effects } = run([
       searchRoute({ json: [searchItem("One"), searchItem("Two"), searchItem("Three")] }),
     ]);
 
-    const result = await searchDocs({ query: "taxonomy", limit: 2 }, deps);
+    const result = await searchDocs(effects, { query: "taxonomy", limit: 2 });
 
     assertOk(result);
     expect(result.value.map((item) => item.title)).toEqual(["One", "Two"]);
@@ -76,20 +76,20 @@ describe("docs queries", () => {
   // The schema declares only what the CLI reads; core-sdk hands back the raw payload,
   // so anything the service adds still reaches stdout.
   it("passes fields the schema does not declare through to the caller", async () => {
-    const { deps } = run([
+    const { effects } = run([
       searchRoute({ json: [{ ...searchItem("Taxonomy"), somethingNew: "kept" }] }),
     ]);
 
-    const result = await searchDocs({ query: "taxonomy", limit: 10 }, deps);
+    const result = await searchDocs(effects, { query: "taxonomy", limit: 10 });
 
     assertOk(result);
     expect(result.value[0]).toHaveProperty("somethingNew", "kept");
   });
 
   it("rejects a blank query before any request goes out", async () => {
-    const { deps, requests } = run([searchRoute({ json: [] })]);
+    const { effects, requests } = run([searchRoute({ json: [] })]);
 
-    const result = await searchDocs({ query: "   ", limit: 10 }, deps);
+    const result = await searchDocs(effects, { query: "   ", limit: 10 });
 
     assertErr(result);
     expect(result.error.kind).toBe("empty-query");
@@ -97,7 +97,7 @@ describe("docs queries", () => {
   });
 
   it("reports a failing status as a failed request", async () => {
-    const { deps } = run([
+    const { effects } = run([
       {
         method: "GET",
         path: /^\/search$/,
@@ -111,7 +111,7 @@ describe("docs queries", () => {
       },
     ]);
 
-    const result = await searchDocs({ query: "taxonomy", limit: 10 }, deps);
+    const result = await searchDocs(effects, { query: "taxonomy", limit: 10 });
 
     assertErr(result);
     expect(result.error.kind).toBe("request-failed");
@@ -119,13 +119,13 @@ describe("docs queries", () => {
   });
 
   it("keeps the candidates the detail route ranks, best first", async () => {
-    const { deps } = run([
+    const { effects } = run([
       route(/^\/endpoint-details$/, {
         json: [endpointItem("Add a content item"), endpointItem("Add a content type")],
       }),
     ]);
 
-    const result = await getEndpointDetails({ query: "add a content type", limit: 2 }, deps);
+    const result = await getEndpointDetails(effects, { query: "add a content type", limit: 2 });
 
     assertOk(result);
     expect(result.value.map((candidate) => candidate.title)).toEqual([
@@ -135,15 +135,15 @@ describe("docs queries", () => {
   });
 
   it("reports no match when a route ranks nothing", async () => {
-    const { deps } = run([
+    const { effects } = run([
       route(/^\/object-details$/, { json: [] }),
       route(/^\/endpoint-details$/, { json: [] }),
       searchRoute({ json: [] }),
     ]);
 
-    const objectResult = await getObjectDetails({ query: "flurble", limit: 1 }, deps);
-    const endpointResult = await getEndpointDetails({ query: "flurble", limit: 1 }, deps);
-    const searchResult = await searchDocs({ query: "flurble", limit: 10 }, deps);
+    const objectResult = await getObjectDetails(effects, { query: "flurble", limit: 1 });
+    const endpointResult = await getEndpointDetails(effects, { query: "flurble", limit: 1 });
+    const searchResult = await searchDocs(effects, { query: "flurble", limit: 10 });
 
     assertErr(objectResult);
     assertErr(endpointResult);
@@ -156,10 +156,11 @@ describe("docs queries", () => {
     expect(searchResult.error.kind).toBe("no-match");
     expect(searchResult.error.message).toBe('No page matches "flurble". Try different wording.');
 
-    const filteredSearchResult = await searchDocs(
-      { query: "flurble", limit: 10, apiReference: "delivery_api" },
-      deps,
-    );
+    const filteredSearchResult = await searchDocs(effects, {
+      query: "flurble",
+      limit: 10,
+      apiReference: "delivery_api",
+    });
 
     assertErr(filteredSearchResult);
     expect(filteredSearchResult.error.message).toBe(
@@ -168,9 +169,9 @@ describe("docs queries", () => {
   });
 
   it("answers with an object candidate the caller can read", async () => {
-    const { deps } = run([route(/^\/object-details$/, { json: [objectItem("Content type")] })]);
+    const { effects } = run([route(/^\/object-details$/, { json: [objectItem("Content type")] })]);
 
-    const result = await getObjectDetails({ query: "content type", limit: 1 }, deps);
+    const result = await getObjectDetails(effects, { query: "content type", limit: 1 });
 
     assertOk(result);
     expect(result.value[0]?.docsUrl).toBe("https://kontent.ai/learn/Content type");
@@ -178,9 +179,11 @@ describe("docs queries", () => {
 
   // The service answers 400 to an empty apiReference, so no filter must mean no key.
   it("leaves apiReference out of the url when no filter is asked for", async () => {
-    const { deps, requests } = run([route(/^\/object-details$/, { json: [objectItem("Type")] })]);
+    const { effects, requests } = run([
+      route(/^\/object-details$/, { json: [objectItem("Type")] }),
+    ]);
 
-    await getObjectDetails({ query: "text element", limit: 1, apiReference: undefined }, deps);
+    await getObjectDetails(effects, { query: "text element", limit: 1, apiReference: undefined });
 
     expect(requests[0]?.url.toString()).toBe("https://learn.test/object-details?text=text+element");
   });
