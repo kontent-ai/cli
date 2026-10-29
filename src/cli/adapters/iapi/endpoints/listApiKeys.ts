@@ -30,8 +30,6 @@ export const ApiKeyListingItemSchema = z.object({
 
 export const ApiKeyListingSchema = z.array(ApiKeyListingItemSchema);
 
-export type ApiKeyListingItem = z.infer<typeof ApiKeyListingItemSchema>;
-
 export type ListApiKeysFilter = Readonly<{
   query?: string;
   apiKeyTypes?: ReadonlyArray<ApiKeyType>;
