@@ -17,6 +17,6 @@ export const register: RegisterCommand = (sub, deps) =>
         .check((args) => (isGuid(args.envId.trim()) ? true : invalidEnvIdMessage(args.envId))),
     handler: async (args) => {
       const { runUse } = await import("./runEnvironment.js");
-      await runUse(args, deps.kontentTarget);
+      await runUse(args, deps);
     },
   });

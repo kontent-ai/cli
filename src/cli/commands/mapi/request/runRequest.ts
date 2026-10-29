@@ -19,7 +19,7 @@ import {
   type RequestBodyError,
   type RequestBodyReader,
 } from "../../../adapters/requestBody/requestBody.js";
-import type { Logger, LogOptions } from "../../../log.js";
+import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
 import { formatRequestOutput } from "./formatOutput.js";
 
@@ -162,11 +162,8 @@ type RequestArgs = LogOptions &
     include?: boolean | undefined;
   }>;
 
-export const runRequest = async (
-  args: RequestArgs,
-  logger: Logger,
-  deps: CommandDeps,
-): Promise<void> => {
+export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<void> => {
+  const logger = createLoggerFromArgs(args);
   const tracker = deps.telemetry.startCommandTracking("mapi", logger);
 
   const result = await request(

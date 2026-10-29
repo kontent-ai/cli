@@ -1,4 +1,3 @@
-import { createLoggerFromArgs } from "../../../../log.js";
 import type { RegisterCommand } from "../../../../types/yargs.js";
 
 export const register: RegisterCommand = (sub, deps) =>
@@ -19,6 +18,6 @@ export const register: RegisterCommand = (sub, deps) =>
         }),
     handler: async (args) => {
       const { runBootstrap } = await import("./runBootstrap.js");
-      await runBootstrap(args, createLoggerFromArgs(args), deps);
+      await runBootstrap(args, deps);
     },
   });

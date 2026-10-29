@@ -21,6 +21,7 @@
 
 ## Run functions
 
+- Signature `run<Cmd>(args, deps)`: parsed arguments first, `CommandDeps` second, anything specific to the command after. Wiring that is fixed per subcommand (telemetry name, which workflow) stays out of `args`.
 - A `run<Cmd>` that logs starts with `const logger = createLoggerFromArgs(args)`; a payload-only one takes none.
 - Resolving arguments into real inputs (the `--input` file, stdin) happens here, through adapters.
 
