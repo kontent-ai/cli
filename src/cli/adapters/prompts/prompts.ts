@@ -5,33 +5,56 @@ import {
   outro as clackOutro,
   select as clackSelect,
   spinner as clackSpinner,
+  isCancel,
 } from "@clack/prompts";
+import { none, type Option, some } from "../../../core/lib/option.js";
+
+export type Spinner = Readonly<{
+  start: (message: string) => void;
+  stop: (message: string) => void;
+  error: (message: string) => void;
+}>;
+
+export type SelectOption = Readonly<{ value: string; label: string }>;
+
+/** The interactive terminal UI; an answer is `none` when the user cancels. */
+export type Prompts = Readonly<{
+  intro: (title: string) => void;
+  outro: (message: string) => void;
+  note: (message: string, title: string) => void;
+  spinner: () => Spinner;
+  confirm: (
+    options: Readonly<{ message: string; initialValue?: boolean }>,
+  ) => Promise<Option<boolean>>;
+  select: (
+    options: Readonly<{ message: string; options: ReadonlyArray<SelectOption> }>,
+  ) => Promise<Option<string>>;
+}>;
 
 /**
  * clack defaults every prompt, spinner and note to stdout, which stdout must
  * stay free of; there is no global setting for it, so the stderr stream is
- * bound here once instead of at every call site. It is bound after the caller's
- * options rather than before, so no call site can route a prompt back to
- * stdout. As a side effect the spinner keeps animating when stdout is piped,
- * because clack's TTY check reads the stream it is handed.
+ * bound here once instead of at every call site. As a side effect the spinner
+ * keeps animating when stdout is piped, because clack's TTY check reads the
+ * stream it is handed.
  *
  * `stream.message/info/success` hardcode stdout and cannot be redirected - do
  * not start using them.
  */
-export const spinner: typeof clackSpinner = (options = {}) =>
-  clackSpinner({ ...options, output: process.stderr });
+export const prompts: Prompts = {
+  intro: (title) => clackIntro(title, { output: process.stderr }),
+  outro: (message) => clackOutro(message, { output: process.stderr }),
+  note: (message, title) => clackNote(message, title, { output: process.stderr }),
+  spinner: () => clackSpinner({ output: process.stderr }),
+  confirm: async (options) => answerOf(await clackConfirm({ ...options, output: process.stderr })),
+  select: async (options) =>
+    answerOf(
+      await clackSelect<string>({
+        message: options.message,
+        options: [...options.options],
+        output: process.stderr,
+      }),
+    ),
+};
 
-export const confirm: typeof clackConfirm = async (options) =>
-  clackConfirm({ ...options, output: process.stderr });
-
-export const select: typeof clackSelect = async (options) =>
-  clackSelect({ ...options, output: process.stderr });
-
-export const note: typeof clackNote = (message, title, options = {}) =>
-  clackNote(message, title, { ...options, output: process.stderr });
-
-export const intro: typeof clackIntro = (title, options = {}) =>
-  clackIntro(title, { ...options, output: process.stderr });
-
-export const outro: typeof clackOutro = (message, options = {}) =>
-  clackOutro(message, { ...options, output: process.stderr });
+const answerOf = <T>(value: T | symbol): Option<T> => (isCancel(value) ? none : some(value));

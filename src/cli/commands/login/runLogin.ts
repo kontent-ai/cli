@@ -10,6 +10,7 @@ import { type Auth0, createAuth0, type DeviceFlowDeps } from "../../adapters/aut
 import { getAuth0Config } from "../../adapters/auth/config.js";
 import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/storage.js";
 import { createUserIdCache, type UserIdCache } from "../../adapters/auth/userId.js";
+import { type Clock, systemClock } from "../../adapters/clock/clock.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
@@ -21,7 +22,7 @@ export type LoginOutcome = Readonly<{
 
 export type LoginEffects = Readonly<{
   logger: Logger;
-  clock: Readonly<{ now: () => number }>;
+  clock: Clock;
   tokens: Pick<TokenStorage, "read" | "write" | "clear">;
   auth: Auth0;
   userIds: UserIdCache;
@@ -108,7 +109,7 @@ const formatLoginOutcome = (outcome: LoginOutcome): string => {
 
 const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): LoginEffects => ({
   logger,
-  clock: { now: Date.now },
+  clock: systemClock,
   tokens: createKeyringStorage(),
   auth: createAuth0(getAuth0Config(), deviceFlowPrompt(logger)),
   userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),

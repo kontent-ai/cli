@@ -1,7 +1,10 @@
 import {
   type BaseUrl,
   getDefaultHttpService,
+  type JsonValue,
   type KontentSdkError,
+  type QueryResponse,
+  type SafeQueryResult,
   type SdkConfig,
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
@@ -9,6 +12,7 @@ import {
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../../../package.json" with { type: "json" };
 import { originOf } from "../../../core/lib/baseUrl.js";
+import { err, ok, type Result } from "../../../core/lib/result.js";
 
 const iapiSdkInfo: SdkInfo = {
   name: pkg.name,
@@ -55,3 +59,8 @@ export const iapiQueryBase = (c: IapiClient) => ({
   mapMetadata: () => ({}),
   mapExtraResponseProps: () => ({}),
 });
+
+/** core-sdk answers with its own success/failure shape; capabilities speak `Result`. */
+export const fromSdkResult = <TPayload extends JsonValue, TError>(
+  result: SafeQueryResult<QueryResponse<TPayload, unknown, unknown>, TError>,
+): Result<TPayload, TError> => (result.success ? ok(result.response.payload) : err(result.error));
