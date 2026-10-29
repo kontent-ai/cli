@@ -14,7 +14,7 @@ import type { Logger } from "../../log.js";
 import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
 import { formatTelemetryOffReason, isTelemetryDebug } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
-import { resolveIdentity } from "./identity.js";
+import { resolveIdentity, systemIdentityEffects } from "./identity.js";
 import {
   createAmplitudeSink,
   createDebugTelemetrySink,
@@ -80,7 +80,7 @@ export const createTelemetry = async (): Promise<TelemetryInit> => {
             return;
           }
           hasFinished = true;
-          void resolveIdentity()
+          void resolveIdentity(systemIdentityEffects())
             .then(async (identity) =>
               sink.track(
                 {

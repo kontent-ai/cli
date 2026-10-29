@@ -1,83 +1,74 @@
 import { describe, expect, it, vi } from "vitest";
-import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
-import { readCliConfig, writeCliConfig } from "../../src/cli/adapters/config/cliConfig.js";
-import { resolveIdentity } from "../../src/cli/adapters/telemetry/identity.js";
+import type { CliConfig } from "../../src/cli/adapters/config/cliConfig.js";
+import {
+  type IdentityEffects,
+  resolveIdentity,
+} from "../../src/cli/adapters/telemetry/identity.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok } from "../../src/core/lib/result.js";
-
-vi.mock("../../src/cli/adapters/auth/storage.js", () => ({
-  createKeyringStorage: vi.fn(),
-}));
-
-vi.mock("../../src/cli/adapters/config/cliConfig.js", () => ({
-  readCliConfig: vi.fn(),
-  writeCliConfig: vi.fn(),
-}));
+import { fakeTokenStorage } from "../helpers/authFakes.js";
 
 const TOKENS: TokenSet = { accessToken: "access-token" };
 
 const DEVICE_ID = "device-id-value";
 const USER_ID = "user-id-value";
+const GENERATED_DEVICE_ID = "generated-device-id";
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-const fakeStorage = (stored: TokenSet | null) => ({
-  read: vi.fn(async () => ok(stored)),
-  write: vi.fn(async () => ok(undefined)),
-  clear: vi.fn(async () => ok(undefined)),
-});
+const effectsWith = (tokens: IdentityEffects["tokens"], config: CliConfig) =>
+  ({
+    tokens,
+    config: {
+      read: vi.fn(() => Promise.resolve(config)),
+      write: vi.fn(() => Promise.resolve(ok(undefined))),
+    },
+    newDeviceId: () => GENERATED_DEVICE_ID,
+  }) satisfies IdentityEffects;
 
 const failingStorage = (error: AuthError) => ({
-  read: vi.fn(async () => err(error)),
-  write: vi.fn(async () => ok(undefined)),
-  clear: vi.fn(async () => ok(undefined)),
+  read: vi.fn(() => Promise.resolve(err(error))),
 });
 
 describe("resolveIdentity userId gating", () => {
   it("reports the cached userId while tokens are stored", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(TOKENS));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID, userId: USER_ID });
-
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(
+      effectsWith(fakeTokenStorage(TOKENS), { deviceId: DEVICE_ID, userId: USER_ID }),
+    );
 
     expect(identity).toEqual({ deviceId: DEVICE_ID, userId: USER_ID });
   });
 
   it("ignores a userId left in the config once the tokens are gone", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(null));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID, userId: USER_ID });
-
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(
+      effectsWith(fakeTokenStorage(null), { deviceId: DEVICE_ID, userId: USER_ID }),
+    );
 
     expect(identity).not.toHaveProperty("userId");
     expect(identity.deviceId).toBe(DEVICE_ID);
   });
 
   it("reports no userId when the keyring cannot be read", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(
-      failingStorage({ kind: "storage-read-failed", cause: new Error("no secret service") }),
+    const identity = await resolveIdentity(
+      effectsWith(
+        failingStorage({ kind: "storage-read-failed", cause: new Error("no secret service") }),
+        { deviceId: DEVICE_ID, userId: USER_ID },
+      ),
     );
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID, userId: USER_ID });
-
-    const identity = await resolveIdentity();
 
     expect(identity).not.toHaveProperty("userId");
   });
 
   it("rejects a cached userId that Amplitude would refuse", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(TOKENS));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID, userId: "abc" });
-
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(
+      effectsWith(fakeTokenStorage(TOKENS), { deviceId: DEVICE_ID, userId: "abc" }),
+    );
 
     expect(identity).not.toHaveProperty("userId");
   });
 
   it("reports no userId when none was ever cached", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(TOKENS));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID });
-
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(
+      effectsWith(fakeTokenStorage(TOKENS), { deviceId: DEVICE_ID }),
+    );
 
     expect(identity).not.toHaveProperty("userId");
   });
@@ -85,31 +76,27 @@ describe("resolveIdentity userId gating", () => {
 
 describe("resolveIdentity deviceId", () => {
   it("keeps an existing deviceId without rewriting the config", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(TOKENS));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID });
+    const effects = effectsWith(fakeTokenStorage(TOKENS), { deviceId: DEVICE_ID });
 
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(effects);
 
     expect(identity.deviceId).toBe(DEVICE_ID);
-    expect(writeCliConfig).not.toHaveBeenCalled();
+    expect(effects.config.write).not.toHaveBeenCalled();
   });
 
   it("generates and persists a deviceId when the config has none", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(TOKENS));
-    vi.mocked(readCliConfig).mockResolvedValue({});
-    vi.mocked(writeCliConfig).mockResolvedValue(ok(undefined));
+    const effects = effectsWith(fakeTokenStorage(TOKENS), {});
 
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(effects);
 
-    expect(identity.deviceId).toMatch(UUID_PATTERN);
-    expect(writeCliConfig).toHaveBeenCalledWith({ deviceId: identity.deviceId });
+    expect(identity.deviceId).toBe(GENERATED_DEVICE_ID);
+    expect(effects.config.write).toHaveBeenCalledWith({ deviceId: GENERATED_DEVICE_ID });
   });
 
   it("survives logout, unlike the userId", async () => {
-    vi.mocked(createKeyringStorage).mockReturnValue(fakeStorage(null));
-    vi.mocked(readCliConfig).mockResolvedValue({ deviceId: DEVICE_ID, userId: USER_ID });
-
-    const identity = await resolveIdentity();
+    const identity = await resolveIdentity(
+      effectsWith(fakeTokenStorage(null), { deviceId: DEVICE_ID, userId: USER_ID }),
+    );
 
     expect(identity).toEqual({ deviceId: DEVICE_ID });
   });
