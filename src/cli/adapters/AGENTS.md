@@ -1,6 +1,6 @@
 # src/cli/adapters
 
-- One folder per external system or concern (e.g. auth).
+- One folder per thing the CLI gives access to (an API, the keychain, local files, the terminal), named after it, never after the library that implements it (`templates`, not `giget`).
 - Thin: translate between the outside world and core types, and convert exceptions into `Result` with the adapter's own error type. No decisions.
 - Formatters of SDK errors sit next to the adapter whose SDK internals they read. Wording for domain errors belongs to `src/cli/commands`.
 - Satisfy the workflows' effect types structurally; never import from `src/cli/commands`.

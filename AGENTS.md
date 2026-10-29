@@ -16,7 +16,7 @@ Dependencies point inward: `cli/commands -> cli/adapters -> core` and `cli/comma
 
 - `src/core/**` pure domain logic, one folder per domain; generic primitives in `core/lib`.
 - `src/cli/commands/**` yargs wiring, workflows and presentation, one folder per command.
-- `src/cli/adapters/**` thin I/O, one folder per external system.
+- `src/cli/adapters/**` thin I/O.
 - Nested `AGENTS.md` files hold the details: `src/core/`, `src/cli/commands/`, `src/cli/adapters/`, `test/`, `evals/`. Read the one covering a folder before editing in it.
 - Editing `scripts/generateCommandDocs.ts`: the generated-docs rules are in `src/cli/commands/AGENTS.md`.
 

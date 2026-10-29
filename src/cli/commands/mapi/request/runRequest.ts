@@ -13,12 +13,12 @@ import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/pl
 import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
 import { type Session, session } from "../../../adapters/auth/tokenAccess.js";
 import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
+import { createRawMapi, type RawMapi } from "../../../adapters/mapi/raw/client.js";
 import {
   createRequestBodyReader,
   type RequestBodyError,
   type RequestBodyReader,
-} from "../../../adapters/input/requestBody.js";
-import { createRawMapi, type RawMapi } from "../../../adapters/mapi/raw/client.js";
+} from "../../../adapters/requestBody/requestBody.js";
 import type { Logger, LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
 import { formatRequestOutput } from "./formatOutput.js";

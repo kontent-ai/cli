@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createRequestBodyReader } from "../../src/cli/adapters/input/requestBody.js";
+import { createRequestBodyReader } from "../../src/cli/adapters/requestBody/requestBody.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 const pipedStdin = (text: string) => Readable.from([text]);
