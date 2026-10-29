@@ -21,7 +21,7 @@ import {
 import { createRawMapi, type RawMapi } from "../../../adapters/mapi/raw/client.js";
 import type { Logger, LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
-import { planRequestOutput } from "./planOutput.js";
+import { formatRequestOutput } from "./formatOutput.js";
 
 export type RequestInput = Readonly<{
   endpoint: string;
@@ -187,7 +187,7 @@ export const runRequest = async (
     },
   );
 
-  const output = planRequestOutput(result, args.include === true);
+  const output = formatRequestOutput(result, args.include === true);
   if (output.stdout !== "") {
     process.stdout.write(output.stdout);
   }

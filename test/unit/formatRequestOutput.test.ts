@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planRequestOutput } from "../../src/cli/commands/mapi/request/planOutput.js";
+import { formatRequestOutput } from "../../src/cli/commands/mapi/request/formatOutput.js";
 import type { RequestOutcome } from "../../src/cli/commands/mapi/request/runRequest.js";
 import type { ResolvedEnvId } from "../../src/core/environment/decideEnvId.js";
 import { err, ok } from "../../src/core/lib/result.js";
@@ -20,12 +20,12 @@ const outcome = (
     ...overrides,
   });
 
-const stderrText = (output: ReturnType<typeof planRequestOutput>) =>
+const stderrText = (output: ReturnType<typeof formatRequestOutput>) =>
   output.stderr.map((line) => line.text).join("\n");
 
-describe("planRequestOutput", () => {
+describe("formatRequestOutput", () => {
   it("keeps a dropped-body warning off stdout", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       outcome({
         statusCode: 502,
         statusText: "Bad Gateway",
@@ -48,7 +48,10 @@ describe("planRequestOutput", () => {
   });
 
   it("announces an empty success body on stderr instead of leaving stdout silent", () => {
-    const output = planRequestOutput(outcome({ statusCode: 204, statusText: "No Content" }), false);
+    const output = formatRequestOutput(
+      outcome({ statusCode: 204, statusText: "No Content" }),
+      false,
+    );
 
     expect(output.stdout).toBe("");
     expect(output.stderr).toEqual([{ level: "info", text: "HTTP 204 No Content" }]);
@@ -56,7 +59,7 @@ describe("planRequestOutput", () => {
   });
 
   it("prints a 4xx body on stdout and its diagnosis on stderr", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       outcome({
         statusCode: 404,
         statusText: "Not Found",
@@ -77,7 +80,7 @@ describe("planRequestOutput", () => {
   });
 
   it("reports a transport failure on stderr and fails", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       err({
         kind: "transport",
         message: "fetch failed: getaddrinfo ENOTFOUND",
@@ -92,7 +95,7 @@ describe("planRequestOutput", () => {
   });
 
   it("explains where a credential can come from when none is found", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       err({ kind: "auth-failed", error: { kind: "not-logged-in" } }),
       false,
     );
@@ -104,7 +107,7 @@ describe("planRequestOutput", () => {
   });
 
   it("tells how to set an environment when none is found", () => {
-    const output = planRequestOutput(err({ kind: "missing-env-id" }), false);
+    const output = formatRequestOutput(err({ kind: "missing-env-id" }), false);
 
     expect(stderrText(output)).toContain("--envId <id>");
     expect(stderrText(output)).toContain("kontent environment use <id>");
@@ -112,7 +115,7 @@ describe("planRequestOutput", () => {
   });
 
   it("points at the stored environment on 403", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       outcome({ statusCode: 403, statusText: "Forbidden" }, { env: STORED_ENV }),
       false,
     );
@@ -123,7 +126,7 @@ describe("planRequestOutput", () => {
   });
 
   it("leaves the stored environment out of a 401 and points at the credential", () => {
-    const output = planRequestOutput(
+    const output = formatRequestOutput(
       outcome({ statusCode: 401, statusText: "Unauthorized" }, { env: STORED_ENV }),
       false,
     );
@@ -133,7 +136,10 @@ describe("planRequestOutput", () => {
   });
 
   it("leaves the stored-environment hint out when --envId was passed", () => {
-    const output = planRequestOutput(outcome({ statusCode: 403, statusText: "Forbidden" }), false);
+    const output = formatRequestOutput(
+      outcome({ statusCode: 403, statusText: "Forbidden" }),
+      false,
+    );
 
     expect(stderrText(output)).toBe("HTTP 403 Forbidden");
   });
