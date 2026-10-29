@@ -6,7 +6,13 @@ import type { AuthError, TokenSet } from "../../../core/auth/types.js";
 import { iapiBaseUrl, type KontentTarget } from "../../../core/kontentUrl/kontentUrl.js";
 import { errorMessage } from "../../../core/lib/error.js";
 import { err, isErr, isOk, ok, type Result } from "../../../core/lib/result.js";
-import { type Auth0, createAuth0, type DeviceFlowDeps } from "../../adapters/auth/auth0.js";
+import {
+  createDeviceSignIn,
+  createTokenRefresh,
+  type DeviceFlowDeps,
+  type DeviceSignIn,
+  type TokenRefresh,
+} from "../../adapters/auth/auth0.js";
 import { getAuth0Config } from "../../adapters/auth/config.js";
 import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/storage.js";
 import { createUserIdCache, type UserIdCache } from "../../adapters/auth/userId.js";
@@ -24,7 +30,8 @@ export type LoginEffects = Readonly<{
   logger: Logger;
   clock: Clock;
   tokens: Pick<TokenStorage, "read" | "write" | "clear">;
-  auth: Auth0;
+  tokenRefresh: TokenRefresh;
+  deviceSignIn: DeviceSignIn;
   userIds: UserIdCache;
 }>;
 
@@ -41,7 +48,7 @@ export const login = async (effects: LoginEffects): Promise<Result<LoginOutcome,
       return ok({ isAlreadyAuthenticated: true, identifier: identifierFromTokens(storedTokens) });
     })
     .with({ type: "refresh-token" }, async ({ refreshToken }) => {
-      const refreshed = await effects.auth.refresh(refreshToken);
+      const refreshed = await effects.tokenRefresh.refresh(refreshToken);
       if (isErr(refreshed)) {
         if (decideAfterRefreshFailure(refreshed.error) === "keep-session") {
           return err(refreshed.error);
@@ -89,7 +96,7 @@ const persistTokens = async (effects: LoginEffects, tokens: TokenSet): Promise<v
 const signInWithDeviceFlow = async (
   effects: LoginEffects,
 ): Promise<Result<LoginOutcome, AuthError>> => {
-  const result = await effects.auth.signInWithDeviceFlow();
+  const result = await effects.deviceSignIn.signIn();
   if (isErr(result)) {
     return err(result.error);
   }
@@ -107,13 +114,17 @@ const formatLoginOutcome = (outcome: LoginOutcome): string => {
   return outcome.identifier === null ? base : `${base} as ${outcome.identifier}`;
 };
 
-const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): LoginEffects => ({
-  logger,
-  clock: systemClock,
-  tokens: createKeyringStorage(),
-  auth: createAuth0(getAuth0Config(), deviceFlowPrompt(logger)),
-  userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),
-});
+const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): LoginEffects => {
+  const config = getAuth0Config();
+  return {
+    logger,
+    clock: systemClock,
+    tokens: createKeyringStorage(),
+    tokenRefresh: createTokenRefresh(config),
+    deviceSignIn: createDeviceSignIn(config, deviceFlowPrompt(logger)),
+    userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),
+  };
+};
 
 const deviceFlowPrompt = (logger: Logger): DeviceFlowDeps => ({
   onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }, done) => {

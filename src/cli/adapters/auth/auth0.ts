@@ -99,14 +99,21 @@ export const loginViaDeviceFlow = async (
   }
 };
 
-export type Auth0 = Readonly<{
+export type TokenRefresh = Readonly<{
   refresh: (refreshToken: string) => Promise<Result<TokenSet, AuthError>>;
-  signInWithDeviceFlow: () => Promise<Result<TokenSet, AuthError>>;
 }>;
 
-export const createAuth0 = (config: Auth0Config, deviceFlow: DeviceFlowDeps): Auth0 => ({
+export const createTokenRefresh = (config: Auth0Config): TokenRefresh => ({
   refresh: async (refreshToken) => refreshTokens(config, refreshToken),
-  signInWithDeviceFlow: async () => loginViaDeviceFlow(config, deviceFlow),
+});
+
+export type DeviceSignIn = Readonly<{
+  signIn: () => Promise<Result<TokenSet, AuthError>>;
+}>;
+
+// The prompt is the terminal side of the flow: showing the code and opening the browser.
+export const createDeviceSignIn = (config: Auth0Config, prompt: DeviceFlowDeps): DeviceSignIn => ({
+  signIn: async () => loginViaDeviceFlow(config, prompt),
 });
 
 // Pins the ID token signature algorithm, which would otherwise widen to whatever the

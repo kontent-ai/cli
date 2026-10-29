@@ -1,34 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
-import { refreshTokens } from "../../src/cli/adapters/auth/auth0.js";
-import type { Auth0Config } from "../../src/cli/adapters/auth/config.js";
-import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
-import { getValidAccessToken, refreshOrClear } from "../../src/cli/adapters/auth/tokenAccess.js";
-import type { TokenSet } from "../../src/core/auth/types.js";
-import { err, ok } from "../../src/core/lib/result.js";
-
-vi.mock("../../src/cli/adapters/auth/auth0.js", () => ({
-  refreshTokens: vi.fn(),
-}));
-
-vi.mock("../../src/cli/adapters/auth/storage.js", () => ({
-  createKeyringStorage: vi.fn(),
-}));
-
-const CONFIG: Auth0Config = {
-  domain: "example.auth0.com",
-  clientId: "client-id",
-  audience: "https://example.test/api",
-  scope: "openid profile email offline_access",
-};
-
-vi.mock("../../src/cli/adapters/auth/config.js", () => ({
-  getAuth0Config: vi.fn(() => ({
-    domain: "example.auth0.com",
-    clientId: "client-id",
-    audience: "https://example.test/api",
-    scope: "openid profile email offline_access",
-  })),
-}));
+import { describe, expect, it } from "vitest";
+import { getValidAccessToken } from "../../src/cli/adapters/auth/tokenAccess.js";
+import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
+import { err, ok, type Result } from "../../src/core/lib/result.js";
+import { fakeTokenRefresh, fakeTokenStorage } from "../helpers/authFakes.js";
 
 const EXPIRED_TOKENS: TokenSet = {
   accessToken: "stale-access-token",
@@ -42,68 +16,40 @@ const FRESH_TOKENS: TokenSet = {
   expiresAt: Number.MAX_SAFE_INTEGER,
 };
 
-const REJECTED = { kind: "refresh-rejected", cause: new Error("invalid_grant") } as const;
-const TRANSIENT = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") } as const;
+const REJECTED: AuthError = { kind: "refresh-rejected", cause: new Error("invalid_grant") };
+const TRANSIENT: AuthError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") };
 
-const fakeStorage = (stored: TokenSet | null) => ({
-  read: vi.fn(async () => ok(stored)),
-  write: vi.fn(async () => ok(undefined)),
-  clear: vi.fn(async () => ok(undefined)),
-});
-
-describe("refreshOrClear", () => {
-  it("clears stored tokens when the refresh token is rejected", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(refreshTokens).mockResolvedValue(err(REJECTED));
-
-    const result = await refreshOrClear(storage, CONFIG, "stale-refresh-token");
-
-    expect(storage.clear).toHaveBeenCalledOnce();
-    expect(result).toEqual(err(REJECTED));
-  });
-
-  it("keeps stored tokens on a transient refresh failure", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(refreshTokens).mockResolvedValue(err(TRANSIENT));
-
-    const result = await refreshOrClear(storage, CONFIG, "stale-refresh-token");
-
-    expect(storage.clear).not.toHaveBeenCalled();
-    expect(result).toEqual(err(TRANSIENT));
-  });
+const effectsWith = (refreshed: Result<TokenSet, AuthError>) => ({
+  tokens: fakeTokenStorage(EXPIRED_TOKENS),
+  tokenRefresh: fakeTokenRefresh(refreshed),
+  clock: { now: () => 1_000 },
 });
 
 describe("getValidAccessToken with an expired access token", () => {
-  it("maps a rejected refresh token to not-logged-in", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
-    vi.mocked(refreshTokens).mockResolvedValue(err(REJECTED));
+  it("clears the stored tokens and maps a rejected refresh token to not-logged-in", async () => {
+    const effects = effectsWith(err(REJECTED));
 
-    const result = await getValidAccessToken();
+    const result = await getValidAccessToken(effects);
 
-    expect(storage.clear).toHaveBeenCalledOnce();
+    expect(effects.tokens.clear).toHaveBeenCalledOnce();
     expect(result).toEqual(err({ kind: "not-logged-in" }));
   });
 
   it("surfaces a transient refresh failure and keeps the session", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
-    vi.mocked(refreshTokens).mockResolvedValue(err(TRANSIENT));
+    const effects = effectsWith(err(TRANSIENT));
 
-    const result = await getValidAccessToken();
+    const result = await getValidAccessToken(effects);
 
-    expect(storage.clear).not.toHaveBeenCalled();
+    expect(effects.tokens.clear).not.toHaveBeenCalled();
     expect(result).toEqual(err(TRANSIENT));
   });
 
   it("persists and returns the refreshed token", async () => {
-    const storage = fakeStorage(EXPIRED_TOKENS);
-    vi.mocked(createKeyringStorage).mockReturnValue(storage);
-    vi.mocked(refreshTokens).mockResolvedValue(ok(FRESH_TOKENS));
+    const effects = effectsWith(ok(FRESH_TOKENS));
 
-    const result = await getValidAccessToken();
+    const result = await getValidAccessToken(effects);
 
-    expect(storage.write).toHaveBeenCalledWith(FRESH_TOKENS);
+    expect(effects.tokens.write).toHaveBeenCalledWith(FRESH_TOKENS);
     expect(result).toEqual(ok("new-access-token"));
   });
 });

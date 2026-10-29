@@ -3,14 +3,14 @@ import { iapiBaseUrl, type KontentTarget } from "../../../core/kontentUrl/konten
 import { isErr, ok, type Result } from "../../../core/lib/result.js";
 import type { Logger } from "../../log.js";
 import { createIapiClient, type IapiClient } from "../iapi/client.js";
-import { getValidAccessToken } from "./tokenAccess.js";
+import { session } from "./tokenAccess.js";
 import { ensureUserIdCached } from "./userId.js";
 
 export const getAuthenticatedIapiClient = async (
   logger: Logger,
   kontentTarget: KontentTarget,
 ): Promise<Result<IapiClient, AuthError>> => {
-  const tokenResult = await getValidAccessToken();
+  const tokenResult = await session.accessToken();
   if (isErr(tokenResult)) {
     return tokenResult;
   }
