@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  ci:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -15,7 +15,7 @@ jobs:
       - name: Setup pnpm and Node.js
         uses: pnpm/setup@v2
         with:
-          runtime: node@lts
+          runtime: node@26
           cache: true
           require-lockfile: true
       - name: Typecheck
@@ -33,7 +33,26 @@ jobs:
           pnpm docs:generate
           git add -A
           git diff --cached --exit-code
-      - name: Test
-        run: pnpm test
       - name: Build
         run: pnpm build
+
+  # The engines.node minimum, the previous LTS major and the current one.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.12.0", "24", "26"]
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v2
+        with:
+          runtime: node@${{ matrix.node }}
+          cache: true
+          require-lockfile: true
+      - name: Test
+        run: pnpm test

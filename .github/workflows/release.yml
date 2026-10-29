@@ -19,7 +19,7 @@ jobs:
       - name: Setup pnpm and Node.js
         uses: pnpm/setup@v2
         with:
-          runtime: node@lts
+          runtime: node@26
           cache: true
           require-lockfile: true
 
