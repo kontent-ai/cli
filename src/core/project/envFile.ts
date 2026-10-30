@@ -1,11 +1,3 @@
-const keyOfLine = (line: string): string | null => {
-  if (!line.includes("=")) {
-    return null;
-  }
-  const [name = ""] = line.split("=");
-  return name.trim();
-};
-
 /**
  * Fills a `.env`-style template with `values`: a `KEY=...` line whose key is in
  * `values` has its value replaced in place; comments, blank lines, and keys we
@@ -23,3 +15,11 @@ export const applyEnvOverrides = (
       return key !== null && Object.hasOwn(values, key) ? `${key}=${values[key]}` : line;
     })
     .join("\n");
+
+const keyOfLine = (line: string): string | null => {
+  if (!line.includes("=")) {
+    return null;
+  }
+  const [name = ""] = line.split("=");
+  return name.trim();
+};

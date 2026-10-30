@@ -1,4 +1,5 @@
 import type { SpaceModels } from "@kontent-ai/management-sdk";
+import { match } from "ts-pattern";
 import { type Result, tryAsync } from "../../../core/lib/result.js";
 import type { SpaceModification, SpaceSummary } from "../../../core/project/previewSpace.js";
 import type { MapiClient } from "./client.js";
@@ -22,6 +23,8 @@ export type Spaces = Readonly<{
   ) => Promise<Result<void, string>>;
 }>;
 
+// The SDK still types the root item as `web_spotlight_root_item`; the API expects `root_item`,
+// hence the casts in `create` and `modify`.
 export const createSpaces = (client: MapiClient): Spaces => ({
   list: async () =>
     tryAsync(
@@ -42,7 +45,6 @@ export const createSpaces = (client: MapiClient): Spaces => ({
         (
           await client
             .addSpace()
-            // The SDK still types this field as `web_spotlight_root_item`; the API expects `root_item`.
             .withData({
               name: space.name,
               codename: space.codename,
@@ -58,7 +60,21 @@ export const createSpaces = (client: MapiClient): Spaces => ({
       await client
         .modifySpace()
         .bySpaceId(spaceId)
-        .withData(modifications as unknown as SpaceModels.IModifySpaceData[])
+        .withData(modifications.map(toModifySpaceData) as unknown as SpaceModels.IModifySpaceData[])
         .toPromise();
     }, mapiErrorMessage),
 });
+
+const toModifySpaceData = (modification: SpaceModification) =>
+  match(modification)
+    .with({ kind: "set-root-item" }, (m) => ({
+      op: "replace" as const,
+      property_name: "root_item" as const,
+      value: { codename: m.codename },
+    }))
+    .with({ kind: "set-collections" }, (m) => ({
+      op: "replace" as const,
+      property_name: "collections" as const,
+      value: m.codenames.map((codename) => ({ codename })),
+    }))
+    .exhaustive();

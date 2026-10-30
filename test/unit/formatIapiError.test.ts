@@ -2,13 +2,12 @@ import { KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
 import { formatIapiError } from "../../src/cli/adapters/iapi/formatIapiError.js";
 
-const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const NOISE_HEADER = "x-served-by";
 
 const httpError = (
   status: number,
   statusText: string,
-  reason: "unauthorized" | "invalidResponse" | "notFound",
+  reason: "invalidResponse" | "notFound",
   kontentErrorResponse?: { message: string; request_id: string; error_code: number },
 ): KontentSdkError =>
   new KontentSdkError({
@@ -28,24 +27,10 @@ const httpError = (
     },
   });
 
-const context = { envId: ENV_ID, isVerbose: false };
+const context = { isVerbose: false };
 
 describe("formatIapiError", () => {
-  it("maps 401 to a re-login hint without dumping transport detail", () => {
-    const message = formatIapiError(httpError(401, "Unauthorized", "unauthorized"), context);
-    expect(message).toContain("kontent login");
-    expect(message).not.toContain(NOISE_HEADER);
-    expect(message).not.toContain("https://");
-  });
-
-  it("maps 403 to an access message naming the environment, without transport detail", () => {
-    const message = formatIapiError(httpError(403, "Forbidden", "invalidResponse"), context);
-    expect(message).toContain(ENV_ID);
-    expect(message).toContain("access");
-    expect(message).not.toContain(NOISE_HEADER);
-  });
-
-  it("falls back to a clean generic summary for other statuses, never headers", () => {
+  it("summarizes an HTTP failure without headers", () => {
     const error = httpError(404, "Not Found", "notFound", {
       message: "Project not found.",
       request_id: "req-123",

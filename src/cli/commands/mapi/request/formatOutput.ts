@@ -25,10 +25,10 @@ export const formatRequestOutput = (
   shouldIncludeHeaders: boolean,
 ): RequestOutput =>
   isErr(result)
-    ? planErrorOutput(result.error)
-    : planResponseOutput(result.value, shouldIncludeHeaders);
+    ? formatErrorOutput(result.error)
+    : formatResponseOutput(result.value, shouldIncludeHeaders);
 
-const planErrorOutput = (error: RequestError): RequestOutput =>
+const formatErrorOutput = (error: RequestError): RequestOutput =>
   match(error)
     .with({ kind: "missing-env-id" }, () =>
       failed(
@@ -66,7 +66,7 @@ const failed = (
   telemetry: { outcome: "fail", errorCode, ...(properties === undefined ? {} : { properties }) },
 });
 
-const planResponseOutput = (
+const formatResponseOutput = (
   outcome: RequestOutcome,
   shouldIncludeHeaders: boolean,
 ): RequestOutput => {

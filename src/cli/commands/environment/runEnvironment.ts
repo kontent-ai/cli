@@ -10,7 +10,9 @@ import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliCo
 import { createEnvironments, type Environments } from "../../adapters/mapi/environments.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
+import { noEnvironmentAccessMessage } from "../shared/environmentAccess.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
+import { sessionExpiredMessage } from "../shared/sessionExpired.js";
 import { invalidEnvIdMessage } from "./invalidEnvIdMessage.js";
 
 type SelectedEnvironment =
@@ -154,14 +156,9 @@ const formatSelectError = (error: SelectEnvironmentError, envId: string): string
   match(error)
     .with({ kind: "invalid-env-id" }, (e) => e.message)
     .with({ kind: "auth-failed" }, (e) => formatAuthError(e.error))
-    .with(
-      { kind: "environment-info-failed", status: 401 },
-      () => "Your session is no longer valid. Run `kontent login` to sign in again.",
-    )
-    .with(
-      { kind: "environment-info-failed", status: P.union(403, 404) },
-      () =>
-        `You don't have access to environment "${envId}", or it does not exist. Check you're signed in with the right account (run \`kontent login\` to switch).`,
+    .with({ kind: "environment-info-failed", status: 401 }, () => sessionExpiredMessage)
+    .with({ kind: "environment-info-failed", status: P.union(403, 404) }, () =>
+      noEnvironmentAccessMessage(envId),
     )
     .with(
       { kind: "environment-info-failed" },

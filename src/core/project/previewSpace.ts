@@ -11,12 +11,9 @@ export type SpaceSummary = Readonly<{
   hasCollections: boolean;
 }>;
 
-// The SDK still types the property as `web_spotlight_root_item`; the API expects `root_item`.
-export type SpaceModification = Readonly<{
-  op: "replace";
-  property_name: "root_item" | "collections";
-  value: unknown;
-}>;
+export type SpaceModification =
+  | Readonly<{ kind: "set-root-item"; codename: string }>
+  | Readonly<{ kind: "set-collections"; codenames: ReadonlyArray<string> }>;
 
 /** What an existing localhost space is missing; empty when it needs nothing. */
 export const planSpaceModifications = (
@@ -25,20 +22,8 @@ export const planSpaceModifications = (
 ): ReadonlyArray<SpaceModification> => [
   ...(space.hasRootItem
     ? []
-    : [
-        {
-          op: "replace" as const,
-          property_name: "root_item" as const,
-          value: { codename: config.rootItemCodename },
-        },
-      ]),
+    : [{ kind: "set-root-item" as const, codename: config.rootItemCodename }]),
   ...(space.hasCollections
     ? []
-    : [
-        {
-          op: "replace" as const,
-          property_name: "collections" as const,
-          value: [{ codename: config.collectionCodename }],
-        },
-      ]),
+    : [{ kind: "set-collections" as const, codenames: [config.collectionCodename] }]),
 ];

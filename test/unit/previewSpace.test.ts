@@ -14,8 +14,8 @@ describe("planSpaceModifications", () => {
     expect(
       planSpaceModifications({ id: "s", hasRootItem: false, hasCollections: false }, CONFIG),
     ).toEqual([
-      { op: "replace", property_name: "root_item", value: { codename: "landing" } },
-      { op: "replace", property_name: "collections", value: [{ codename: "default" }] },
+      { kind: "set-root-item", codename: "landing" },
+      { kind: "set-collections", codenames: ["default"] },
     ]);
   });
 });
