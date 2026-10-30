@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { match, P } from "ts-pattern";
-import { mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
+import { iapiBaseUrl, mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../../core/lib/option.js";
 import { err, isErr, ok, type Result } from "../../../../../core/lib/result.js";
 import { planDeliveryKeyRequest } from "../../../../../core/project/deliveryKeyRequest.js";
@@ -14,9 +14,11 @@ import {
   type SampleApp,
   supportedProjectTypes,
 } from "../../../../../core/project/samples.js";
-import { getAuthenticatedIapiClient } from "../../../../adapters/auth/authenticatedClient.js";
+import { session } from "../../../../adapters/auth/tokenAccess.js";
+import { createUserIdCache } from "../../../../adapters/auth/userId.js";
 import { type Clock, systemClock } from "../../../../adapters/clock/clock.js";
 import { type Files, files } from "../../../../adapters/files/files.js";
+import { createIapiClient } from "../../../../adapters/iapi/client.js";
 import {
   createDeliveryKeys,
   type DeliveryKeySummary,
@@ -134,16 +136,20 @@ export const runBootstrap = async (
   const tracker = deps.telemetry.startCommandTracking("project sample bootstrap", logger);
   prompts.intro("Bootstrap a Kontent.ai project");
 
-  const clientResult = await getAuthenticatedIapiClient(logger, deps.kontentTarget);
-  if (isErr(clientResult)) {
-    tracker.fail(`auth:${clientResult.error.kind}`, { project: args.envId });
-    logger.error(formatAuthError(clientResult.error));
+  const tokens = await session.tokens();
+  if (isErr(tokens)) {
+    tracker.fail(`auth:${tokens.error.kind}`, { project: args.envId });
+    logger.error(formatAuthError(tokens.error));
     process.exitCode = 1;
     return;
   }
-  const iapiClient = clientResult.value;
+  const { accessToken } = tokens.value;
+  const iapiUrl = iapiBaseUrl(deps.kontentTarget);
+  await createUserIdCache(logger, iapiUrl).ensure(accessToken, { shouldForceRefresh: false });
+
+  const iapiClient = createIapiClient({ token: accessToken, baseUrl: iapiUrl });
   const mapiClient = createMapiClient({
-    token: iapiClient.token,
+    token: accessToken,
     envId: args.envId,
     baseUrl: mapiBaseUrl(deps.kontentTarget),
   });
