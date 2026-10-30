@@ -4,7 +4,7 @@ import {
   pollDeviceAuthorizationGrant,
 } from "openid-client";
 import { describe, expect, it, vi } from "vitest";
-import { type DeviceFlowDeps, loginViaDeviceFlow } from "../../src/cli/adapters/auth/auth0.js";
+import { type DeviceFlowPrompt, loginViaDeviceFlow } from "../../src/cli/adapters/auth/auth0.js";
 import type { Auth0Config } from "../../src/cli/adapters/auth/config.js";
 import { err } from "../../src/core/lib/result.js";
 
@@ -23,10 +23,11 @@ const CONFIG: Auth0Config = {
   scope: "openid profile email offline_access",
 };
 
-const DEPS: DeviceFlowDeps = {
+const PROMPT: DeviceFlowPrompt = {
   onUserCode: async () => {},
-  nowMs: () => 1_000_000,
 };
+
+const CLOCK = { now: () => 1_000_000 };
 
 const DEVICE_CODE = {
   user_code: "ABCD-EFGH",
@@ -53,7 +54,7 @@ describe("loginViaDeviceFlow polling failures", () => {
   it("maps the client-side expiry timeout to expired-token", async () => {
     pollRejectsWith(clientError("operation timed out", "OAUTH_TIMEOUT"));
 
-    const result = await loginViaDeviceFlow(CONFIG, DEPS);
+    const result = await loginViaDeviceFlow(CONFIG, PROMPT, CLOCK);
 
     expect(result).toEqual(err({ kind: "expired-token" }));
   });
@@ -62,7 +63,7 @@ describe("loginViaDeviceFlow polling failures", () => {
     const cause = clientError("operation aborted", "OAUTH_ABORT");
     pollRejectsWith(cause);
 
-    const result = await loginViaDeviceFlow(CONFIG, DEPS);
+    const result = await loginViaDeviceFlow(CONFIG, PROMPT, CLOCK);
 
     expect(result).toEqual(err({ kind: "unknown", cause }));
   });
@@ -71,7 +72,7 @@ describe("loginViaDeviceFlow polling failures", () => {
     const cause = new Error("ECONNRESET");
     pollRejectsWith(cause);
 
-    const result = await loginViaDeviceFlow(CONFIG, DEPS);
+    const result = await loginViaDeviceFlow(CONFIG, PROMPT, CLOCK);
 
     expect(result).toEqual(err({ kind: "unknown", cause }));
   });

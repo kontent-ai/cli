@@ -3,6 +3,7 @@
 import chalk, { chalkStderr } from "chalk";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { systemClock } from "./cli/adapters/clock/clock.js";
 import { cliConfigStore } from "./cli/adapters/config/cliConfig.js";
 import { cliVersion } from "./cli/adapters/telemetry/context.js";
 import {
@@ -74,7 +75,7 @@ if (isErr(kontentTarget)) {
   process.exit(1);
 }
 
-const { telemetry, mode } = await createTelemetry({ config: cliConfigStore });
+const { telemetry, mode } = await createTelemetry({ config: cliConfigStore, clock: systemClock });
 const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
 registerTelemetrySignalFlush(telemetry);
 
