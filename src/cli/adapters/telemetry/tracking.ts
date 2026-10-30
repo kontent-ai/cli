@@ -11,7 +11,7 @@ import {
   toEventType,
 } from "../../../core/telemetry/events.js";
 import type { Logger } from "../../log.js";
-import { readCliConfig, writeCliConfig } from "../config/cliConfig.js";
+import type { CliConfigStore } from "../config/cliConfig.js";
 import { formatTelemetryOffReason, isTelemetryDebug, readOptOutVariables } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
 import { resolveIdentity, systemIdentityEffects } from "./identity.js";
@@ -44,6 +44,10 @@ export type TelemetryMode =
   | { readonly kind: "debug" }
   | { readonly kind: "init-failed" };
 
+export type TelemetryEffects = Readonly<{
+  config: Pick<CliConfigStore, "read" | "write">;
+}>;
+
 export type TelemetryInit = Readonly<{
   telemetry: Telemetry;
   mode: TelemetryMode;
@@ -59,9 +63,9 @@ export const noopTelemetry: Telemetry = {
   flush: async () => {},
 };
 
-export const createTelemetry = async (): Promise<TelemetryInit> => {
+export const createTelemetry = async (effects: TelemetryEffects): Promise<TelemetryInit> => {
   try {
-    const { sink, mode } = await resolveSink();
+    const { sink, mode } = await resolveSink(effects);
     if (sink === null) {
       return { telemetry: noopTelemetry, mode };
     }
@@ -131,8 +135,8 @@ type SinkResolution = Readonly<{
   mode: TelemetryMode;
 }>;
 
-const resolveSink = async (): Promise<SinkResolution> => {
-  const config = await readCliConfig();
+const resolveSink = async (effects: TelemetryEffects): Promise<SinkResolution> => {
+  const config = await effects.config.read();
   const consent = decideTelemetryConsent({
     optOutVariables: readOptOutVariables(process.env),
     telemetryEnabled: config.telemetryEnabled,
@@ -154,7 +158,7 @@ const resolveSink = async (): Promise<SinkResolution> => {
     // Written during createTelemetry(), before yargs runs the handler that
     // produces the event, so the disclosure always precedes the data.
     process.stderr.write(`${FIRST_RUN_NOTICE}\n\n`);
-    const persisted = await writeCliConfig({ telemetryNoticeShown: true });
+    const persisted = await effects.config.write({ telemetryNoticeShown: true });
     return {
       sink: createAmplitudeSink(amplitudeApiKey),
       mode: { kind: "notice-run", hasPersistedNotice: isOk(persisted) },
