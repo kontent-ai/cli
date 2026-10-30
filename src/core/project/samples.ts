@@ -22,7 +22,7 @@ export type SampleApp =
       readonly collection: string;
     });
 
-const SAMPLES: readonly SampleApp[] = [
+const SAMPLES: ReadonlyArray<SampleApp> = [
   {
     projectType: "Kickstart",
     templateRepo: "github:kontent-ai/kickstart-react-app",
@@ -61,7 +61,7 @@ export const buildEnvValues = (
   sample: SampleApp,
   envId: string,
   apiKey: string,
-): Record<string, string> =>
+): Readonly<Record<string, string>> =>
   match(sample)
     .with({ projectType: "Ficto" }, (s) => ({
       [s.envIdVarName]: envId,

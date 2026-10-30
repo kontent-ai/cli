@@ -1,5 +1,5 @@
 import { match } from "ts-pattern";
-import { decideAfterRefreshFailure, decideAuth } from "../../../core/auth/decideAuth.js";
+import { decideAfterRefreshFailure, decideAuth } from "../../../core/auth/session.js";
 import type { AuthError, TokenSet } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
 import { type Clock, systemClock } from "../clock/clock.js";

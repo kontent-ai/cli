@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatRequestOutput } from "../../src/cli/commands/mapi/request/formatOutput.js";
 import type { RequestOutcome } from "../../src/cli/commands/mapi/request/runRequest.js";
-import type { ResolvedEnvId } from "../../src/core/environment/decideEnvId.js";
+import type { ResolvedEnvId } from "../../src/core/environment/envId.js";
 import { err, ok } from "../../src/core/lib/result.js";
 import type { MapiResponse } from "../../src/core/mapi/raw/response.js";
 

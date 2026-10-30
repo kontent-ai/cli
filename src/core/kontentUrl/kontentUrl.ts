@@ -8,7 +8,7 @@ const DEFAULT_KONTENT_DOMAIN = "kontent.ai";
 // The only domains the CLI may talk to, besides on-demand environments and this machine's
 // loopback addresses. Guards a poisoned KONTENT_URL from steering authenticated requests
 // (bearer token included) at another host.
-const allowedKontentDomains = ["kontent.ai", "devkontentmasters.com"] as const;
+const ALLOWED_KONTENT_DOMAINS = ["kontent.ai", "devkontentmasters.com"] as const;
 
 /**
  * Where the CLI sends its requests. A `domain` has the internal API on `app.<domain>`
@@ -49,7 +49,7 @@ export const mapiBaseUrl = (target: KontentTarget): string =>
 const validateKontentUrl = (raw: string): Result<KontentTarget, string> =>
   /^https?:\/\//i.test(raw) ? validateHostAddress(raw) : validateDomain(raw);
 
-const loopbackHosts: ReadonlyArray<string> = ["localhost", "127.0.0.1", "[::1]"];
+const LOOPBACK_HOSTS: ReadonlyArray<string> = ["localhost", "127.0.0.1", "[::1]"];
 
 // One label only: an arbitrary subdomain of an allowed domain can be served by a third party.
 const onDemandHostPattern = /^[a-z0-9-]+-draft\.devkontentmasters\.com$/;
@@ -57,7 +57,7 @@ const onDemandHostPattern = /^[a-z0-9-]+-draft\.devkontentmasters\.com$/;
 const validateHostAddress = (raw: string): Result<KontentTarget, string> =>
   flatMap(parseUrl(raw, raw), (url) => {
     const isAllowedAddress =
-      loopbackHosts.includes(url.hostname) ||
+      LOOPBACK_HOSTS.includes(url.hostname) ||
       (url.protocol === "https:" && url.port === "" && onDemandHostPattern.test(url.hostname));
     const isBareAddress =
       url.username === "" &&
@@ -81,14 +81,15 @@ const parseUrl = (url: string, raw: string): Result<URL, string> =>
   );
 
 const invalidKontentUrlMessage = (raw: string): string =>
-  `Invalid KONTENT_URL "${raw}": it must be a Kontent.ai domain without a scheme (${allowedKontentDomains.join(
+  `Invalid KONTENT_URL "${raw}": it must be a Kontent.ai domain without a scheme (${ALLOWED_KONTENT_DOMAINS.join(
     ", ",
   )}, with no path, port, or credentials); or the address of one host serving both APIs: https://<label>-draft.devkontentmasters.com, or http(s)://localhost, 127.0.0.1 or [::1] with an optional port, with no path, query, fragment, or credentials.`;
 
 const validateDomain = (raw: string): Result<KontentTarget, string> =>
   flatMap(parseUrl(`https://${raw}`, raw), ({ hostname }) => {
     const isBareAllowedHost =
-      hostname === raw.toLowerCase() && allowedKontentDomains.some((domain) => domain === hostname);
+      hostname === raw.toLowerCase() &&
+      ALLOWED_KONTENT_DOMAINS.some((domain) => domain === hostname);
 
     return isBareAllowedHost
       ? ok({ kind: "domain", domain: hostname })

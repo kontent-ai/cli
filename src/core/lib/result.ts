@@ -57,12 +57,14 @@ export const getOrElse = <T, E>(res: Result<T, E>, fn: (error: E) => T): T =>
 
 export const partition = <T, E>(
   results: ReadonlyArray<Result<T, E>>,
-): { values: T[]; errors: E[] } => ({
+): Readonly<{ values: ReadonlyArray<T>; errors: ReadonlyArray<E> }> => ({
   values: results.flatMap((res) => (res.kind === "ok" ? [res.value] : [])),
   errors: results.flatMap((res) => (res.kind === "err" ? [res.error] : [])),
 });
 
-export const combine = <T, E>(results: ReadonlyArray<Result<T, E>>): Result<T[], E[]> => {
+export const combine = <T, E>(
+  results: ReadonlyArray<Result<T, E>>,
+): Result<ReadonlyArray<T>, ReadonlyArray<E>> => {
   const { values, errors } = partition(results);
   return errors.length === 0 ? ok(values) : err(errors);
 };

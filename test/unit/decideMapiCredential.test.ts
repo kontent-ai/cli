@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideMapiCredential } from "../../src/core/mapi/decideMapiCredential.js";
+import { decideMapiCredential } from "../../src/core/mapi/credential.js";
 
 const authorization = [{ name: "Authorization", value: "Bearer supplied" }];
 

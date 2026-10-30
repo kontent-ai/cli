@@ -1,15 +1,12 @@
 import { match } from "ts-pattern";
 import type { AuthError } from "../../../../core/auth/types.js";
-import { decideEnvId, type ResolvedEnvId } from "../../../../core/environment/decideEnvId.js";
+import { decideEnvId, type ResolvedEnvId } from "../../../../core/environment/envId.js";
 import { mapiBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../core/lib/option.js";
 import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
-import {
-  type AuthSource,
-  decideMapiCredential,
-} from "../../../../core/mapi/decideMapiCredential.js";
+import { type AuthSource, decideMapiCredential } from "../../../../core/mapi/credential.js";
 import { resolveEndpoint } from "../../../../core/mapi/raw/endpoint.js";
-import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/planRequest.js";
+import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/request.js";
 import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
 import { type Session, session } from "../../../adapters/auth/tokenAccess.js";
 import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
