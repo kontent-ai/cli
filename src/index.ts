@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 import chalk, { chalkStderr } from "chalk";
+import { isCI } from "ci-info";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { systemClock } from "./cli/adapters/clock/clock.js";
 import { cliConfigStore } from "./cli/adapters/config/cliConfig.js";
+import { isTelemetryDebug, readOptOutVariables } from "./cli/adapters/telemetry/consent.js";
 import { cliVersion } from "./cli/adapters/telemetry/context.js";
+import { systemIdentityEffects } from "./cli/adapters/telemetry/identity.js";
 import {
   createTelemetry,
   formatTelemetryMode,
@@ -75,7 +78,14 @@ if (isErr(kontentTarget)) {
   process.exit(1);
 }
 
-const { telemetry, mode } = await createTelemetry({ config: cliConfigStore, clock: systemClock });
+const { telemetry, mode } = await createTelemetry({
+  config: cliConfigStore,
+  clock: systemClock,
+  identity: systemIdentityEffects(),
+  optOutVariables: readOptOutVariables(process.env),
+  isCiRun: isCI,
+  isDebug: isTelemetryDebug(process.env),
+});
 const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
 registerTelemetrySignalFlush(telemetry);
 

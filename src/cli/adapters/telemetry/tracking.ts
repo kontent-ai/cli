@@ -1,8 +1,8 @@
-import { isCI } from "ci-info";
 import { match } from "ts-pattern";
 import { isOk } from "../../../core/lib/result.js";
 import {
   decideTelemetryConsent,
+  type OptOutVariables,
   type TelemetryOffReason,
 } from "../../../core/telemetry/consent.js";
 import {
@@ -13,9 +13,9 @@ import {
 import type { Logger } from "../../log.js";
 import type { Clock } from "../clock/clock.js";
 import type { CliConfigStore } from "../config/cliConfig.js";
-import { formatTelemetryOffReason, isTelemetryDebug, readOptOutVariables } from "./consent.js";
+import { formatTelemetryOffReason } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
-import { resolveIdentity, systemIdentityEffects } from "./identity.js";
+import { type IdentityEffects, resolveIdentity } from "./identity.js";
 import {
   createAmplitudeSink,
   createDebugTelemetrySink,
@@ -48,6 +48,10 @@ export type TelemetryMode =
 export type TelemetryEffects = Readonly<{
   config: Pick<CliConfigStore, "read" | "write">;
   clock: Clock;
+  identity: IdentityEffects;
+  optOutVariables: OptOutVariables;
+  isCiRun: boolean;
+  isDebug: boolean;
 }>;
 
 export type TelemetryInit = Readonly<{
@@ -86,7 +90,7 @@ export const createTelemetry = async (effects: TelemetryEffects): Promise<Teleme
             return;
           }
           hasFinished = true;
-          void resolveIdentity(systemIdentityEffects())
+          void resolveIdentity(effects.identity)
             .then(async (identity) =>
               sink.track(
                 {
@@ -140,13 +144,13 @@ type SinkResolution = Readonly<{
 const resolveSink = async (effects: TelemetryEffects): Promise<SinkResolution> => {
   const config = await effects.config.read();
   const consent = decideTelemetryConsent({
-    optOutVariables: readOptOutVariables(process.env),
+    optOutVariables: effects.optOutVariables,
     telemetryEnabled: config.telemetryEnabled,
     amplitudeApiKey,
-    isCiRun: isCI,
+    isCiRun: effects.isCiRun,
   });
 
-  if (isTelemetryDebug(process.env)) {
+  if (effects.isDebug) {
     const decisionText = consent.isEnabled ? "enabled" : `disabled (${consent.reason})`;
     process.stderr.write(`[telemetry debug] decision: ${decisionText}; nothing will be sent\n`);
     return { sink: createDebugTelemetrySink(), mode: { kind: "debug" } };
