@@ -1,21 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type LoginEffects, login } from "../../src/cli/commands/login/runLogin.js";
 import { createLogger } from "../../src/cli/log.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok, type Result } from "../../src/core/lib/result.js";
-import {
-  fakeDeviceSignIn,
-  fakeTokenRefresh,
-  fakeTokenStorage,
-  fakeUserIdCache,
-} from "../helpers/authFakes.js";
-
-const EXPIRED_TOKENS: TokenSet = {
-  accessToken: "stale-access-token",
-  refreshToken: "stale-refresh-token",
-  expiresAt: 0,
-  identifier: "old@example.com",
-};
+import { fakeDeviceSignIn, fakeTokenStorage, fakeUserIdCache } from "../helpers/authFakes.js";
 
 const FRESH_TOKENS: TokenSet = {
   accessToken: "new-access-token",
@@ -24,24 +12,26 @@ const FRESH_TOKENS: TokenSet = {
   identifier: "new@example.com",
 };
 
-const REJECTED: AuthError = { kind: "refresh-rejected", cause: new Error("invalid_grant") };
+const EXPIRED: AuthError = {
+  kind: "session-expired",
+  refreshError: { kind: "refresh-rejected", cause: new Error("invalid_grant") },
+};
 const TRANSIENT: AuthError = { kind: "refresh-failed", cause: new Error("ETIMEDOUT") };
 
 const effectsWith = (
-  replies: Readonly<{ refresh: Result<TokenSet, AuthError>; signIn?: Result<TokenSet, AuthError> }>,
+  replies: Readonly<{ session: Result<TokenSet, AuthError>; signIn?: Result<TokenSet, AuthError> }>,
 ) =>
   ({
     logger: createLogger("none"),
-    clock: { now: () => 1_000 },
-    tokens: fakeTokenStorage(EXPIRED_TOKENS),
-    tokenRefresh: fakeTokenRefresh(replies.refresh),
+    session: { tokens: vi.fn(() => Promise.resolve(replies.session)) },
+    tokens: fakeTokenStorage(null),
     deviceSignIn: fakeDeviceSignIn(replies.signIn),
     userIds: fakeUserIdCache(),
   }) satisfies LoginEffects;
 
-describe("login with a rejected refresh token", () => {
+describe("login with an expired session", () => {
   it("falls back to the device flow instead of failing the command", async () => {
-    const effects = effectsWith({ refresh: err(REJECTED), signIn: ok(FRESH_TOKENS) });
+    const effects = effectsWith({ session: err(EXPIRED), signIn: ok(FRESH_TOKENS) });
 
     const result = await login(effects);
 
@@ -49,12 +39,11 @@ describe("login with a rejected refresh token", () => {
     expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
   });
 
-  it("clears the dead tokens and persists the ones from the device flow", async () => {
-    const effects = effectsWith({ refresh: err(REJECTED), signIn: ok(FRESH_TOKENS) });
+  it("persists the tokens from the device flow", async () => {
+    const effects = effectsWith({ session: err(EXPIRED), signIn: ok(FRESH_TOKENS) });
 
     await login(effects);
 
-    expect(effects.tokens.clear).toHaveBeenCalledOnce();
     expect(effects.tokens.write).toHaveBeenCalledWith(FRESH_TOKENS);
     expect(effects.userIds.ensure).toHaveBeenCalledWith("new-access-token", {
       shouldForceRefresh: true,
@@ -62,25 +51,24 @@ describe("login with a rejected refresh token", () => {
   });
 });
 
-describe("login when the refresh fails transiently", () => {
-  it("keeps the stored session and surfaces the error without a device flow", async () => {
-    const effects = effectsWith({ refresh: err(TRANSIENT) });
+describe("login when the session fails transiently", () => {
+  it("surfaces the error without a device flow", async () => {
+    const effects = effectsWith({ session: err(TRANSIENT) });
 
     const result = await login(effects);
 
     expect(effects.deviceSignIn.signIn).not.toHaveBeenCalled();
-    expect(effects.tokens.clear).not.toHaveBeenCalled();
     expect(result).toEqual(err(TRANSIENT));
   });
 });
 
-describe("login when the refresh succeeds", () => {
+describe("login with a valid session", () => {
   it("does not start a device flow", async () => {
-    const effects = effectsWith({ refresh: ok(FRESH_TOKENS) });
+    const effects = effectsWith({ session: ok(FRESH_TOKENS) });
 
     const result = await login(effects);
 
     expect(effects.deviceSignIn.signIn).not.toHaveBeenCalled();
-    expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
+    expect(result).toEqual(ok({ isAlreadyAuthenticated: true, identifier: "new@example.com" }));
   });
 });

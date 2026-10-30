@@ -10,12 +10,12 @@ export const getAuthenticatedIapiClient = async (
   logger: Logger,
   kontentTarget: KontentTarget,
 ): Promise<Result<IapiClient, AuthError>> => {
-  const tokenResult = await session.accessToken();
+  const tokenResult = await session.tokens();
   if (isErr(tokenResult)) {
     return tokenResult;
   }
   const client = createIapiClient({
-    token: tokenResult.value,
+    token: tokenResult.value.accessToken,
     baseUrl: iapiBaseUrl(kontentTarget),
   });
   await ensureUserIdCached(logger, { client });

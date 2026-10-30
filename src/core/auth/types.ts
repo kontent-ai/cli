@@ -9,7 +9,7 @@ export type TokenSet = Readonly<{
 }>;
 
 export type AuthDecision =
-  | { readonly type: "use-existing-token"; readonly accessToken: string }
+  | { readonly type: "use-existing-token"; readonly tokens: TokenSet }
   | { readonly type: "refresh-token"; readonly refreshToken: string }
   | { readonly type: "login" };
 
@@ -24,6 +24,9 @@ export type AuthError =
   // Auth0 answered invalid_grant: the refresh token is expired, revoked, or
   // already rotated. Unlike refresh-failed, this is not retryable.
   | { readonly kind: "refresh-rejected"; readonly cause: unknown }
+  // A rejected refresh token after which the stored tokens were cleared. Unlike
+  // not-logged-in, the user did log in on this machine.
+  | { readonly kind: "session-expired"; readonly refreshError: AuthError }
   | { readonly kind: "storage-read-failed"; readonly cause: unknown }
   | { readonly kind: "storage-write-failed"; readonly cause: unknown }
   | { readonly kind: "storage-clear-failed"; readonly cause: unknown }

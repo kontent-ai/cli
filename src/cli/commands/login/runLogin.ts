@@ -1,22 +1,19 @@
 import { once } from "node:events";
 import open from "open";
 import { match } from "ts-pattern";
-import { decideAfterRefreshFailure, decideAuth } from "../../../core/auth/decideAuth.js";
-import type { AuthError, TokenSet } from "../../../core/auth/types.js";
+import type { AuthError } from "../../../core/auth/types.js";
 import { iapiBaseUrl, type KontentTarget } from "../../../core/kontentUrl/kontentUrl.js";
 import { errorMessage } from "../../../core/lib/error.js";
 import { err, isErr, isOk, ok, type Result } from "../../../core/lib/result.js";
 import {
   createDeviceSignIn,
-  createTokenRefresh,
   type DeviceFlowDeps,
   type DeviceSignIn,
-  type TokenRefresh,
 } from "../../adapters/auth/auth0.js";
 import { getAuth0Config } from "../../adapters/auth/config.js";
 import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/storage.js";
+import { type Session, session } from "../../adapters/auth/tokenAccess.js";
 import { createUserIdCache, type UserIdCache } from "../../adapters/auth/userId.js";
-import { type Clock, systemClock } from "../../adapters/clock/clock.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
@@ -28,45 +25,27 @@ export type LoginOutcome = Readonly<{
 
 export type LoginEffects = Readonly<{
   logger: Logger;
-  clock: Clock;
-  tokens: Pick<TokenStorage, "read" | "write" | "clear">;
-  tokenRefresh: TokenRefresh;
+  session: Session;
+  tokens: Pick<TokenStorage, "write">;
   deviceSignIn: DeviceSignIn;
   userIds: UserIdCache;
 }>;
 
 export const login = async (effects: LoginEffects): Promise<Result<LoginOutcome, AuthError>> => {
-  const stored = await effects.tokens.read();
-  if (isErr(stored)) {
-    effects.logger.warning("standard", formatAuthError(stored.error));
+  const current = await effects.session.tokens();
+  if (isOk(current)) {
+    await effects.userIds.ensure(current.value.accessToken, { shouldForceRefresh: false });
+    return ok({ isAlreadyAuthenticated: true, identifier: current.value.identifier ?? null });
   }
-  const storedTokens = isOk(stored) ? stored.value : null;
 
-  return match(decideAuth(storedTokens, effects.clock.now()))
-    .with({ type: "use-existing-token" }, async ({ accessToken }) => {
-      await effects.userIds.ensure(accessToken, { shouldForceRefresh: false });
-      return ok({ isAlreadyAuthenticated: true, identifier: identifierFromTokens(storedTokens) });
+  return match(current.error)
+    .with({ kind: "not-logged-in" }, async () => signInWithDeviceFlow(effects))
+    .with({ kind: "session-expired" }, async ({ refreshError }) => {
+      effects.logger.info("standard", "Saved session expired, starting a new sign-in.");
+      effects.logger.warning("verbose", formatAuthError(refreshError));
+      return await signInWithDeviceFlow(effects);
     })
-    .with({ type: "refresh-token" }, async ({ refreshToken }) => {
-      const refreshed = await effects.tokenRefresh.refresh(refreshToken);
-      if (isErr(refreshed)) {
-        if (decideAfterRefreshFailure(refreshed.error) === "keep-session") {
-          return err(refreshed.error);
-        }
-        await effects.tokens.clear();
-        effects.logger.info("standard", "Saved session expired, starting a new sign-in.");
-        effects.logger.warning("verbose", formatAuthError(refreshed.error));
-        return await signInWithDeviceFlow(effects);
-      }
-      await persistTokens(effects, refreshed.value);
-      await effects.userIds.ensure(refreshed.value.accessToken, { shouldForceRefresh: false });
-      return ok({
-        isAlreadyAuthenticated: false,
-        identifier: identifierFromTokens(refreshed.value),
-      });
-    })
-    .with({ type: "login" }, async () => signInWithDeviceFlow(effects))
-    .exhaustive();
+    .otherwise(async (error) => err(error));
 };
 
 export const runLogin = async (args: LogOptions, deps: CommandDeps): Promise<void> => {
@@ -84,29 +63,20 @@ export const runLogin = async (args: LogOptions, deps: CommandDeps): Promise<voi
   logger.info("standard", formatLoginOutcome(result.value));
 };
 
-const identifierFromTokens = (tokens: TokenSet | null): string | null => tokens?.identifier ?? null;
-
-const persistTokens = async (effects: LoginEffects, tokens: TokenSet): Promise<void> => {
-  const written = await effects.tokens.write(tokens);
-  if (isErr(written)) {
-    effects.logger.warning("standard", formatAuthError(written.error));
-  }
-};
-
 const signInWithDeviceFlow = async (
   effects: LoginEffects,
 ): Promise<Result<LoginOutcome, AuthError>> => {
-  const result = await effects.deviceSignIn.signIn();
-  if (isErr(result)) {
-    return err(result.error);
+  const signedIn = await effects.deviceSignIn.signIn();
+  if (isErr(signedIn)) {
+    return signedIn;
   }
-  await persistTokens(effects, result.value);
+  const written = await effects.tokens.write(signedIn.value);
+  if (isErr(written)) {
+    return written;
+  }
   // Fresh login may be a different account, so overwrite the cached userId.
-  await effects.userIds.ensure(result.value.accessToken, { shouldForceRefresh: true });
-  return ok({
-    isAlreadyAuthenticated: false,
-    identifier: identifierFromTokens(result.value),
-  });
+  await effects.userIds.ensure(signedIn.value.accessToken, { shouldForceRefresh: true });
+  return ok({ isAlreadyAuthenticated: false, identifier: signedIn.value.identifier ?? null });
 };
 
 const formatLoginOutcome = (outcome: LoginOutcome): string => {
@@ -114,17 +84,13 @@ const formatLoginOutcome = (outcome: LoginOutcome): string => {
   return outcome.identifier === null ? base : `${base} as ${outcome.identifier}`;
 };
 
-const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): LoginEffects => {
-  const config = getAuth0Config();
-  return {
-    logger,
-    clock: systemClock,
-    tokens: createKeyringStorage(),
-    tokenRefresh: createTokenRefresh(config),
-    deviceSignIn: createDeviceSignIn(config, deviceFlowPrompt(logger)),
-    userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),
-  };
-};
+const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): LoginEffects => ({
+  logger,
+  session,
+  tokens: createKeyringStorage(),
+  deviceSignIn: createDeviceSignIn(getAuth0Config(), deviceFlowPrompt(logger)),
+  userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),
+});
 
 const deviceFlowPrompt = (logger: Logger): DeviceFlowDeps => ({
   onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }, done) => {

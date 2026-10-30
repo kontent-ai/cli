@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getValidAccessToken } from "../../src/cli/adapters/auth/tokenAccess.js";
+import { getValidTokens } from "../../src/cli/adapters/auth/tokenAccess.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok, type Result } from "../../src/core/lib/result.js";
 import { fakeTokenRefresh, fakeTokenStorage } from "../helpers/authFakes.js";
@@ -25,31 +25,31 @@ const effectsWith = (refreshed: Result<TokenSet, AuthError>) => ({
   clock: { now: () => 1_000 },
 });
 
-describe("getValidAccessToken with an expired access token", () => {
-  it("clears the stored tokens and maps a rejected refresh token to not-logged-in", async () => {
+describe("getValidTokens with an expired access token", () => {
+  it("clears the stored tokens and maps a rejected refresh token to session-expired", async () => {
     const effects = effectsWith(err(REJECTED));
 
-    const result = await getValidAccessToken(effects);
+    const result = await getValidTokens(effects);
 
     expect(effects.tokens.clear).toHaveBeenCalledOnce();
-    expect(result).toEqual(err({ kind: "not-logged-in" }));
+    expect(result).toEqual(err({ kind: "session-expired", refreshError: REJECTED }));
   });
 
   it("surfaces a transient refresh failure and keeps the session", async () => {
     const effects = effectsWith(err(TRANSIENT));
 
-    const result = await getValidAccessToken(effects);
+    const result = await getValidTokens(effects);
 
     expect(effects.tokens.clear).not.toHaveBeenCalled();
     expect(result).toEqual(err(TRANSIENT));
   });
 
-  it("persists and returns the refreshed token", async () => {
+  it("persists and returns the refreshed tokens", async () => {
     const effects = effectsWith(ok(FRESH_TOKENS));
 
-    const result = await getValidAccessToken(effects);
+    const result = await getValidTokens(effects);
 
     expect(effects.tokens.write).toHaveBeenCalledWith(FRESH_TOKENS);
-    expect(result).toEqual(ok("new-access-token"));
+    expect(result).toEqual(ok(FRESH_TOKENS));
   });
 });
