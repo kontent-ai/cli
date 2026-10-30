@@ -11,6 +11,7 @@ import {
   toEventType,
 } from "../../../core/telemetry/events.js";
 import type { Logger } from "../../log.js";
+import type { Clock } from "../clock/clock.js";
 import type { CliConfigStore } from "../config/cliConfig.js";
 import { formatTelemetryOffReason, isTelemetryDebug, readOptOutVariables } from "./consent.js";
 import { amplitudeApiKey } from "./context.js";
@@ -46,6 +47,7 @@ export type TelemetryMode =
 
 export type TelemetryEffects = Readonly<{
   config: Pick<CliConfigStore, "read" | "write">;
+  clock: Clock;
 }>;
 
 export type TelemetryInit = Readonly<{
@@ -72,7 +74,7 @@ export const createTelemetry = async (effects: TelemetryEffects): Promise<Teleme
 
     const telemetry: Telemetry = {
       startCommandTracking: (command, logger) => {
-        const startedAtMs = Date.now();
+        const startedAtMs = effects.clock.now();
         let hasFinished = false;
 
         const finish = (
@@ -92,7 +94,7 @@ export const createTelemetry = async (effects: TelemetryEffects): Promise<Teleme
                   properties: {
                     outcome,
                     "error-code": errorCode,
-                    "duration-ms": Date.now() - startedAtMs,
+                    "duration-ms": effects.clock.now() - startedAtMs,
                     ...props,
                   },
                 },

@@ -7,13 +7,14 @@ import { errorMessage } from "../../../core/lib/error.js";
 import { err, isErr, isOk, ok, type Result } from "../../../core/lib/result.js";
 import {
   createDeviceSignIn,
-  type DeviceFlowDeps,
+  type DeviceFlowPrompt,
   type DeviceSignIn,
 } from "../../adapters/auth/auth0.js";
 import { getAuth0Config } from "../../adapters/auth/config.js";
 import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/storage.js";
 import { type Session, session } from "../../adapters/auth/tokenAccess.js";
 import { createUserIdCache, type UserIdCache } from "../../adapters/auth/userId.js";
+import { systemClock } from "../../adapters/clock/clock.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
@@ -88,11 +89,11 @@ const createLoginEffects = (logger: Logger, kontentTarget: KontentTarget): Login
   logger,
   session,
   tokens: createKeyringStorage(),
-  deviceSignIn: createDeviceSignIn(getAuth0Config(), deviceFlowPrompt(logger)),
+  deviceSignIn: createDeviceSignIn(getAuth0Config(), deviceFlowPrompt(logger), systemClock),
   userIds: createUserIdCache(logger, iapiBaseUrl(kontentTarget)),
 });
 
-const deviceFlowPrompt = (logger: Logger): DeviceFlowDeps => ({
+const deviceFlowPrompt = (logger: Logger): DeviceFlowPrompt => ({
   onUserCode: async ({ userCode, expiresInSeconds, verificationUriComplete }, done) => {
     logger.info(
       "standard",
@@ -118,7 +119,6 @@ const deviceFlowPrompt = (logger: Logger): DeviceFlowDeps => ({
       process.stdin.pause();
     }
   },
-  nowMs: () => Date.now(),
 });
 
 const formatExpiry = (seconds: number): string =>

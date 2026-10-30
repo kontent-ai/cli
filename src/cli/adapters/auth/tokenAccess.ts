@@ -64,7 +64,7 @@ export const session: Session = {
   tokens: async () =>
     getValidTokens({
       tokens: createKeyringStorage(),
-      tokenRefresh: createTokenRefresh(getAuth0Config()),
+      tokenRefresh: createTokenRefresh(getAuth0Config(), systemClock),
       clock: systemClock,
     }),
 };

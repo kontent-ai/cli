@@ -11,6 +11,7 @@ import {
 import { match } from "ts-pattern";
 import type { AuthError, TokenSet } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result, tryAsync } from "../../../core/lib/result.js";
+import type { Clock } from "../clock/clock.js";
 import type { Auth0Config } from "./config.js";
 import { mapOpenIdTokensToTokenSet } from "./tokenSet.js";
 
@@ -21,15 +22,15 @@ export type DeviceCodeInfo = Readonly<{
   expiresInSeconds: number;
 }>;
 
-export type DeviceFlowDeps = Readonly<{
+export type DeviceFlowPrompt = Readonly<{
   // `done` aborts once polling settles (success, denial, or expiry), letting the interaction
   // re-open the browser until then.
   onUserCode: (info: DeviceCodeInfo, done: AbortSignal) => Promise<void>;
-  nowMs: () => number;
 }>;
 
 export const refreshTokens = async (
   config: Auth0Config,
+  clock: Clock,
   refreshToken: string,
 ): Promise<Result<TokenSet, AuthError>> => {
   const discovered = await discoverAuth0(config);
@@ -48,12 +49,13 @@ export const refreshTokens = async (
     return refreshed;
   }
 
-  return ok(mapOpenIdTokensToTokenSet(refreshed.value, Date.now(), refreshToken));
+  return ok(mapOpenIdTokensToTokenSet(refreshed.value, clock.now(), refreshToken));
 };
 
 export const loginViaDeviceFlow = async (
   config: Auth0Config,
-  deps: DeviceFlowDeps,
+  prompt: DeviceFlowPrompt,
+  clock: Clock,
 ): Promise<Result<TokenSet, AuthError>> => {
   const discovered = await discoverAuth0(config);
   if (isErr(discovered)) {
@@ -80,7 +82,7 @@ export const loginViaDeviceFlow = async (
     () => controller.abort(),
   );
 
-  await deps.onUserCode(
+  await prompt.onUserCode(
     {
       userCode: handle.user_code,
       verificationUri: handle.verification_uri,
@@ -92,8 +94,7 @@ export const loginViaDeviceFlow = async (
 
   try {
     const polled = await pollPromise;
-    const issuedAtMs = deps.nowMs();
-    return ok(mapOpenIdTokensToTokenSet(polled, issuedAtMs));
+    return ok(mapOpenIdTokensToTokenSet(polled, clock.now()));
   } catch (cause) {
     return err(mapPollError(cause));
   }
@@ -103,8 +104,8 @@ export type TokenRefresh = Readonly<{
   refresh: (refreshToken: string) => Promise<Result<TokenSet, AuthError>>;
 }>;
 
-export const createTokenRefresh = (config: Auth0Config): TokenRefresh => ({
-  refresh: async (refreshToken) => refreshTokens(config, refreshToken),
+export const createTokenRefresh = (config: Auth0Config, clock: Clock): TokenRefresh => ({
+  refresh: async (refreshToken) => refreshTokens(config, clock, refreshToken),
 });
 
 export type DeviceSignIn = Readonly<{
@@ -112,8 +113,12 @@ export type DeviceSignIn = Readonly<{
 }>;
 
 // The prompt is the terminal side of the flow: showing the code and opening the browser.
-export const createDeviceSignIn = (config: Auth0Config, prompt: DeviceFlowDeps): DeviceSignIn => ({
-  signIn: async () => loginViaDeviceFlow(config, prompt),
+export const createDeviceSignIn = (
+  config: Auth0Config,
+  prompt: DeviceFlowPrompt,
+  clock: Clock,
+): DeviceSignIn => ({
+  signIn: async () => loginViaDeviceFlow(config, prompt, clock),
 });
 
 // Pins the ID token signature algorithm, which would otherwise widen to whatever the
