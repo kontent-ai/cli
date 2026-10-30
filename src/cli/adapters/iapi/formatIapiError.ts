@@ -1,5 +1,6 @@
 import { inspect } from "node:util";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
+import { statusLine } from "../http/statusLine.js";
 
 export type IapiErrorContext = Readonly<{ isVerbose: boolean }>;
 
@@ -24,7 +25,3 @@ export const formatIapiError = (error: KontentSdkError, context: IapiErrorContex
 
   return lines.filter((line) => line !== undefined).join("\n");
 };
-
-// HTTP/2 carries no reason phrase, so the line ends at the code when none was sent.
-const statusLine = (status: number, statusText: string): string =>
-  statusText === "" ? `status: ${status}` : `status: ${status} ${statusText}`;

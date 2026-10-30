@@ -9,16 +9,9 @@ import {
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
 
-// biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
-import pkg from "../../../../package.json" with { type: "json" };
 import { originOf } from "../../../core/lib/baseUrl.js";
 import { err, ok, type Result } from "../../../core/lib/result.js";
-
-const iapiSdkInfo: SdkInfo = {
-  name: pkg.name,
-  version: pkg.version,
-  host: "npmjs.com",
-};
+import { cliSdkInfo } from "../http/sdkInfo.js";
 
 export const iapiEndpointUrl = (base: BaseUrl, path: string): URL => new URL(path, originOf(base));
 
@@ -46,7 +39,7 @@ export const createIapiClient = ({
       },
     }),
   },
-  sdkInfo: iapiSdkInfo,
+  sdkInfo: cliSdkInfo,
   urlBase: baseUrl,
   token,
 });

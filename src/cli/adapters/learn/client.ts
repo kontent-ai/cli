@@ -10,9 +10,8 @@ import {
   type SdkConfig,
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
-// biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
-import pkg from "../../../../package.json" with { type: "json" };
 import { originOf } from "../../../core/lib/baseUrl.js";
+import { cliSdkInfo } from "../http/sdkInfo.js";
 import type { ApiReference } from "./apiReference.js";
 
 /** The Learn-MCP service needs no auth, so the client carries no token. */
@@ -37,7 +36,7 @@ export const createLearnClient = (
       // schemas would be types with nothing behind them.
       runtimeValidation: { validateResponses: true },
     },
-    sdkInfo: learnSdkInfo,
+    sdkInfo: cliSdkInfo,
     baseUrl,
   };
 };
@@ -69,9 +68,3 @@ export const createLearnQuery = <TPayload extends JsonValue>(
 };
 
 const learnBaseUrl: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };
-
-const learnSdkInfo: SdkInfo = {
-  name: pkg.name,
-  version: pkg.version,
-  host: "npmjs.com",
-};
