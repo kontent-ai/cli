@@ -29,9 +29,6 @@ export type RequestInput = Readonly<{
   method?: string | undefined;
   header?: ReadonlyArray<string> | undefined;
   input?: string | undefined;
-  // No production caller: the telemetry SIGINT handler terminates before an abort could
-  // land. Kept for a handler that cooperates.
-  abortSignal?: AbortSignal;
 }>;
 
 export type RequestEffects = Readonly<{
@@ -130,7 +127,6 @@ export const request = async (
       method: planned.value.method,
       headers: planned.value.headers,
       body: body.value,
-      ...(input.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
     },
     token.value,
   );
