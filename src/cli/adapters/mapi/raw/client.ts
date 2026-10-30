@@ -9,27 +9,18 @@ import {
   type HttpService,
   type JsonValue,
   type KontentSdkError,
-  type SdkInfo,
 } from "@kontent-ai/core-sdk";
 import { match, P } from "ts-pattern";
-
-// biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
-import pkg from "../../../../../package.json" with { type: "json" };
 import { errorMessage } from "../../../../core/lib/error.js";
 import { err, ok, type Result } from "../../../../core/lib/result.js";
 import type { Logger } from "../../../log.js";
+import { cliSdkInfo } from "../../http/sdkInfo.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 // Past this the API is rationing quota, not smoothing a burst. core-sdk clamps a
 // longer `Retry-After` to the cap rather than giving up, so a rationing 429 costs
 // at most MAX_RETRY_ATTEMPTS waits of this length before the status reaches the caller.
 const MAX_RETRY_DELAY_MS = 60_000;
-
-const mapiSdkInfo: SdkInfo = {
-  name: pkg.name,
-  version: pkg.version,
-  host: "npmjs.com",
-};
 
 /**
  * A passthrough client for the Management API: no schema, no response
@@ -78,18 +69,14 @@ export const createRawMapi = (
 const createMapiRawClient = (
   params: Readonly<{
     logger: Logger;
-    // Absent when the caller carries its own Authorization header; the client then adds none.
     token?: string | undefined;
     adapter?: HttpAdapter;
   }>,
 ): MapiRawClient => {
   const requestHeaders =
     params.token === undefined
-      ? [createSdkIdHeader(mapiSdkInfo)]
-      : [
-          createSdkIdHeader(mapiSdkInfo),
-          { name: "Authorization", value: `Bearer ${params.token}` },
-        ];
+      ? [createSdkIdHeader(cliSdkInfo)]
+      : [createSdkIdHeader(cliSdkInfo), { name: "Authorization", value: `Bearer ${params.token}` }];
 
   return {
     requestHeaders,

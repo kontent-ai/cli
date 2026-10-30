@@ -1,6 +1,7 @@
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { errorMessage } from "../../../core/lib/error.js";
+import { statusLine } from "../http/statusLine.js";
 
 export const formatLearnError = (error: KontentSdkError): string =>
   match(error.details)
@@ -27,7 +28,3 @@ const urlLine = (error: KontentSdkError): string => `url: ${String(error.url)}`;
 
 const joinLines = (lines: ReadonlyArray<string | undefined>): string =>
   lines.filter((line) => line !== undefined).join("\n");
-
-// HTTP/2 carries no reason phrase, so the line ends at the code when none was sent.
-const statusLine = (status: number, statusText: string): string =>
-  statusText === "" ? `status: ${status}` : `status: ${status} ${statusText}`;
