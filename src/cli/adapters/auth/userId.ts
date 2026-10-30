@@ -6,14 +6,33 @@ import { type CliConfigStore, cliConfigStore } from "../config/cliConfig.js";
 import { createIapiClient } from "../iapi/client.js";
 import { createUsers, type Users } from "../iapi/users.js";
 
-export type UserIdEffects = Readonly<{
+export type UserIdCache = Readonly<{
+  ensure: (
+    accessToken: string,
+    options: Readonly<{ shouldForceRefresh: boolean }>,
+  ) => Promise<void>;
+}>;
+
+export const createUserIdCache = (logger: Logger, baseUrl: BaseUrl): UserIdCache => ({
+  ensure: async (accessToken, options) =>
+    ensureUserIdCached(
+      {
+        logger,
+        users: createUsers(createIapiClient({ token: accessToken, baseUrl })),
+        config: cliConfigStore,
+      },
+      options,
+    ),
+});
+
+type UserIdEffects = Readonly<{
   logger: Logger;
   users: Users;
   config: Pick<CliConfigStore, "read" | "write">;
 }>;
 
 // Best-effort: never throws, so a /user failure can't break login.
-export const ensureUserIdCached = async (
+const ensureUserIdCached = async (
   effects: UserIdEffects,
   options: Readonly<{ shouldForceRefresh: boolean }>,
 ): Promise<void> => {
@@ -33,22 +52,3 @@ export const ensureUserIdCached = async (
     effects.logger.warning("verbose", `Could not persist userId: ${written.error}`);
   }
 };
-
-export type UserIdCache = Readonly<{
-  ensure: (
-    accessToken: string,
-    options: Readonly<{ shouldForceRefresh: boolean }>,
-  ) => Promise<void>;
-}>;
-
-export const createUserIdCache = (logger: Logger, baseUrl: BaseUrl): UserIdCache => ({
-  ensure: async (accessToken, options) =>
-    ensureUserIdCached(
-      {
-        logger,
-        users: createUsers(createIapiClient({ token: accessToken, baseUrl })),
-        config: cliConfigStore,
-      },
-      options,
-    ),
-});
