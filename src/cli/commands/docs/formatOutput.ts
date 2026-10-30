@@ -41,7 +41,9 @@ const PRIORITY_KEYS: ReadonlyArray<string> = [
   "usageCodeSamples",
 ];
 
-const orderKeys = (candidate: Readonly<Record<string, unknown>>): Record<string, unknown> => {
+const orderKeys = (
+  candidate: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> => {
   const priority = PRIORITY_KEYS.filter((key) => key in candidate).map(
     (key) => [key, candidate[key]] as const,
   );

@@ -2,9 +2,9 @@ import type { Writable } from "node:stream";
 import { chalkStderr } from "chalk";
 import type { Argv } from "yargs";
 
-export const allLogLevels = ["none", "standard", "verbose"] as const;
+export const ALL_LOG_LEVELS = ["none", "standard", "verbose"] as const;
 
-export type LogLevel = (typeof allLogLevels)[number];
+export type LogLevel = (typeof ALL_LOG_LEVELS)[number];
 
 export type MessageLevel = Exclude<LogLevel, "none">;
 
@@ -26,9 +26,9 @@ export const addLogLevelOptions = <PreviousOptions>(
   inputYargs
     .option("logLevel", {
       type: "string",
-      choices: allLogLevels,
+      choices: ALL_LOG_LEVELS,
       alias: "ll",
-      describe: `Set the level of details printed. (default: ${defaultLogLevel})`,
+      describe: `Set the level of details printed. (default: ${DEFAULT_LOG_LEVEL})`,
     })
     .option("verbose", {
       type: "boolean",
@@ -74,7 +74,7 @@ const logLevelsPriority: Readonly<Record<LogLevel, number>> = {
   verbose: 20,
 };
 
-const defaultLogLevel: LogLevel = "standard";
+const DEFAULT_LOG_LEVEL: LogLevel = "standard";
 
 // `--verbose` and `--logLevel` are mutually exclusive at the parser level, so the
 // precedence only matters for callers that build LogOptions by hand.
@@ -82,5 +82,5 @@ const argsToVerbosity = (args: LogOptions): LogLevel => {
   if (args.verbose) {
     return "verbose";
   }
-  return args.logLevel ?? defaultLogLevel;
+  return args.logLevel ?? DEFAULT_LOG_LEVEL;
 };

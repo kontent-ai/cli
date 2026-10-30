@@ -24,7 +24,7 @@ export type LearnClient = Readonly<{
 export const createLearnClient = (
   params: Readonly<{ adapter?: HttpAdapter; baseUrl?: BaseUrl }> = {},
 ): LearnClient => {
-  const baseUrl = params.baseUrl ?? learnBaseUrl;
+  const baseUrl = params.baseUrl ?? LEARN_BASE_URL;
 
   return {
     config: {
@@ -67,4 +67,4 @@ export const createLearnQuery = <TPayload extends JsonValue>(
   });
 };
 
-const learnBaseUrl: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };
+const LEARN_BASE_URL: BaseUrl = { protocol: "https", host: "learn-mcp.kontent.ai" };

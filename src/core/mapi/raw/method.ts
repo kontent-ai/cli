@@ -9,14 +9,14 @@ export const parseMethod = (
     return ok(hasBody ? "POST" : "GET");
   }
 
-  const method = httpMethods.find((known) => known === raw.toUpperCase());
+  const method = HTTP_METHODS.find((known) => known === raw.toUpperCase());
   if (method === undefined) {
-    return err(`Unsupported HTTP method "${raw}". Use one of ${httpMethods.join(", ")}.`);
+    return err(`Unsupported HTTP method "${raw}". Use one of ${HTTP_METHODS.join(", ")}.`);
   }
   return ok(method);
 };
 
-const httpMethods = [
+const HTTP_METHODS = [
   "GET",
   "POST",
   "PUT",

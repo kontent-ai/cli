@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
-import type { ResolvedEnvId } from "../../../../core/environment/decideEnvId.js";
+import type { ResolvedEnvId } from "../../../../core/environment/envId.js";
 import { isErr, type Result } from "../../../../core/lib/result.js";
-import type { AuthSource } from "../../../../core/mapi/decideMapiCredential.js";
+import type { AuthSource } from "../../../../core/mapi/credential.js";
 import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
 import type { EventProperties } from "../../../../core/telemetry/events.js";
 import { formatAuthError } from "../../shared/formatAuthError.js";

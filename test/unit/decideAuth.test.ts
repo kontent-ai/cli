@@ -3,7 +3,7 @@ import {
   decideAfterRefreshFailure,
   decideAuth,
   EXPIRY_SKEW_MS,
-} from "../../src/core/auth/decideAuth.js";
+} from "../../src/core/auth/session.js";
 import type { TokenSet } from "../../src/core/auth/types.js";
 
 const NOW = 1_000_000;

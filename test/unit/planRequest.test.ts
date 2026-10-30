@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planRequest } from "../../src/core/mapi/raw/planRequest.js";
+import { planRequest } from "../../src/core/mapi/raw/request.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 describe("planRequest", () => {
