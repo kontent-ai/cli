@@ -18,16 +18,6 @@ export type CliConfig = Readonly<{
 export const getCliConfigPath = (): string =>
   path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json");
 
-const resolveConfigBaseDir = (): string => {
-  if (process.env.XDG_CONFIG_HOME) {
-    return process.env.XDG_CONFIG_HOME;
-  }
-  if (process.platform === "win32" && process.env.APPDATA) {
-    return process.env.APPDATA;
-  }
-  return path.join(os.homedir(), ".config");
-};
-
 export const readCliConfig = async (): Promise<CliConfig> => {
   try {
     const raw = await readFile(getCliConfigPath(), "utf8");
@@ -35,24 +25,6 @@ export const readCliConfig = async (): Promise<CliConfig> => {
   } catch {
     return {};
   }
-};
-
-const parseCliConfig = (parsed: unknown): CliConfig => {
-  if (typeof parsed !== "object" || parsed === null) {
-    return {};
-  }
-  const raw = parsed as Record<string, unknown>;
-  return {
-    ...(typeof raw.telemetryEnabled === "boolean"
-      ? { telemetryEnabled: raw.telemetryEnabled }
-      : {}),
-    ...(typeof raw.telemetryNoticeShown === "boolean"
-      ? { telemetryNoticeShown: raw.telemetryNoticeShown }
-      : {}),
-    ...(typeof raw.userId === "string" ? { userId: raw.userId } : {}),
-    ...(typeof raw.deviceId === "string" ? { deviceId: raw.deviceId } : {}),
-    ...(typeof raw.envId === "string" && isGuid(raw.envId) ? { envId: raw.envId } : {}),
-  };
 };
 
 export const writeCliConfig = async (patch: Partial<CliConfig>): Promise<Result<void, string>> => {
@@ -86,4 +58,32 @@ export const cliConfigStore: CliConfigStore = {
   path: getCliConfigPath,
   read: readCliConfig,
   write: writeCliConfig,
+};
+
+const resolveConfigBaseDir = (): string => {
+  if (process.env.XDG_CONFIG_HOME) {
+    return process.env.XDG_CONFIG_HOME;
+  }
+  if (process.platform === "win32" && process.env.APPDATA) {
+    return process.env.APPDATA;
+  }
+  return path.join(os.homedir(), ".config");
+};
+
+const parseCliConfig = (parsed: unknown): CliConfig => {
+  if (typeof parsed !== "object" || parsed === null) {
+    return {};
+  }
+  const raw = parsed as Record<string, unknown>;
+  return {
+    ...(typeof raw.telemetryEnabled === "boolean"
+      ? { telemetryEnabled: raw.telemetryEnabled }
+      : {}),
+    ...(typeof raw.telemetryNoticeShown === "boolean"
+      ? { telemetryNoticeShown: raw.telemetryNoticeShown }
+      : {}),
+    ...(typeof raw.userId === "string" ? { userId: raw.userId } : {}),
+    ...(typeof raw.deviceId === "string" ? { deviceId: raw.deviceId } : {}),
+    ...(typeof raw.envId === "string" && isGuid(raw.envId) ? { envId: raw.envId } : {}),
+  };
 };

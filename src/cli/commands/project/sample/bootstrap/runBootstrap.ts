@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
-import { match } from "ts-pattern";
+import { match, P } from "ts-pattern";
 import { mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../../core/lib/option.js";
 import { err, isErr, ok, type Result } from "../../../../../core/lib/result.js";
@@ -22,7 +22,7 @@ import {
   type DeliveryKeySummary,
   type DeliveryKeys,
 } from "../../../../adapters/iapi/deliveryKeys.js";
-import { formatIapiError } from "../../../../adapters/iapi/formatIapiError.js";
+import { formatIapiError, iapiHttpStatus } from "../../../../adapters/iapi/formatIapiError.js";
 import { createProjects, type Projects } from "../../../../adapters/iapi/projects.js";
 import { createMapiClient } from "../../../../adapters/mapi/client.js";
 import {
@@ -34,7 +34,9 @@ import { type Prompts, prompts } from "../../../../adapters/prompts/prompts.js";
 import { type Templates, templates } from "../../../../adapters/templates/templates.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../../log.js";
 import type { CommandDeps } from "../../../../types/yargs.js";
+import { noEnvironmentAccessMessage } from "../../../shared/environmentAccess.js";
 import { formatAuthError } from "../../../shared/formatAuthError.js";
+import { sessionExpiredMessage } from "../../../shared/sessionExpired.js";
 import { ensureLocalhostSpace, type SpaceSetupError } from "./space.js";
 
 type BootstrapParams = Readonly<{
@@ -380,16 +382,26 @@ const formatBootstrapError = (
   params: BootstrapParams,
   logger: Logger,
   error: Exclude<BootstrapError, { kind: "aborted" } | { kind: "unsupported-sample" }>,
-): string => {
-  const context = { envId: params.envId, isVerbose: logger.isVerbose };
-
-  return match(error)
+): string =>
+  match(error)
     .with({ kind: "target-not-usable" }, (e) => e.message)
     .with({ kind: "clone-failed" }, (e) => e.message)
-    .with({ kind: "project-info-failed" }, (e) => formatIapiError(e.sdkError, context))
-    .with({ kind: "properties-failed" }, (e) => formatIapiError(e.sdkError, context))
-    .with({ kind: "list-keys-failed" }, (e) => formatIapiError(e.sdkError, context))
-    .with({ kind: "key-detail-failed" }, (e) => formatIapiError(e.sdkError, context))
-    .with({ kind: "create-key-failed" }, (e) => formatIapiError(e.sdkError, context))
+    .with(
+      {
+        kind: P.union(
+          "project-info-failed",
+          "properties-failed",
+          "list-keys-failed",
+          "key-detail-failed",
+          "create-key-failed",
+        ),
+      },
+      (e) => formatIapiFailure(e.sdkError, params.envId, logger.isVerbose),
+    )
     .exhaustive();
-};
+
+const formatIapiFailure = (error: KontentSdkError, envId: string, isVerbose: boolean): string =>
+  match(iapiHttpStatus(error))
+    .with(401, () => sessionExpiredMessage)
+    .with(403, () => noEnvironmentAccessMessage(envId))
+    .otherwise(() => formatIapiError(error, { isVerbose }));
