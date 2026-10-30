@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 import type { AuthError } from "../../../core/auth/types.js";
 import { errorMessage } from "../../../core/lib/error.js";
+import { sessionExpiredMessage } from "./sessionExpired.js";
 
 export const formatAuthError = (error: AuthError): string =>
   match(error)
@@ -25,6 +26,7 @@ export const formatAuthError = (error: AuthError): string =>
       { kind: "refresh-rejected" },
       ({ cause }) => `refresh token rejected: ${errorMessage(cause)}`,
     )
+    .with({ kind: "session-expired" }, () => sessionExpiredMessage)
     .with(
       { kind: "storage-read-failed" },
       ({ cause }) => `failed to read stored tokens: ${errorMessage(cause)}`,

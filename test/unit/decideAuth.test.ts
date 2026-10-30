@@ -19,18 +19,12 @@ describe("decideAuth", () => {
   });
 
   it("uses the stored token when it carries no expiry", () => {
-    expect(decideAuth(tokenSet(), NOW)).toEqual({
-      type: "use-existing-token",
-      accessToken: "access-token",
-    });
+    expect(decideAuth(tokenSet(), NOW)).toEqual({ type: "use-existing-token", tokens: tokenSet() });
   });
 
   it("uses the stored token while it is still live", () => {
     const tokens = tokenSet({ expiresAt: NOW + EXPIRY_SKEW_MS + 1 });
-    expect(decideAuth(tokens, NOW)).toEqual({
-      type: "use-existing-token",
-      accessToken: "access-token",
-    });
+    expect(decideAuth(tokens, NOW)).toEqual({ type: "use-existing-token", tokens });
   });
 
   it("treats a token expiring within the skew window as expired", () => {

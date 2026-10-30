@@ -6,7 +6,7 @@ import {
   request,
 } from "../../src/cli/commands/mapi/request/runRequest.js";
 import type { Logger } from "../../src/cli/log.js";
-import type { AuthError } from "../../src/core/auth/types.js";
+import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok, type Result } from "../../src/core/lib/result.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 
@@ -34,7 +34,7 @@ const fakeEffects = (
   options: Readonly<{
     storedEnvId?: string;
     body?: Result<Blob, { kind: "unreadable-input"; message: string }>;
-    accessToken?: Result<string, AuthError>;
+    tokens?: Result<TokenSet, AuthError>;
     sent?: Result<RawResponse, string>;
   }> = {},
 ) => {
@@ -44,7 +44,7 @@ const fakeEffects = (
     config: { read: vi.fn(() => Promise.resolve({ envId: options.storedEnvId })) },
     bodyReader: { read: vi.fn(() => Promise.resolve(options.body ?? ok(new Blob(["{}"])))) },
     session: {
-      accessToken: vi.fn(() => Promise.resolve(options.accessToken ?? ok("login-token"))),
+      tokens: vi.fn(() => Promise.resolve(options.tokens ?? ok({ accessToken: "login-token" }))),
     },
     mapi: {
       send: vi.fn(() => Promise.resolve(options.sent ?? ok(OK_RESPONSE))),
@@ -112,7 +112,7 @@ describe("request", () => {
   });
 
   it("sends nothing when no credential is found", async () => {
-    const { effects } = fakeEffects({ accessToken: err({ kind: "not-logged-in" }) });
+    const { effects } = fakeEffects({ tokens: err({ kind: "not-logged-in" }) });
 
     const result = await request(effects, input());
 
@@ -127,7 +127,7 @@ describe("request", () => {
 
     assertOk(result);
     expect(result.value.authSource).toBe("header");
-    expect(effects.session.accessToken).not.toHaveBeenCalled();
+    expect(effects.session.tokens).not.toHaveBeenCalled();
     expect(effects.mapi.send).toHaveBeenCalledWith(expect.anything(), undefined);
   });
 

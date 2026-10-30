@@ -11,7 +11,7 @@ export const decideAuth = (tokens: TokenSet | null, nowMs: number): AuthDecision
     tokens.expiresAt === undefined || tokens.expiresAt - EXPIRY_SKEW_MS > nowMs;
 
   if (isAccessTokenLive) {
-    return { type: "use-existing-token", accessToken: tokens.accessToken };
+    return { type: "use-existing-token", tokens };
   }
 
   if (tokens.refreshToken !== undefined) {

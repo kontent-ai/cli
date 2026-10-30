@@ -3,7 +3,7 @@ import type { AuthError } from "../../../../core/auth/types.js";
 import { decideEnvId, type ResolvedEnvId } from "../../../../core/environment/decideEnvId.js";
 import { mapiBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../core/lib/option.js";
-import { err, isErr, ok, type Result } from "../../../../core/lib/result.js";
+import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
 import {
   type AuthSource,
   decideMapiCredential,
@@ -107,7 +107,9 @@ export const request = async (
       async (): Promise<Result<string | undefined, AuthError>> => ok(undefined),
     )
     .with({ source: "mapi-key" }, async ({ token }) => ok(token))
-    .with({ source: "login" }, async () => effects.session.accessToken())
+    .with({ source: "login" }, async () =>
+      map(await effects.session.tokens(), (tokens) => tokens.accessToken),
+    )
     .exhaustive();
   if (isErr(token)) {
     return err({ kind: "auth-failed", error: token.error });
