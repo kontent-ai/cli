@@ -15,39 +15,6 @@ export type CliConfig = Readonly<{
   envId?: string;
 }>;
 
-export const getCliConfigPath = (): string =>
-  path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json");
-
-export const readCliConfig = async (): Promise<CliConfig> => {
-  try {
-    const raw = await readFile(getCliConfigPath(), "utf8");
-    return parseCliConfig(JSON.parse(raw));
-  } catch {
-    return {};
-  }
-};
-
-export const writeCliConfig = async (patch: Partial<CliConfig>): Promise<Result<void, string>> => {
-  const configPath = getCliConfigPath();
-  try {
-    await mkdir(path.dirname(configPath), { recursive: true });
-    const current = await readCliConfig();
-    const next = { ...current, ...patch };
-    await writeFile(configPath, `${JSON.stringify(next, null, 2)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-    });
-    // writeFile applies `mode` only when it creates the file; if the file
-    // already exists with looser permissions (created by hand, or by a tool
-    // that did not set a mode), the write above would silently keep them.
-    // The explicit chmod makes owner-only access hold after every write.
-    await chmod(configPath, 0o600);
-    return ok(undefined);
-  } catch (cause) {
-    return err(errorMessage(cause));
-  }
-};
-
 export type CliConfigStore = Readonly<{
   path: () => string;
   read: () => Promise<CliConfig>;
@@ -55,9 +22,37 @@ export type CliConfigStore = Readonly<{
 }>;
 
 export const cliConfigStore: CliConfigStore = {
-  path: getCliConfigPath,
-  read: readCliConfig,
-  write: writeCliConfig,
+  path: () => path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json"),
+
+  read: async () => {
+    try {
+      const raw = await readFile(cliConfigStore.path(), "utf8");
+      return parseCliConfig(JSON.parse(raw));
+    } catch {
+      return {};
+    }
+  },
+
+  write: async (patch) => {
+    const configPath = cliConfigStore.path();
+    try {
+      await mkdir(path.dirname(configPath), { recursive: true });
+      const current = await cliConfigStore.read();
+      const next = { ...current, ...patch };
+      await writeFile(configPath, `${JSON.stringify(next, null, 2)}\n`, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+      // writeFile applies `mode` only when it creates the file; if the file
+      // already exists with looser permissions (created by hand, or by a tool
+      // that did not set a mode), the write above would silently keep them.
+      // The explicit chmod makes owner-only access hold after every write.
+      await chmod(configPath, 0o600);
+      return ok(undefined);
+    } catch (cause) {
+      return err(errorMessage(cause));
+    }
+  },
 };
 
 const resolveConfigBaseDir = (): string => {
