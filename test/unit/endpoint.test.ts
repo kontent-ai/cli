@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { resolveEndpoint } from "../../src/core/mapi/raw/endpoint.js";
+import { resolveMapiEndpoint } from "../../src/core/mapi/endpoint.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const params = { baseUrl: "https://manage.kontent.ai/v2", envId: ENV_ID } as const;
 
-const resolve = (endpoint: string) => resolveEndpoint(endpoint, params);
+const resolve = (endpoint: string) => resolveMapiEndpoint(endpoint, params);
 
-describe("resolveEndpoint", () => {
+describe("resolveMapiEndpoint", () => {
   it("scopes a bare path to the environment", () => {
     const result = resolve("types");
 
@@ -53,7 +53,7 @@ describe("resolveEndpoint", () => {
   });
 
   it("percent-encodes the environment id", () => {
-    const result = resolveEndpoint("types", { ...params, envId: "a b/c" });
+    const result = resolveMapiEndpoint("types", { ...params, envId: "a b/c" });
 
     expect(result.kind).toBe("ok");
     if (result.kind !== "ok") {
@@ -88,7 +88,7 @@ describe("resolveEndpoint", () => {
   // The id is substituted after the path is checked, so it needs its own guard:
   // "projects/../types" normalizes to "/v2/types", out of the environment scope.
   it("rejects a traversal in the environment id", () => {
-    const result = resolveEndpoint("types", { ...params, envId: ".." });
+    const result = resolveMapiEndpoint("types", { ...params, envId: ".." });
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {

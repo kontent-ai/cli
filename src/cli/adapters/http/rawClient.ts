@@ -11,10 +11,10 @@ import {
   type KontentSdkError,
 } from "@kontent-ai/core-sdk";
 import { match, P } from "ts-pattern";
-import { errorMessage } from "../../../../core/lib/error.js";
-import { err, ok, type Result } from "../../../../core/lib/result.js";
-import type { Logger } from "../../../log.js";
-import { cliSdkInfo } from "../../http/sdkInfo.js";
+import { errorMessage } from "../../../core/lib/error.js";
+import { err, ok, type Result } from "../../../core/lib/result.js";
+import type { Logger } from "../../log.js";
+import { cliSdkInfo } from "./sdkInfo.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 // Past this the API is rationing quota, not smoothing a burst. core-sdk clamps a
@@ -23,14 +23,15 @@ const MAX_RETRY_ATTEMPTS = 3;
 const MAX_RETRY_DELAY_MS = 60_000;
 
 /**
- * A passthrough client for the Management API: no schema, no response
- * interpretation. The typed, validated counterpart is `src/cli/adapters/mapi/client.ts`.
+ * A passthrough client for the Kontent.ai REST APIs: no schema, no response
+ * interpretation. The typed, validated Management API counterpart is
+ * `src/cli/adapters/mapi/client.ts`.
  *
  * core-sdk's http service parses `application/json` and hands back a null payload
- * for anything else, which is all this needs: the Management API answers JSON on
- * every status, and binary only ever travels request-side, on an asset upload.
+ * for anything else, which is all this needs: the APIs answer JSON on every status,
+ * and binary only ever travels request-side, on a Management API asset upload.
  */
-type MapiRawClient = Readonly<{
+type RawHttpClient = Readonly<{
   // The headers the service adds to every request; kept for the verbose trace,
   // which has to show what goes on the wire, not just what the caller passed.
   requestHeaders: ReadonlyArray<Header>;
@@ -54,25 +55,25 @@ export type RawResponse = Readonly<{
 }>;
 
 /** What a workflow is handed: one call per request, sent with that request's credential. */
-export type RawMapi = Readonly<{
+export type RawClient = Readonly<{
   // Absent when the caller carries its own Authorization header; the client then adds none.
   send: (request: RawRequest, token: string | undefined) => Promise<Result<RawResponse, string>>;
 }>;
 
-export const createRawMapi = (
+export const createRawClient = (
   params: Readonly<{ logger: Logger; adapter?: HttpAdapter }>,
-): RawMapi => ({
+): RawClient => ({
   send: async (request, token) =>
-    executeRawRequest(createMapiRawClient({ ...params, token }), request, params.logger),
+    executeRawRequest(createRawHttpClient({ ...params, token }), request, params.logger),
 });
 
-const createMapiRawClient = (
+const createRawHttpClient = (
   params: Readonly<{
     logger: Logger;
     token?: string | undefined;
     adapter?: HttpAdapter;
   }>,
-): MapiRawClient => {
+): RawHttpClient => {
   const requestHeaders =
     params.token === undefined
       ? [createSdkIdHeader(cliSdkInfo)]
@@ -103,7 +104,7 @@ const createMapiRawClient = (
  * result, not an error - only a request that could not be made at all fails.
  */
 const executeRawRequest = async (
-  client: MapiRawClient,
+  client: RawHttpClient,
   request: RawRequest,
   logger: Logger,
 ): Promise<Result<RawResponse, string>> => {

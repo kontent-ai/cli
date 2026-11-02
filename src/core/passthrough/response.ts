@@ -1,6 +1,6 @@
 import type { Header, JsonValue } from "@kontent-ai/core-sdk";
 
-export type MapiResponse = Readonly<{
+export type PassthroughResponse = Readonly<{
   statusCode: number;
   // Empty when the server sent no reason phrase, which HTTP/2 never does.
   statusText: string;

@@ -1,5 +1,5 @@
-import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
-import { isJsonContentType } from "../../../adapters/mapi/raw/contentType.js";
+import type { PassthroughResponse } from "../../../core/passthrough/response.js";
+import { isJsonContentType } from "../../adapters/http/contentType.js";
 
 export type PresentedResponse = Readonly<{
   /** Everything destined for stdout, ready to be written in one go. */
@@ -17,7 +17,7 @@ export type PresentedResponse = Readonly<{
  * body would then vanish without a word.
  */
 export const presentResponse = (
-  response: MapiResponse,
+  response: PassthroughResponse,
   shouldIncludeHeaders: boolean,
 ): PresentedResponse => {
   const statusBlock = shouldIncludeHeaders ? formatStatusBlock(response) : "";
@@ -44,7 +44,7 @@ export const presentResponse = (
 
 // Only what came off the wire: fetch does not expose the negotiated protocol version, and a
 // reason phrase appears only when the server sent one.
-const formatStatusBlock = (response: MapiResponse): string =>
+const formatStatusBlock = (response: PassthroughResponse): string =>
   [
     response.statusText === ""
       ? `HTTP ${response.statusCode}`
@@ -54,7 +54,7 @@ const formatStatusBlock = (response: MapiResponse): string =>
     "",
   ].join("\n");
 
-const contentLength = (response: MapiResponse): number | undefined => {
+const contentLength = (response: PassthroughResponse): number | undefined => {
   const raw = response.headers.find(
     (header) => header.name.toLowerCase() === "content-length",
   )?.value;
@@ -66,10 +66,10 @@ const contentLength = (response: MapiResponse): number | undefined => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
-const rawContentType = (response: MapiResponse): string | undefined =>
+const rawContentType = (response: PassthroughResponse): string | undefined =>
   response.headers.find((header) => header.name.toLowerCase() === "content-type")?.value;
 
 // The media type alone, for a message a human reads; the decision to print uses
 // the raw value, because that is what the adapter parsed by.
-const contentType = (response: MapiResponse): string | undefined =>
+const contentType = (response: PassthroughResponse): string | undefined =>
   rawContentType(response)?.split(";")[0]?.trim().toLowerCase();

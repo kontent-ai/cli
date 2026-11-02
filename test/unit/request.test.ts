@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RawResponse } from "../../src/cli/adapters/mapi/raw/client.js";
+import type { RawResponse } from "../../src/cli/adapters/http/rawClient.js";
 import {
   type RequestEffects,
   type RequestInput,

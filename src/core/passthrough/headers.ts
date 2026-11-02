@@ -1,5 +1,5 @@
 import type { Header } from "@kontent-ai/core-sdk";
-import { err, flatMap, map, ok, type Result } from "../../lib/result.js";
+import { err, flatMap, map, ok, type Result } from "../lib/result.js";
 
 /**
  * Parses repeated `Name: value` command-line entries. Fails on the first malformed

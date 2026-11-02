@@ -2,42 +2,34 @@ import { match } from "ts-pattern";
 import type { ResolvedEnvId } from "../../../../core/environment/envId.js";
 import { isErr, type Result } from "../../../../core/lib/result.js";
 import type { AuthSource } from "../../../../core/mapi/credential.js";
-import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
-import type { EventProperties } from "../../../../core/telemetry/events.js";
+import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
 import { formatAuthError } from "../../shared/formatAuthError.js";
-import { presentResponse } from "./presentResponse.js";
+import {
+  failedOutput,
+  formatResponseOutput,
+  MISSING_ENV_ID_OUTPUT,
+  type PassthroughOutput,
+} from "../../shared/passthroughOutput.js";
 import type { RequestError, RequestOutcome } from "./runRequest.js";
 
-export type StderrLine = Readonly<{ level: "info" | "warning" | "error"; text: string }>;
-
-export type RequestOutput = Readonly<{
-  stdout: string;
-  stderr: ReadonlyArray<StderrLine>;
-  isFailure: boolean;
-  telemetry:
-    | Readonly<{ outcome: "succeed"; properties: EventProperties }>
-    | Readonly<{ outcome: "fail"; errorCode: string; properties?: EventProperties }>;
-}>;
-
-/** Everything the command writes, decided as data so the streams can be asserted on. */
 export const formatRequestOutput = (
   result: Result<RequestOutcome, RequestError>,
   shouldIncludeHeaders: boolean,
-): RequestOutput =>
+): PassthroughOutput =>
   isErr(result)
     ? formatErrorOutput(result.error)
-    : formatResponseOutput(result.value, shouldIncludeHeaders);
+    : formatResponseOutput(result.value.response, {
+        shouldIncludeHeaders,
+        properties: { "auth-source": result.value.authSource },
+        describeFailure: (response) =>
+          formatFailure(response, result.value.authSource, result.value.env),
+      });
 
-const formatErrorOutput = (error: RequestError): RequestOutput =>
+const formatErrorOutput = (error: RequestError): PassthroughOutput =>
   match(error)
-    .with({ kind: "missing-env-id" }, () =>
-      failed(
-        "missing-env-id",
-        "No environment ID. Pass --envId <id>, or set a default with `kontent environment use <id>`.",
-      ),
-    )
+    .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
     .with({ kind: "auth-failed" }, ({ error: authError }) =>
-      failed(
+      failedOutput(
         `auth:${authError.kind}`,
         authError.kind === "not-logged-in"
           ? "No Management API credential found. Run `kontent login`, or pass --mapiKey <key>, send an Authorization header, or set KONTENT_MAPI_KEY."
@@ -45,60 +37,18 @@ const formatErrorOutput = (error: RequestError): RequestOutput =>
       ),
     )
     .with({ kind: "invalid-endpoint" }, { kind: "transport" }, (e) =>
-      failed(e.kind, e.message, { "auth-source": e.authSource }),
+      failedOutput(e.kind, e.message, { "auth-source": e.authSource }),
     )
     .with(
       { kind: "invalid-method" },
       { kind: "invalid-header" },
       { kind: "unreadable-input" },
-      (e) => failed(e.kind, e.message),
+      (e) => failedOutput(e.kind, e.message),
     )
     .exhaustive();
 
-const failed = (
-  errorCode: string,
-  message: string,
-  properties?: EventProperties,
-): RequestOutput => ({
-  stdout: "",
-  stderr: [{ level: "error", text: message }],
-  isFailure: true,
-  telemetry: { outcome: "fail", errorCode, ...(properties === undefined ? {} : { properties }) },
-});
-
-const formatResponseOutput = (
-  outcome: RequestOutcome,
-  shouldIncludeHeaders: boolean,
-): RequestOutput => {
-  const { response, authSource, env } = outcome;
-  const presented = presentResponse(response, shouldIncludeHeaders);
-  const isHttpFailure = response.statusCode >= 400;
-  const properties = { "status-code": response.statusCode, "auth-source": authSource };
-
-  const stderr: ReadonlyArray<StderrLine> = [
-    ...(presented.droppedBodyWarning === undefined
-      ? []
-      : [{ level: "warning" as const, text: presented.droppedBodyWarning }]),
-    ...(presented.payload === "" && !isHttpFailure
-      ? [{ level: "info" as const, text: `HTTP ${response.statusCode}` }]
-      : []),
-    ...(isHttpFailure
-      ? [{ level: "error" as const, text: formatFailure(response, authSource, env) }]
-      : []),
-  ];
-
-  return {
-    stdout: presented.payload,
-    stderr,
-    isFailure: isHttpFailure,
-    telemetry: isHttpFailure
-      ? { outcome: "fail", errorCode: `http-${response.statusCode}`, properties }
-      : { outcome: "succeed", properties },
-  };
-};
-
 const formatFailure = (
-  response: MapiResponse,
+  response: PassthroughResponse,
   authSource: AuthSource,
   env: ResolvedEnvId,
 ): string => {
