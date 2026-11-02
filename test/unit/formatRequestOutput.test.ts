@@ -3,14 +3,14 @@ import { formatRequestOutput } from "../../src/cli/commands/mapi/request/formatO
 import type { RequestOutcome } from "../../src/cli/commands/mapi/request/runRequest.js";
 import type { ResolvedEnvId } from "../../src/core/environment/envId.js";
 import { err, ok } from "../../src/core/lib/result.js";
-import type { MapiResponse } from "../../src/core/mapi/raw/response.js";
+import type { PassthroughResponse } from "../../src/core/passthrough/response.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const FLAG_ENV: ResolvedEnvId = { envId: ENV_ID, source: "flag" };
 const STORED_ENV: ResolvedEnvId = { envId: ENV_ID, source: "stored" };
 
 const outcome = (
-  response: Partial<MapiResponse>,
+  response: Partial<PassthroughResponse>,
   overrides: Partial<Omit<RequestOutcome, "response">> = {},
 ) =>
   ok({

@@ -5,12 +5,12 @@ import { mapiBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../core/lib/option.js";
 import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
 import { type AuthSource, decideMapiCredential } from "../../../../core/mapi/credential.js";
-import { resolveEndpoint } from "../../../../core/mapi/raw/endpoint.js";
+import { resolveMapiEndpoint } from "../../../../core/mapi/endpoint.js";
 import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/request.js";
-import type { MapiResponse } from "../../../../core/mapi/raw/response.js";
+import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
 import { type Session, session } from "../../../adapters/auth/tokenAccess.js";
 import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
-import { createRawMapi, type RawMapi } from "../../../adapters/mapi/raw/client.js";
+import { createRawClient, type RawClient } from "../../../adapters/http/rawClient.js";
 import {
   createRequestBodyReader,
   type RequestBodyError,
@@ -18,6 +18,7 @@ import {
 } from "../../../adapters/requestBody/requestBody.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
+import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
 import { formatRequestOutput } from "./formatOutput.js";
 
 export type RequestInput = Readonly<{
@@ -36,11 +37,11 @@ export type RequestEffects = Readonly<{
   config: Pick<CliConfigStore, "read">;
   bodyReader: RequestBodyReader;
   session: Session;
-  mapi: RawMapi;
+  mapi: RawClient;
 }>;
 
 export type RequestOutcome = Readonly<{
-  response: MapiResponse;
+  response: PassthroughResponse;
   authSource: AuthSource;
   env: ResolvedEnvId;
 }>;
@@ -109,7 +110,7 @@ export const request = async (
     return err({ kind: "auth-failed", error: token.error });
   }
 
-  const url = resolveEndpoint(input.endpoint, {
+  const url = resolveMapiEndpoint(input.endpoint, {
     baseUrl: input.baseUrl,
     envId: env.value.envId,
   });
@@ -167,7 +168,7 @@ export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<
       config: cliConfigStore,
       bodyReader: createRequestBodyReader(process.stdin),
       session,
-      mapi: createRawMapi({ logger }),
+      mapi: createRawClient({ logger }),
     },
     // KONTENT_MAPI_KEY is read here rather than through a yargs option: the CLI does not
     // map env vars onto flags (see `src/index.ts`). It keeps the key off argv, so CI and
@@ -179,22 +180,5 @@ export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<
     },
   );
 
-  const output = formatRequestOutput(result, args.include === true);
-  if (output.stdout !== "") {
-    process.stdout.write(output.stdout);
-  }
-  for (const line of output.stderr) {
-    match(line)
-      .with({ level: "info" }, ({ text }) => logger.info("standard", text))
-      .with({ level: "warning" }, ({ text }) => logger.warning("standard", text))
-      .with({ level: "error" }, ({ text }) => logger.error(text))
-      .exhaustive();
-  }
-  match(output.telemetry)
-    .with({ outcome: "succeed" }, ({ properties }) => tracker.succeed(properties))
-    .with({ outcome: "fail" }, ({ errorCode, properties }) => tracker.fail(errorCode, properties))
-    .exhaustive();
-  if (output.isFailure) {
-    process.exitCode = 1;
-  }
+  emitPassthroughOutput(formatRequestOutput(result, args.include === true), logger, tracker);
 };

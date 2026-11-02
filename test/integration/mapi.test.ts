@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../package.json" with { type: "json" };
-import { createRawMapi, type RawRequest } from "../../src/cli/adapters/mapi/raw/client.js";
+import { createRawClient, type RawRequest } from "../../src/cli/adapters/http/rawClient.js";
 import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
@@ -28,7 +28,7 @@ type RunOptions = Readonly<{
 
 const run = async (routes: ReadonlyArray<HttpRoute>, options: RunOptions = {}) => {
   const { adapter, requests } = httpTestAdapter(routes);
-  const mapi = createRawMapi({ adapter, logger });
+  const mapi = createRawClient({ adapter, logger });
   // `token: undefined` means an explicitly tokenless request, distinct from omitting it.
   const token = "token" in options ? options.token : "secret-token";
   const result = await mapi.send(makeRequest(options.request), token);
@@ -41,7 +41,7 @@ const typesRoute: HttpRoute = {
   replies: [{ payload: { types: [] } }],
 };
 
-describe("createRawMapi", () => {
+describe("createRawClient", () => {
   it("sends an authenticated GET with the SDK id", async () => {
     const { result, requests } = await run([typesRoute]);
 
@@ -185,7 +185,7 @@ describe("createRawMapi", () => {
           ],
         },
       ]);
-      const pending = createRawMapi({ adapter, logger }).send(makeRequest(), "secret-token");
+      const pending = createRawClient({ adapter, logger }).send(makeRequest(), "secret-token");
 
       // The API asked for an hour; the wait ends at the cap, not at what it asked for.
       await vi.advanceTimersByTimeAsync(MAX_RETRY_DELAY_MS - 1);

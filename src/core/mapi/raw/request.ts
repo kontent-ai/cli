@@ -1,6 +1,6 @@
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
-import { parseHeaders } from "./headers.js";
+import { parseHeaders } from "../../passthrough/headers.js";
 import { parseMethod } from "./method.js";
 
 export type PlannedRequest = Readonly<{

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { presentResponse } from "../../src/cli/commands/mapi/request/presentResponse.js";
-import type { MapiResponse } from "../../src/core/mapi/raw/response.js";
+import { presentResponse } from "../../src/cli/commands/shared/presentResponse.js";
+import type { PassthroughResponse } from "../../src/core/passthrough/response.js";
 
-const response = (overrides: Partial<MapiResponse> = {}): MapiResponse => ({
+const response = (overrides: Partial<PassthroughResponse> = {}): PassthroughResponse => ({
   statusCode: 200,
   statusText: "OK",
   headers: [{ name: "content-type", value: "application/json" }],
