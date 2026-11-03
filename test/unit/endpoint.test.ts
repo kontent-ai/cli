@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveMapiEndpoint } from "../../src/core/mapi/endpoint.js";
+import { validateEndpoint } from "../../src/core/passthrough/endpoint.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const params = { baseUrl: "https://manage.kontent.ai/v2", envId: ENV_ID } as const;
@@ -63,6 +64,21 @@ describe("resolveMapiEndpoint", () => {
     expect(result.value.pathname).toBe("/v2/projects/a%20b%2Fc/types");
   });
 
+  it("names the Management API when rejecting an absolute URL", () => {
+    const result = resolve("https://evil.example.com/types");
+
+    expect(result.kind).toBe("err");
+    if (result.kind !== "err") {
+      return;
+    }
+    expect(result.error.message).toContain("The host is always the Management API.");
+  });
+});
+
+describe("validateEndpoint", () => {
+  const validate = (endpoint: string, envId = ENV_ID) =>
+    validateEndpoint(endpoint, { envId, apiName: "Management API" });
+
   it.each([
     ["", "empty"],
     ["   ", "empty"],
@@ -76,7 +92,7 @@ describe("resolveMapiEndpoint", () => {
     ["..\\..\\admin", "traversal"],
     ["types/..\\admin", "traversal"],
   ])("rejects %j as %s", (endpoint, kind) => {
-    const result = resolve(endpoint);
+    const result = validate(endpoint);
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {
@@ -88,7 +104,7 @@ describe("resolveMapiEndpoint", () => {
   // The id is substituted after the path is checked, so it needs its own guard:
   // "projects/../types" normalizes to "/v2/types", out of the environment scope.
   it("rejects a traversal in the environment id", () => {
-    const result = resolveMapiEndpoint("types", { ...params, envId: ".." });
+    const result = validate("types", "..");
 
     expect(result.kind).toBe("err");
     if (result.kind !== "err") {

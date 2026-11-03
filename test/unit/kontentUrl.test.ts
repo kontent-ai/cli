@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  deliverBaseUrl,
   iapiBaseUrl,
   mapiBaseUrl,
   resolveKontentTarget,
 } from "../../src/core/kontentUrl/kontentUrl.js";
+import { none, some } from "../../src/core/lib/option.js";
 import { map, ok } from "../../src/core/lib/result.js";
 
 const resolve = (kontentUrl: string) =>
@@ -115,5 +117,31 @@ describe("derived API URLs", () => {
   ] as const)("KONTENT_URL=$kontentUrl", ({ kontentUrl, app, management }) => {
     expect(map(resolve(kontentUrl), iapiBaseUrl)).toEqual(ok(app));
     expect(map(resolve(kontentUrl), mapiBaseUrl)).toEqual(ok(management));
+  });
+});
+
+describe("deliverBaseUrl", () => {
+  it.each([
+    {
+      kontentUrl: "kontent.ai",
+      delivery: some("https://deliver.kontent.ai"),
+      preview: some("https://preview-deliver.kontent.ai"),
+    },
+    {
+      kontentUrl: "devkontentmasters.com",
+      delivery: some("https://deliver.devkontentmasters.com"),
+      preview: some("https://preview-deliver.devkontentmasters.com"),
+    },
+    {
+      kontentUrl: "https://my-feature-draft.devkontentmasters.com",
+      delivery: some("https://my-feature-deliver.devkontentmasters.com"),
+      preview: some("https://my-feature-preview-deliver.devkontentmasters.com"),
+    },
+    { kontentUrl: "http://localhost:29595", delivery: none, preview: none },
+  ] as const)("KONTENT_URL=$kontentUrl", ({ kontentUrl, delivery, preview }) => {
+    expect(map(resolve(kontentUrl), (target) => deliverBaseUrl(target, false))).toEqual(
+      ok(delivery),
+    );
+    expect(map(resolve(kontentUrl), (target) => deliverBaseUrl(target, true))).toEqual(ok(preview));
   });
 });

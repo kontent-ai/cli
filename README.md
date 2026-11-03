@@ -56,6 +56,7 @@ Each command supports `--help` for its own options.
 <!-- commands:start -->
 | Command | Description |
 | --- | --- |
+| [`kontent dapi <endpoint>`](src/cli/commands/dapi/README.md) | Send a request to the Delivery API |
 | [`kontent docs search <query>`](src/cli/commands/docs/search/README.md) | Search Kontent.ai Learn docs and API reference, ranked by relevance |
 | [`kontent docs endpoint <query>`](src/cli/commands/docs/endpoint/README.md) | Show matching API endpoints: method, URL, parameters, responses, code samples |
 | [`kontent docs object <query>`](src/cli/commands/docs/object/README.md) | Show matching API reference objects and their properties |

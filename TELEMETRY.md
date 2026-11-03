@@ -59,6 +59,15 @@ command argument values.
 The requested endpoint path is never sent — it carries environment ids and
 codenames. `auth-source` names the mechanism, never the credential.
 
+`kontent dapi` emits `cli__dapi` with the same two properties:
+
+| Property      | Description                                                          |
+| ------------- | -------------------------------------------------------------------- |
+| `status-code` | HTTP status code the Delivery API answered with, for a single request or a failed first page of `--paginate` |
+| `auth-source` | Which credential was used: `header` (an `Authorization` header), `dapi-key` (`--dapiKey`/`KONTENT_DAPI_KEY`), or `none` |
+
+As with `kontent mapi`, the endpoint path is never sent.
+
 ## What is NOT collected
 
 - Credentials of any kind: API keys, access tokens, passwords.

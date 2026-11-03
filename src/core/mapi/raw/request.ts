@@ -1,6 +1,6 @@
 import type { Header, HttpMethod } from "@kontent-ai/core-sdk";
 import { err, isErr, ok, type Result } from "../../lib/result.js";
-import { parseHeaders } from "../../passthrough/headers.js";
+import { type HeaderError, parseHeaders } from "../../passthrough/headers.js";
 import { parseMethod } from "./method.js";
 
 export type PlannedRequest = Readonly<{
@@ -8,10 +8,7 @@ export type PlannedRequest = Readonly<{
   headers: ReadonlyArray<Header>;
 }>;
 
-export type RequestArgsError = Readonly<{
-  kind: "invalid-method" | "invalid-header";
-  message: string;
-}>;
+export type RequestArgsError = Readonly<{ kind: "invalid-method"; message: string }> | HeaderError;
 
 export const planRequest = (
   args: Readonly<{
@@ -38,7 +35,7 @@ export const planRequest = (
 
   const headers = parseHeaders(args.header ?? []);
   if (isErr(headers)) {
-    return err({ kind: "invalid-header", message: headers.error });
+    return headers;
   }
 
   return ok({

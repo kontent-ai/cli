@@ -18,7 +18,10 @@ import {
 } from "../../../adapters/requestBody/requestBody.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
-import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
+import {
+  emitPassthroughOutput,
+  usingStoredEnvironmentMessage,
+} from "../../shared/passthroughOutput.js";
 import { formatRequestOutput } from "./formatOutput.js";
 
 export type RequestInput = Readonly<{
@@ -37,7 +40,7 @@ export type RequestEffects = Readonly<{
   config: Pick<CliConfigStore, "read">;
   bodyReader: RequestBodyReader;
   session: Session;
-  mapi: RawClient;
+  mapi: Pick<RawClient, "send">;
 }>;
 
 export type RequestOutcome = Readonly<{
@@ -73,7 +76,7 @@ export const request = async (
   // A stored id is announced because nothing on the command line shows which environment
   // a request, possibly a DELETE, is about to hit.
   if (env.value.source === "stored") {
-    effects.logger.info("standard", `Using the stored default environment ${env.value.envId}.`);
+    effects.logger.info("standard", usingStoredEnvironmentMessage(env.value.envId));
   }
 
   // Planned before the input is read: there is no point opening a file the request can never carry.
