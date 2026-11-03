@@ -48,7 +48,7 @@ const emptyYargs = yargs(hideBin(process.argv));
 // does not declare - an unrelated KONTENT_PROJECT_ID would break the whole CLI.
 // Each variable is read where it is used instead (KONTENT_URL below,
 // cli/adapters/auth/config.ts, cli/adapters/telemetry/consent.ts,
-// cli/commands/mapi/request/runRequest.ts).
+// cli/commands/mapi/request/runRequest.ts, cli/commands/dapi/request/runRequest.ts).
 const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
   .scriptName("kontent")

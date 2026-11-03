@@ -1,6 +1,7 @@
 import type { BaseUrl } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { originOf } from "../lib/baseUrl.js";
+import { fromNullable, map, type Option, some } from "../lib/option.js";
 import { err, flatMap, fromThrowable, ok, type Result } from "../lib/result.js";
 
 const DEFAULT_KONTENT_DOMAIN = "kontent.ai";
@@ -40,6 +41,26 @@ export const mapiBaseUrl = (target: KontentTarget): string =>
     .exhaustive();
 
 /**
+ * Delivery runs on hosts of its own: `deliver.<domain>`, or `<label>-deliver.devkontentmasters.com`
+ * for an on-demand environment, each with a `preview-` twin. None for a local stack, which runs
+ * no Delivery API.
+ */
+export const deliverBaseUrl = (target: KontentTarget, isPreview: boolean): Option<string> => {
+  const service = isPreview ? "preview-deliver" : "deliver";
+
+  return match(target)
+    .returnType<Option<string>>()
+    .with({ kind: "domain" }, ({ domain }) => some(`https://${service}.${domain}`))
+    .with({ kind: "host" }, ({ baseUrl }) =>
+      map(
+        onDemandLabel(baseUrl.host),
+        (label) => `https://${label}-${service}.devkontentmasters.com`,
+      ),
+    )
+    .exhaustive();
+};
+
+/**
  * Either one of the allowed domains, with no scheme, path, port, or credentials, since it is
  * interpolated verbatim into the app./manage. request hosts.
  * Or the address of one host serving both APIs: an on-demand environment over https without
@@ -52,7 +73,10 @@ const validateKontentUrl = (raw: string): Result<KontentTarget, string> =>
 const LOOPBACK_HOSTS: ReadonlyArray<string> = ["localhost", "127.0.0.1", "[::1]"];
 
 // One label only: an arbitrary subdomain of an allowed domain can be served by a third party.
-const onDemandHostPattern = /^[a-z0-9-]+-draft\.devkontentmasters\.com$/;
+const onDemandHostPattern = /^([a-z0-9-]+)-draft\.devkontentmasters\.com$/;
+
+const onDemandLabel = (host: string): Option<string> =>
+  fromNullable(onDemandHostPattern.exec(host)?.[1]);
 
 const validateHostAddress = (raw: string): Result<KontentTarget, string> =>
   flatMap(parseUrl(raw, raw), (url) => {

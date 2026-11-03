@@ -74,7 +74,8 @@ export const requestCommand = {
         "Not sure which endpoint or payload shape to use? Look it up first:\n" +
           '  kontent docs search "publish a variant"                                           find the right page\n' +
           '  kontent docs endpoint "upsert language variant" --api content_management_api_v2   method, URL, parameters\n' +
-          '  kontent docs object "rich text element" --api content_management_api_v2           object properties',
+          '  kontent docs object "rich text element" --api content_management_api_v2           object properties\n\n' +
+          "Use `kontent dapi` to read content as a website gets it: CDN-cached, with higher rate limits.",
       ),
 };
 

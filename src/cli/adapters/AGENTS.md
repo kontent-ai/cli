@@ -10,7 +10,7 @@
 
 - `iapi`: internal API, hand-rolled over `@kontent-ai/core-sdk`, one file per endpoint. `schema` validators must be `zod/mini`; classic zod cannot infer the payload.
 - `mapi`: Management API via `@kontent-ai/management-sdk`.
-- `http`: shared HTTP plumbing. `rawClient.ts` is the passthrough behind `kontent mapi`: no schema, 4xx/5xx is a result, not an error. Why: doc comments in `rawClient.ts`, `contentType.ts`.
+- `http`: shared HTTP plumbing. `rawClient.ts` is the passthrough behind `kontent mapi` and `kontent dapi`: no schema, 4xx/5xx is a result, not an error. Why: doc comments in `rawClient.ts`, `contentType.ts`.
 - `learn`: tokenless Learn-MCP client behind `kontent docs`. Schemas declare only the fields read, so unknown keys survive to stdout; `runtimeValidation.validateResponses` must stay on.
 - `config`: `cliConfig.ts` is the persisted CLI state (telemetry consent, ids).
 - `telemetry`: see `TELEMETRY.md`.

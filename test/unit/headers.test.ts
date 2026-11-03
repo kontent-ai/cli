@@ -37,7 +37,7 @@ describe("parseHeaders", () => {
     if (result.kind !== "err") {
       return;
     }
-    expect(result.error).toContain('Expected the "Name: value" format');
+    expect(result.error.message).toContain('Expected the "Name: value" format');
   });
 
   it.each([
@@ -51,7 +51,7 @@ describe("parseHeaders", () => {
     if (result.kind !== "err") {
       return;
     }
-    expect(result.error).toContain("Names may contain only letters, digits and");
+    expect(result.error.message).toContain("Names may contain only letters, digits and");
   });
 
   it("fails on the first malformed entry", () => {
@@ -61,6 +61,6 @@ describe("parseHeaders", () => {
     if (result.kind !== "err") {
       return;
     }
-    expect(result.error).toContain("oops");
+    expect(result.error.message).toContain("oops");
   });
 });
