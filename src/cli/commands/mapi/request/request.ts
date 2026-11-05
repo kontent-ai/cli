@@ -70,6 +70,7 @@ export const requestCommand = {
       )
       .example("$0 mapi 'types/codename/article' --envId <id>", "Get a content type by codename")
       .check((args) => (args.envId?.trim() === "" ? "--envId must not be empty." : true))
+      .check((args) => (args.mapiKey?.trim() === "" ? "--mapiKey must not be empty." : true))
       .epilogue(
         "Not sure which endpoint or payload shape to use? Look it up first:\n" +
           '  kontent docs search "publish a variant"                                           find the right page\n' +
