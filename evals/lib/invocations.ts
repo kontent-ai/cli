@@ -21,6 +21,9 @@ export const countInvocations = (invocations: ReadonlyArray<CliInvocation>): Inv
   docsLookupCount: invocations.filter(isDocsLookup).length,
 });
 
+export const isHelpLookup = (invocation: CliInvocation): boolean =>
+  invocation.args.includes("--help") || invocation.args.includes("-h");
+
 const parseLine = (line: string): ReadonlyArray<CliInvocation> => {
   if (line === "") {
     return [];
@@ -36,8 +39,5 @@ const tryParseJson = (line: string): unknown => {
     return undefined;
   }
 };
-
-const isHelpLookup = (invocation: CliInvocation): boolean =>
-  invocation.args.includes("--help") || invocation.args.includes("-h");
 
 const isDocsLookup = (invocation: CliInvocation): boolean => invocation.args[0] === "docs";
