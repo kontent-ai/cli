@@ -1,4 +1,9 @@
 import { contentTypeWithSnippet } from "../tasks/content-type-with-snippet/task.js";
+import { deliverArticle } from "../tasks/deliver-article/task.js";
+import { deliverNewsArticles } from "../tasks/deliver-news-articles/task.js";
+import { deliverUsedIn } from "../tasks/deliver-used-in/task.js";
+import { draftSummary } from "../tasks/draft-summary/task.js";
+import { publishCustomerStories } from "../tasks/publish-customer-stories/task.js";
 import { publishItem } from "../tasks/publish-item/task.js";
 import { schedulePublish } from "../tasks/schedule-publish/task.js";
 import { taxonomyGroup } from "../tasks/taxonomy-group/task.js";
@@ -15,4 +20,9 @@ export const evalTasks: ReadonlyArray<EvalTask> = [
   schedulePublish,
   updateLanguageVariant,
   updateContentType,
+  draftSummary,
+  deliverArticle,
+  publishCustomerStories,
+  deliverNewsArticles,
+  deliverUsedIn,
 ];

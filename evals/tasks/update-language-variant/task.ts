@@ -14,8 +14,8 @@ import {
 } from "../../lib/inspect.js";
 import type { Assertion, EvalTask } from "../../lib/types.js";
 
-const NEW_TITLE = "Launch announcement 2026";
-const NEW_SUMMARY = "Everything new in the 2026 release.";
+export const NEW_TITLE = "Launch announcement 2026";
+export const NEW_SUMMARY = "Everything new in the 2026 release.";
 // Agents render the heading's apostrophe in whatever encoding their tool chose.
 const APOSTROPHE_VARIANTS = /&#39;|&apos;|’|'/g;
 

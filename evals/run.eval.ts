@@ -101,7 +101,7 @@ describe.sequential("evals", () => {
           envId: evalsContext.envId,
           baseUrl: mapiUrlFromEnv(),
         });
-        const checkResult = await task.check(mapiClient);
+        const checkResult = await task.check(mapiClient, { workspaceDir, invocations });
 
         if (isErr(checkResult)) {
           await recordVerdict(task.id, "ERROR", trace, [], runResult.value, checkResult.error);
