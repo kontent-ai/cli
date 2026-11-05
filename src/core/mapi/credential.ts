@@ -22,8 +22,10 @@ export const decideMapiCredential = (
   if (inputs.headers.some((header) => header.name.toLowerCase() === "authorization")) {
     return { source: "header" };
   }
-  const suppliedKey = inputs.mapiKey ?? inputs.envMapiKey;
-  if (suppliedKey !== undefined && suppliedKey !== "") {
+  const suppliedKey = [inputs.mapiKey, inputs.envMapiKey].find(
+    (key) => key !== undefined && key.trim() !== "",
+  );
+  if (suppliedKey !== undefined) {
     return { source: "mapi-key", token: suppliedKey };
   }
   return { source: "login" };
