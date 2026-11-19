@@ -1,13 +1,13 @@
-import { match } from "ts-pattern";
 import type { AuthError } from "../../../../core/auth/types.js";
 import { decideEnvId, type ResolvedEnvId } from "../../../../core/environment/envId.js";
 import { mapiBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../core/lib/option.js";
-import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
+import { err, isErr, ok, type Result } from "../../../../core/lib/result.js";
 import { type AuthSource, decideMapiCredential } from "../../../../core/mapi/credential.js";
 import { resolveMapiEndpoint } from "../../../../core/mapi/endpoint.js";
 import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/request.js";
 import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
+import { mapiToken } from "../../../adapters/auth/mapiToken.js";
 import { type Session, session } from "../../../adapters/auth/tokenAccess.js";
 import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
 import { createRawClient, type RawClient } from "../../../adapters/http/rawClient.js";
@@ -99,16 +99,7 @@ export const request = async (
     mapiKey: input.mapiKey,
     envMapiKey: input.envMapiKey,
   });
-  const token = await match(credential)
-    .with(
-      { source: "header" },
-      async (): Promise<Result<string | undefined, AuthError>> => ok(undefined),
-    )
-    .with({ source: "mapi-key" }, async ({ token }) => ok(token))
-    .with({ source: "login" }, async () =>
-      map(await effects.session.tokens(), (tokens) => tokens.accessToken),
-    )
-    .exhaustive();
+  const token = await mapiToken(credential, effects.session);
   if (isErr(token)) {
     return err({ kind: "auth-failed", error: token.error });
   }
