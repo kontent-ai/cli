@@ -9,13 +9,14 @@ export type SnapshotTarget =
 
 export type SnapshotTargetDecision =
   | Readonly<{ kind: "create" }>
-  | Readonly<{ kind: "replace" }>
+  | Readonly<{ kind: "update" }>
   | Readonly<{ kind: "refuse"; reason: "has-other-files" | "foreign-manifest" }>;
 
 /**
- * Writing a snapshot deletes whatever the target held, so only a folder that is missing, empty,
- * or a previous snapshot qualifies. A `manifest.json` proves a previous snapshot only when it is
- * a snapshot manifest: a web app's `public/` folder has one too.
+ * Writing a snapshot overwrites and deletes the snapshot's own files in the target, such as
+ * `manifest.json` or `types/*.json`, so only a folder that is missing, empty, or a previous
+ * snapshot qualifies. A `manifest.json` proves a previous snapshot only when it is a snapshot
+ * manifest: a web app's `public/` folder has one too.
  */
 export const decideSnapshotTarget = (target: SnapshotTarget): SnapshotTargetDecision =>
   match(target)
@@ -23,8 +24,8 @@ export const decideSnapshotTarget = (target: SnapshotTarget): SnapshotTargetDeci
     .with({ kind: "missing" }, () => ({ kind: "create" }))
     .with({ kind: "folder", manifestText: { kind: "some" } }, ({ manifestText }) =>
       isSnapshotManifest(manifestText.value)
-        ? { kind: "replace" }
+        ? { kind: "update" }
         : { kind: "refuse", reason: "foreign-manifest" },
     )
-    .with({ kind: "folder", entries: [] }, () => ({ kind: "replace" }))
+    .with({ kind: "folder", entries: [] }, () => ({ kind: "update" }))
     .otherwise(() => ({ kind: "refuse", reason: "has-other-files" }));

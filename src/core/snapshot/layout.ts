@@ -2,7 +2,7 @@ import type { JsonObject, JsonValue } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { isGuid } from "../lib/guid.js";
 import { err, map, ok, type Result } from "../lib/result.js";
-import type { FileNaming, StoredIn } from "./kinds.js";
+import { type FileNaming, type StoredIn, snapshotKinds } from "./kinds.js";
 
 export type EntityFileError = Readonly<{ kind: "no-safe-name" }>;
 
@@ -22,6 +22,14 @@ export const entityFilePath = (
       map(fileStem(namedBy, entity), (stem) => [name, `${stem}.json`]),
     )
     .exhaustive();
+
+/**
+ * Whether a path under the snapshot folder is one a snapshot writes for its entities:
+ * `environment.json`, or a `*.json` directly inside a kind folder. The manifest is handled on
+ * its own, and every other file belongs to someone else.
+ */
+export const isEntityFile = (path: ReadonlyArray<string>): boolean =>
+  snapshotKinds.some(({ storedIn }) => isInStorage(storedIn, path));
 
 const fileStem = (namedBy: FileNaming, entity: JsonObject): Result<string, EntityFileError> => {
   const { codename, id } = entity;
@@ -55,3 +63,12 @@ const isSafeCodename = (value: JsonValue): value is string =>
 
 const isGuidString = (value: JsonValue): value is string =>
   typeof value === "string" && isGuid(value);
+
+const isInStorage = (storedIn: StoredIn, path: ReadonlyArray<string>): boolean =>
+  match(storedIn)
+    .with({ kind: "file" }, ({ name }) => path.length === 1 && path[0] === name)
+    .with(
+      { kind: "folder" },
+      ({ name }) => path.length === 2 && path[0] === name && (path[1] ?? "").endsWith(".json"),
+    )
+    .exhaustive();
