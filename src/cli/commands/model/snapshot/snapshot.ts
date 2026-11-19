@@ -2,7 +2,7 @@ import type { Argv } from "yargs";
 import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
 
-const defaultSnapshotPath = "./kontent-snapshot";
+const defaultSnapshotPath = "./model-snapshot";
 
 export const snapshotCommand = {
   command: "snapshot",

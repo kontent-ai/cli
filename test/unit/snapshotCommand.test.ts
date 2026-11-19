@@ -33,11 +33,11 @@ const parse = async (
 };
 
 describe("kontent model snapshot argument parsing", () => {
-  it("defaults the folder to ./kontent-snapshot", async () => {
+  it("defaults the folder to ./model-snapshot", async () => {
     const { parsed, failure } = await parse(["snapshot"]);
 
     expect(failure).toBeUndefined();
-    expect(parsed?.path).toBe("./kontent-snapshot");
+    expect(parsed?.path).toBe("./model-snapshot");
   });
 
   it("takes the folder, the environment and the key from the flags", async () => {
