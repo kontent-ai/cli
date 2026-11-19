@@ -66,6 +66,7 @@ Each command supports `--help` for its own options.
 | [`kontent login`](src/cli/commands/login/README.md) | Authenticate with Kontent.ai via Auth0 device flow |
 | [`kontent logout`](src/cli/commands/logout/README.md) | Clear stored authentication tokens |
 | [`kontent mapi <endpoint>`](src/cli/commands/mapi/README.md) | Send an authenticated request to the Management API |
+| [`kontent model snapshot`](src/cli/commands/model/snapshot/README.md) | Save the environment's content model as JSON files, one per entity |
 | [`kontent project sample bootstrap`](src/cli/commands/project/sample/bootstrap/README.md) | Clone a sample app for an environment and wire its .env |
 <!-- commands:end -->
 

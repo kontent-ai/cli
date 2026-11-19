@@ -31,6 +31,11 @@ export const entityFilePath = (
 export const isEntityFile = (path: ReadonlyArray<string>): boolean =>
   snapshotKinds.some(({ storedIn }) => isInStorage(storedIn, path));
 
+/** The kind folders, where a target's existing entity files are listed. */
+export const entityFolders: ReadonlyArray<string> = snapshotKinds.flatMap(({ storedIn }) =>
+  storedIn.kind === "folder" ? [storedIn.name] : [],
+);
+
 const fileStem = (namedBy: FileNaming, entity: JsonObject): Result<string, EntityFileError> => {
   const { codename, id } = entity;
 
