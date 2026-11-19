@@ -2,6 +2,8 @@ import { z } from "zod/mini";
 import { fromThrowable, isOk } from "../lib/result.js";
 import { snapshotKinds } from "./kinds.js";
 
+export const manifestFileName = "manifest.json";
+
 /** `manifest.json`. Nothing in it changes between runs, so an unchanged environment gives no diff. */
 export type SnapshotManifest = Readonly<{
   format_version: string;

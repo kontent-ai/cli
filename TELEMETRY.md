@@ -68,6 +68,14 @@ codenames. `auth-source` names the mechanism, never the credential.
 
 As with `kontent mapi`, the endpoint path is never sent.
 
+`kontent model snapshot` emits `cli__model-snapshot` with one extra property:
+
+| Property      | Description                                                          |
+| ------------- | -------------------------------------------------------------------- |
+| `auth-source` | Which credential was used: `mapi-key` (`--mapiKey`/`KONTENT_MAPI_KEY`) or `login` (stored login token) |
+
+The snapshot folder, its path and its contents are never sent.
+
 ## What is NOT collected
 
 - Credentials of any kind: API keys, access tokens, passwords.
