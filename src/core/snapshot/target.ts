@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
-import { z } from "zod/mini";
 import type { Option } from "../lib/option.js";
-import { fromThrowable, isOk } from "../lib/result.js";
+import { isSnapshotManifest } from "./manifest.js";
 
 /** What the `--path` folder holds before a snapshot is written into it. */
 export type SnapshotTarget =
@@ -29,17 +28,3 @@ export const decideSnapshotTarget = (target: SnapshotTarget): SnapshotTargetDeci
     )
     .with({ kind: "folder", entries: [] }, () => ({ kind: "replace" }))
     .otherwise(() => ({ kind: "refuse", reason: "has-other-files" }));
-
-const snapshotManifest = z.object({
-  format_version: z.string(),
-  environment_id: z.string(),
-  kinds: z.array(z.string()),
-});
-
-const isSnapshotManifest = (text: string): boolean => {
-  const json = fromThrowable(
-    (): unknown => JSON.parse(text),
-    () => undefined,
-  );
-  return isOk(json) && snapshotManifest.safeParse(json.value).success;
-};
