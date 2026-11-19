@@ -50,7 +50,7 @@ export type BootstrapEffects = Readonly<{
   logger: Logger;
   clock: Clock;
   prompts: Pick<Prompts, "spinner" | "confirm" | "select" | "note">;
-  files: Files;
+  files: Pick<Files, "entries" | "readText" | "writeText">;
   projects: Projects;
   deliveryKeys: DeliveryKeys;
   templates: Templates;
