@@ -19,23 +19,23 @@ describe("decideSnapshotTarget", () => {
       expected: { kind: "create" },
     },
     {
-      name: "replaces an empty folder",
+      name: "updates an empty folder",
       target: { kind: "folder", entries: [], manifestText: none },
-      expected: { kind: "replace" },
+      expected: { kind: "update" },
     },
     {
-      name: "replaces a previous snapshot",
+      name: "updates a previous snapshot",
       target: { kind: "folder", entries: SNAPSHOT_ENTRIES, manifestText: some(SNAPSHOT_MANIFEST) },
-      expected: { kind: "replace" },
+      expected: { kind: "update" },
     },
     {
-      name: "replaces a previous snapshot with files someone added to it",
+      name: "updates a previous snapshot with files someone added to it",
       target: {
         kind: "folder",
         entries: [...SNAPSHOT_ENTRIES, "notes.md"],
         manifestText: some(SNAPSHOT_MANIFEST),
       },
-      expected: { kind: "replace" },
+      expected: { kind: "update" },
     },
     {
       name: "refuses a folder with other files",
