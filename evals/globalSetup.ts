@@ -189,7 +189,7 @@ const probeDefaultEnvironment = async (
   }>,
 ): Promise<void> => {
   const probe = await tryAsync(
-    () =>
+    async () =>
       execFileAsync(process.execPath, [params.cliEntry, "environment", "current"], {
         env: {
           PATH: process.env.PATH,

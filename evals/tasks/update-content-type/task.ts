@@ -15,7 +15,7 @@ export const updateContentType: EvalTask = {
   prompt:
     'A few changes to the Article type. Add a "Reading time" number field, codename reading_time, and put it right after the title. Authors want tables and images in the body now, so allow those, and raise the summary limit to 300 characters. "Author" should be called "Written by" from now on, keep its codename.',
   check: async (client) => {
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {

@@ -10,7 +10,7 @@ import { err, ok, type Result, tryAsync } from "../../src/core/lib/result.js";
 import { isNotFoundError } from "../../test/helpers/environment.js";
 import type { Assertion } from "./types.js";
 
-export const lookup = <T>(what: string, run: () => Promise<T>): Promise<Result<T, string>> =>
+export const lookup = async <T>(what: string, run: () => Promise<T>): Promise<Result<T, string>> =>
   tryAsync(run, (cause) => `${what} failed: ${describeCause(cause)}`);
 
 // A 404 is a grading outcome (the agent did not create the thing), every other

@@ -13,8 +13,8 @@ export default defineConfig([
     },
   },
   {
-    // Contradicts Biome's lint/suspicious/useAwait (@kontent-ai/biome-config) for test fakes and helpers, same as kontent-ai/smart-link.
-    files: ["test/**/*.ts", "evals/**/*.ts", "scripts/**/*.ts"],
+    // Test fakes return promises without awaiting; this rule would make them async and Biome's useAwait then rejects them.
+    files: ["test/**/*.ts"],
     rules: {
       "@typescript-eslint/promise-function-async": "off",
     },

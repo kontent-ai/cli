@@ -68,7 +68,7 @@ export const publishCustomerStories: EvalTask = {
   dependsOn: ["update-language-variant"],
   prompt: `Publish these customer stories as articles, titled "Customer story: <name>". A one-sentence body is fine.\n\n${CUSTOMER_STORIES.map(describeStory).join("\n")}`,
   check: async (client) => {
-    const items = await lookup("Listing content items", () =>
+    const items = await lookup("Listing content items", async () =>
       client.listContentItems().toAllPromise(),
     );
     if (isErr(items)) {
@@ -76,7 +76,7 @@ export const publishCustomerStories: EvalTask = {
     }
     const allItems = items.value.data.items;
 
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -87,7 +87,7 @@ export const publishCustomerStories: EvalTask = {
       (articleType?.elements ?? []).map((element) => [element.id, element.codename] as const),
     );
 
-    const taxonomyLookup = await lookupByCodename("topics taxonomy", () =>
+    const taxonomyLookup = await lookupByCodename("topics taxonomy", async () =>
       client.getTaxonomy().byTaxonomyCodename("topics").toPromise(),
     );
     if (isErr(taxonomyLookup)) {
@@ -100,7 +100,9 @@ export const publishCustomerStories: EvalTask = {
       ).map((term) => [term.id, term.codename] as const),
     );
 
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }
@@ -211,7 +213,7 @@ const collectStoryStates = async (
         return ok({ story, matches, item, variant: undefined });
       }
 
-      const variantLookup = await lookupByCodename(`${item.name} language variant`, () =>
+      const variantLookup = await lookupByCodename(`${item.name} language variant`, async () =>
         client
           .viewLanguageVariant()
           .byItemId(item.id)

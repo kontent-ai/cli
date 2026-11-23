@@ -14,5 +14,6 @@ export const deliverUsedIn: EvalTask = {
   id: "deliver-used-in",
   dependsOn: ["publish-customer-stories"],
   prompt: `We're thinking of retiring "${LAUNCH_ANNOUNCEMENT}". Which pages on our live site link to it? Save their titles to ${ANSWER_FILE} as { "titles": [...] }.`,
-  check: (_client, context) => gradeTitlesAnswer("titles-are-referrers", REFERRER_TITLES, context),
+  check: async (_client, context) =>
+    gradeTitlesAnswer("titles-are-referrers", REFERRER_TITLES, context),
 };

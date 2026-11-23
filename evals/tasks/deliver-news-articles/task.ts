@@ -14,5 +14,6 @@ export const deliverNewsArticles: EvalTask = {
   id: "deliver-news-articles",
   dependsOn: ["publish-customer-stories"],
   prompt: `Which articles on our live site are tagged News? Save their titles to ${ANSWER_FILE} as { "titles": [...] }.`,
-  check: (_client, context) => gradeTitlesAnswer("titles-are-news-only", NEWS_TITLES, context),
+  check: async (_client, context) =>
+    gradeTitlesAnswer("titles-are-news-only", NEWS_TITLES, context),
 };

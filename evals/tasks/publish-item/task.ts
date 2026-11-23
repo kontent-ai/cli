@@ -19,7 +19,7 @@ export const publishItem: EvalTask = {
   prompt:
     'Write an article called "Launch announcement" and publish it. It belongs in the Blog collection.',
   check: async (client) => {
-    const items = await lookup("Listing content items", () =>
+    const items = await lookup("Listing content items", async () =>
       client.listContentItems().toAllPromise(),
     );
     if (isErr(items)) {
@@ -33,7 +33,7 @@ export const publishItem: EvalTask = {
       ]);
     }
 
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -41,7 +41,7 @@ export const publishItem: EvalTask = {
     }
     const articleType = isSome(articleLookup.value) ? articleLookup.value.value.data : undefined;
 
-    const collections = await lookup("Listing collections", () =>
+    const collections = await lookup("Listing collections", async () =>
       client.listCollections().toPromise(),
     );
     if (isErr(collections)) {
@@ -51,7 +51,7 @@ export const publishItem: EvalTask = {
       (collection) => collection.codename === "blog",
     );
 
-    const variantLookup = await lookupByCodename("launch announcement language variant", () =>
+    const variantLookup = await lookupByCodename("launch announcement language variant", async () =>
       client
         .viewLanguageVariant()
         .byItemId(article.id)
@@ -63,7 +63,9 @@ export const publishItem: EvalTask = {
     }
     const variant = isSome(variantLookup.value) ? variantLookup.value.value.data : undefined;
 
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }

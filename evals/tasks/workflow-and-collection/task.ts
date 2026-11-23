@@ -9,12 +9,14 @@ export const workflowAndCollection: EvalTask = {
   prompt:
     "Content should go through a review before anyone publishes it, so set up a new workflow with a step called Review, codename review. We also want a separate collection called Blog, codename blog.",
   check: async (client) => {
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }
 
-    const collections = await lookup("Listing collections", () =>
+    const collections = await lookup("Listing collections", async () =>
       client.listCollections().toPromise(),
     );
     if (isErr(collections)) {
