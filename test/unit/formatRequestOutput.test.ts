@@ -41,7 +41,7 @@ describe("formatRequestOutput", () => {
     expect(output.stderr).toContainEqual(
       expect.objectContaining({
         level: "warning",
-        text: expect.stringContaining("137 bytes of text/html"),
+        text: expect.stringContaining("137 bytes of text/html") as unknown,
       }),
     );
     expect(output.isFailure).toBe(true);

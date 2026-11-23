@@ -55,4 +55,8 @@ jobs:
           cache: true
           require-lockfile: true
       - name: Test
+        if: matrix.node != '26'
         run: pnpm test
+      - name: Test with coverage
+        if: matrix.node == '26'
+        run: pnpm test:coverage

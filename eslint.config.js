@@ -5,11 +5,18 @@ export default defineConfig([
   globalIgnores(["dist", "node_modules", "coverage"]),
   {
     extends: [kontentAiConfig],
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "test/**/*.ts", "evals/**/*.ts", "scripts/**/*.ts"],
     languageOptions: {
       parserOptions: {
         project: ["./tsconfig.json"],
       },
+    },
+  },
+  {
+    // Contradicts Biome's lint/suspicious/useAwait (@kontent-ai/biome-config) for test fakes and helpers, same as kontent-ai/smart-link.
+    files: ["test/**/*.ts", "evals/**/*.ts", "scripts/**/*.ts"],
+    rules: {
+      "@typescript-eslint/promise-function-async": "off",
     },
   },
   {

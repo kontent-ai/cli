@@ -130,4 +130,4 @@ const hasStringMessage = (cause: unknown): cause is { message: string } =>
   typeof cause === "object" &&
   cause !== null &&
   "message" in cause &&
-  typeof (cause as { message: unknown }).message === "string";
+  typeof cause.message === "string";

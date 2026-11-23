@@ -66,7 +66,9 @@ describe("printPages", () => {
     const { stdout } = fakeStdout(Number.POSITIVE_INFINITY, 1);
 
     const printing = printPages(pagesOf(2, complete, fetched), stdout, false, 0);
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
 
     expect(fetched).toEqual([1]);
     stdout.emit("drain");

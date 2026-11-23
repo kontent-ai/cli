@@ -137,7 +137,7 @@ describe("request", () => {
     await request(effects, input({ input: "body.json" }));
 
     expect(effects.mapi.send).toHaveBeenCalledWith(
-      expect.objectContaining({ method: "POST", body: expect.any(Blob) }),
+      expect.objectContaining({ method: "POST", body: expect.any(Blob) as unknown }),
       "login-token",
     );
   });

@@ -229,7 +229,7 @@ describe("kontent mapi and dapi e2e", () => {
     const result = await dapi(`items/missing_${runSuffix}`);
 
     expect(result.exitCode).toBe(1);
-    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) });
+    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) as unknown });
     expect(result.stderr).toContain("HTTP 404");
   });
 
@@ -272,7 +272,7 @@ describe("kontent mapi and dapi e2e", () => {
     const result = await mapi(`items/${itemId}`);
 
     expect(result.exitCode).toBe(1);
-    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) });
+    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) as unknown });
     expect(result.stderr).toContain("HTTP 404");
   });
 

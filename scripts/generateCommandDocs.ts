@@ -29,7 +29,7 @@ type RecordedCommand = Readonly<{
 type CommandModuleLike = Readonly<{
   command: string;
   describe: string;
-  builder?: unknown;
+  builder?: ((recorder: unknown) => unknown) | Readonly<Record<string, unknown>>;
 }>;
 
 const scriptName = "kontent";
