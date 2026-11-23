@@ -41,15 +41,13 @@ const fakeEffects = (
   const { logger, infos } = fakeLogger();
   const effects = {
     logger,
-    config: { read: vi.fn(async () => Promise.resolve({ envId: options.storedEnvId })) },
-    bodyReader: { read: vi.fn(async () => Promise.resolve(options.body ?? ok(new Blob(["{}"])))) },
+    config: { read: vi.fn(async () => ({ envId: options.storedEnvId })) },
+    bodyReader: { read: vi.fn(async () => options.body ?? ok(new Blob(["{}"]))) },
     session: {
-      tokens: vi.fn(async () =>
-        Promise.resolve(options.tokens ?? ok({ accessToken: "login-token" })),
-      ),
+      tokens: vi.fn(async () => options.tokens ?? ok({ accessToken: "login-token" })),
     },
     mapi: {
-      send: vi.fn(async () => Promise.resolve(options.sent ?? ok(OK_RESPONSE))),
+      send: vi.fn(async () => options.sent ?? ok(OK_RESPONSE)),
     },
   } satisfies RequestEffects;
   return { effects, infos };

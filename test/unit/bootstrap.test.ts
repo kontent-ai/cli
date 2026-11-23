@@ -43,13 +43,13 @@ const fakeEffects = (scenario: Scenario = {}) => {
     clock: { now: () => Date.UTC(2026, 0, 15) },
     prompts: {
       spinner,
-      confirm: vi.fn(async () => Promise.resolve(scenario.confirm ?? none)),
-      select: vi.fn(async () => Promise.resolve(scenario.select ?? none)),
+      confirm: vi.fn(async () => scenario.confirm ?? none),
+      select: vi.fn(async () => scenario.select ?? none),
       note: vi.fn(),
     },
     files: {
-      entries: vi.fn(async () => Promise.resolve(ok(some(scenario.targetEntries ?? [])))),
-      readText: vi.fn(async (filePath: string) => Promise.resolve(ok(fromMap(files, filePath)))),
+      entries: vi.fn(async () => ok(some(scenario.targetEntries ?? []))),
+      readText: vi.fn(async (filePath: string) => ok(fromMap(files, filePath))),
       writeText: vi.fn(async (filePath: string, text: string) => {
         files.set(filePath, text);
         return await Promise.resolve(ok(undefined));
@@ -57,24 +57,20 @@ const fakeEffects = (scenario: Scenario = {}) => {
     },
     projects: {
       info: vi.fn(async () =>
-        Promise.resolve(
-          ok({
-            projectName: "My Project",
-            projectContainerId: "container-1",
-            subscriptionId: "sub-1",
-          }),
-        ),
+        ok({
+          projectName: "My Project",
+          projectContainerId: "container-1",
+          subscriptionId: "sub-1",
+        }),
       ),
       properties: vi.fn(async () =>
-        Promise.resolve(
-          ok([{ key: "SampleProjectType", value: scenario.sampleProjectType ?? "Kickstart" }]),
-        ),
+        ok([{ key: "SampleProjectType", value: scenario.sampleProjectType ?? "Kickstart" }]),
       ),
     },
     deliveryKeys: {
-      list: vi.fn(async () => Promise.resolve(ok(scenario.keys ?? [EXISTING_KEY]))),
-      viewApiKey: vi.fn(async () => Promise.resolve(ok("delivery-secret-abc"))),
-      create: vi.fn(async () => Promise.resolve(ok({ name: "new key", apiKey: "new-secret-xyz" }))),
+      list: vi.fn(async () => ok(scenario.keys ?? [EXISTING_KEY])),
+      viewApiKey: vi.fn(async () => ok("delivery-secret-abc")),
+      create: vi.fn(async () => ok({ name: "new key", apiKey: "new-secret-xyz" })),
     },
     templates: {
       download: vi.fn(async (_source: string, targetDir: string) => {
