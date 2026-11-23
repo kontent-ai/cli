@@ -14,6 +14,9 @@ my-kickstart/
 .claude/worktrees/
 .claude/plans/
 
+# Worktrees created by the `wt` script
+.worktrees/
+
 # Eval run reports; the folder itself stays tracked
 evals/results/*
 !evals/results/.gitkeep
