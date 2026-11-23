@@ -16,7 +16,7 @@ export type CliRunOptions = Readonly<{
 // Spawns the built binary with a curated environment: only the vars the CLI
 // actually reads, telemetry off, so a developer's shell cannot steer a run.
 // Resolves on any exit code - a non-zero exit is a result the tests assert on.
-export const runCli = (
+export const runCli = async (
   args: ReadonlyArray<string>,
   options: CliRunOptions = {},
 ): Promise<CliResult> =>

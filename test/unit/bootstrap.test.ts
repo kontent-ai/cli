@@ -43,20 +43,20 @@ const fakeEffects = (scenario: Scenario = {}) => {
     clock: { now: () => Date.UTC(2026, 0, 15) },
     prompts: {
       spinner,
-      confirm: vi.fn(() => Promise.resolve(scenario.confirm ?? none)),
-      select: vi.fn(() => Promise.resolve(scenario.select ?? none)),
+      confirm: vi.fn(async () => Promise.resolve(scenario.confirm ?? none)),
+      select: vi.fn(async () => Promise.resolve(scenario.select ?? none)),
       note: vi.fn(),
     },
     files: {
-      entries: vi.fn(() => Promise.resolve(ok(some(scenario.targetEntries ?? [])))),
-      readText: vi.fn((filePath: string) => Promise.resolve(ok(fromMap(files, filePath)))),
-      writeText: vi.fn((filePath: string, text: string) => {
+      entries: vi.fn(async () => Promise.resolve(ok(some(scenario.targetEntries ?? [])))),
+      readText: vi.fn(async (filePath: string) => Promise.resolve(ok(fromMap(files, filePath)))),
+      writeText: vi.fn(async (filePath: string, text: string) => {
         files.set(filePath, text);
-        return Promise.resolve(ok(undefined));
+        return await Promise.resolve(ok(undefined));
       }),
     },
     projects: {
-      info: vi.fn(() =>
+      info: vi.fn(async () =>
         Promise.resolve(
           ok({
             projectName: "My Project",
@@ -65,21 +65,21 @@ const fakeEffects = (scenario: Scenario = {}) => {
           }),
         ),
       ),
-      properties: vi.fn(() =>
+      properties: vi.fn(async () =>
         Promise.resolve(
           ok([{ key: "SampleProjectType", value: scenario.sampleProjectType ?? "Kickstart" }]),
         ),
       ),
     },
     deliveryKeys: {
-      list: vi.fn(() => Promise.resolve(ok(scenario.keys ?? [EXISTING_KEY]))),
-      viewApiKey: vi.fn(() => Promise.resolve(ok("delivery-secret-abc"))),
-      create: vi.fn(() => Promise.resolve(ok({ name: "new key", apiKey: "new-secret-xyz" }))),
+      list: vi.fn(async () => Promise.resolve(ok(scenario.keys ?? [EXISTING_KEY]))),
+      viewApiKey: vi.fn(async () => Promise.resolve(ok("delivery-secret-abc"))),
+      create: vi.fn(async () => Promise.resolve(ok({ name: "new key", apiKey: "new-secret-xyz" }))),
     },
     templates: {
-      download: vi.fn((_source: string, targetDir: string) => {
+      download: vi.fn(async (_source: string, targetDir: string) => {
         files.set(path.join(targetDir, ".env.template"), TEMPLATE);
-        return Promise.resolve(ok(undefined));
+        return await Promise.resolve(ok(undefined));
       }),
     },
     // Kickstart has no preview space, so nothing here is reached.

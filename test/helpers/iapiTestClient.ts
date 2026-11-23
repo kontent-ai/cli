@@ -15,12 +15,12 @@ export type IapiRoute = Readonly<{
 // it. Reusable by any command's tests, not just bootstrap.
 export const iapiTestClient = (routes: readonly IapiRoute[]): IapiClient => {
   const adapter: HttpAdapter = {
-    executeRequest: ({ url, method }) => {
+    executeRequest: async ({ url, method }) => {
       const route = routes.find((r) => r.method === method && r.path.test(url.pathname));
       if (route === undefined) {
         throw new Error(`No iapi stub for ${method} ${url.pathname}`);
       }
-      return Promise.resolve({
+      return await Promise.resolve({
         payload: route.reply,
         responseHeaders: [],
         status: 200,

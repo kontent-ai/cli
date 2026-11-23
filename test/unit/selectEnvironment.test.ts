@@ -20,9 +20,9 @@ const fakeEffects = (
   described: Result<EnvironmentInfo, MapiRequestError> = ok(INFO),
 ) =>
   ({
-    session: { tokens: vi.fn(() => Promise.resolve(tokens)) },
-    environments: { describe: vi.fn(() => Promise.resolve(described)) },
-    config: { write: vi.fn(() => Promise.resolve(ok(undefined))) },
+    session: { tokens: vi.fn(async () => Promise.resolve(tokens)) },
+    environments: { describe: vi.fn(async () => Promise.resolve(described)) },
+    config: { write: vi.fn(async () => Promise.resolve(ok(undefined))) },
   }) satisfies UseEffects;
 
 describe("selectEnvironment", () => {

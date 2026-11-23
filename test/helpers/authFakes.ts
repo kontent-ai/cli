@@ -7,24 +7,24 @@ import { ok, type Result } from "../../src/core/lib/result.js";
 
 export const fakeTokenStorage = (stored: TokenSet | null) =>
   ({
-    read: vi.fn(() => Promise.resolve(ok(stored))),
-    write: vi.fn(() => Promise.resolve(ok(undefined))),
-    clear: vi.fn(() => Promise.resolve(ok(undefined))),
+    read: vi.fn(async () => Promise.resolve(ok(stored))),
+    write: vi.fn(async () => Promise.resolve(ok(undefined))),
+    clear: vi.fn(async () => Promise.resolve(ok(undefined))),
   }) satisfies TokenStorage;
 
 export const fakeTokenRefresh = (reply?: Result<TokenSet, AuthError>) =>
   ({
-    refresh: vi.fn(() => Promise.resolve(reply ?? unexpected("tokenRefresh.refresh"))),
+    refresh: vi.fn(async () => Promise.resolve(reply ?? unexpected("tokenRefresh.refresh"))),
   }) satisfies TokenRefresh;
 
 export const fakeDeviceSignIn = (reply?: Result<TokenSet, AuthError>) =>
   ({
-    signIn: vi.fn(() => Promise.resolve(reply ?? unexpected("deviceSignIn.signIn"))),
+    signIn: vi.fn(async () => Promise.resolve(reply ?? unexpected("deviceSignIn.signIn"))),
   }) satisfies DeviceSignIn;
 
 export const fakeUserIdCache = () =>
   ({
-    ensure: vi.fn(() => Promise.resolve()),
+    ensure: vi.fn(async () => Promise.resolve()),
   }) satisfies UserIdCache;
 
 const unexpected = (name: string): never => {

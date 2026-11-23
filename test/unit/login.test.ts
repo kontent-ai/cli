@@ -23,7 +23,7 @@ const effectsWith = (
 ) =>
   ({
     logger: createLogger("none"),
-    session: { tokens: vi.fn(() => Promise.resolve(replies.session)) },
+    session: { tokens: vi.fn(async () => Promise.resolve(replies.session)) },
     tokens: fakeTokenStorage(null),
     deviceSignIn: fakeDeviceSignIn(replies.signIn),
     userIds: fakeUserIdCache(),

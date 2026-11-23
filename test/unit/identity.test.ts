@@ -18,14 +18,14 @@ const effectsWith = (tokens: IdentityEffects["tokens"], config: CliConfig) =>
   ({
     tokens,
     config: {
-      read: vi.fn(() => Promise.resolve(config)),
-      write: vi.fn(() => Promise.resolve(ok(undefined))),
+      read: vi.fn(async () => Promise.resolve(config)),
+      write: vi.fn(async () => Promise.resolve(ok(undefined))),
     },
     newDeviceId: () => GENERATED_DEVICE_ID,
   }) satisfies IdentityEffects;
 
 const failingStorage = (error: AuthError) => ({
-  read: vi.fn(() => Promise.resolve(err(error))),
+  read: vi.fn(async () => Promise.resolve(err(error))),
 });
 
 describe("resolveIdentity userId gating", () => {

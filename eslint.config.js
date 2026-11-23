@@ -13,13 +13,6 @@ export default defineConfig([
     },
   },
   {
-    // Test fakes with a block body return promises without awaiting; this rule would make them async and Biome's useAwait then rejects them.
-    files: ["test/**/*.ts"],
-    rules: {
-      "@typescript-eslint/promise-function-async": "off",
-    },
-  },
-  {
     files: ["src/core/**/*.ts"],
     rules: {
       "@typescript-eslint/no-restricted-imports": [
