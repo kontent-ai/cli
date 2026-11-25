@@ -1,11 +1,18 @@
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
 import { errorMessage } from "../../../core/lib/error.js";
+import { isNodeFetchTimeoutError, NODE_FETCH_TIMEOUT_MESSAGE } from "../http/nodeFetchTimeout.js";
 import { statusLine } from "../http/statusLine.js";
 
 export const formatLearnError = (error: KontentSdkError): string =>
   match(error.details)
     .returnType<string>()
+    .when(isNodeFetchTimeoutError, () =>
+      joinLines([
+        `Could not reach the Learn service: ${NODE_FETCH_TIMEOUT_MESSAGE}`,
+        urlLine(error),
+      ]),
+    )
     // core-sdk's own message only points at the wrapped error; the cause is what the user can act on.
     .with({ reason: "adapterError" }, ({ originalError }) =>
       joinLines([

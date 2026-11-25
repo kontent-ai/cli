@@ -1,5 +1,6 @@
 import type { BaseUrl, JsonValue } from "@kontent-ai/core-sdk";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { MAX_RETRY_DELAY_MS } from "../../src/cli/adapters/http/retryDelay.js";
 import { createDocs } from "../../src/cli/adapters/learn/docs.js";
 import {
   getEndpointDetails,
@@ -116,6 +117,37 @@ describe("docs queries", () => {
     assertErr(result);
     expect(result.error.kind).toBe("request-failed");
     expect(result.error.message).toContain("400 Bad Request");
+  });
+
+  it("waits no longer than the retry cap when a 429 asks for more", async () => {
+    vi.useFakeTimers();
+    try {
+      const { effects, requests } = run([
+        {
+          method: "GET",
+          path: /^\/search$/,
+          replies: [
+            {
+              status: 429,
+              statusText: "Too Many Requests",
+              headers: [{ name: "Retry-After", value: "120" }],
+            },
+            { payload: { json: [searchItem("Taxonomy")] } },
+          ],
+        },
+      ]);
+      const pending = searchDocs(effects, { query: "taxonomy", limit: 10 });
+
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DELAY_MS - 1);
+      expect(requests).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+
+      const result = await pending;
+      expect(requests).toHaveLength(2);
+      assertOk(result);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the candidates the detail route ranks, best first", async () => {

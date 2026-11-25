@@ -4,7 +4,8 @@ export type TokenSet = Readonly<{
   expiresAt?: number;
   // Small account label derived from the id token at login time. We persist
   // this instead of the raw id token, whose size overflows Windows' credential
-  // blob limit (2560 chars).
+  // limit: 2560 bytes of secret, which @napi-rs/keyring stores as UTF-16, so
+  // about 1280 characters (the entry name does not count).
   identifier?: string;
 }>;
 
@@ -27,7 +28,19 @@ export type AuthError =
   // A rejected refresh token after which the stored tokens were cleared. Unlike
   // not-logged-in, the user did log in on this machine.
   | { readonly kind: "session-expired"; readonly refreshError: AuthError }
-  | { readonly kind: "storage-read-failed"; readonly cause: unknown }
-  | { readonly kind: "storage-write-failed"; readonly cause: unknown }
-  | { readonly kind: "storage-clear-failed"; readonly cause: unknown }
+  | StorageError<"storage-read-failed">
+  | StorageError<"storage-write-failed">
+  | StorageError<"storage-clear-failed">
   | { readonly kind: "unknown"; readonly cause: unknown };
+
+/**
+ * Why no keyring could be used at all, as opposed to a failure of a working one:
+ * the native module did not load, or the platform store is missing or locked.
+ */
+export type KeyringUnavailability = "native-module-missing" | "store-inaccessible";
+
+type StorageError<TKind extends string> = Readonly<{
+  kind: TKind;
+  cause: unknown;
+  unavailable?: KeyringUnavailability;
+}>;

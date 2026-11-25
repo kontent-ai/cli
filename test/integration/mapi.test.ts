@@ -1,3 +1,4 @@
+import { AdapterParseError } from "@kontent-ai/core-sdk";
 import { describe, expect, it, vi } from "vitest";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../package.json" with { type: "json" };
@@ -5,6 +6,7 @@ import { createRawClient, type RawRequest } from "../../src/cli/adapters/http/ra
 import { createLogger } from "../../src/cli/log.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { type HttpRoute, httpTestAdapter } from "../helpers/httpTestAdapter.js";
+import { nodeFetchTimeoutError } from "../helpers/nodeFetchTimeoutError.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const BASE_URL = "https://manage.test/v2";
@@ -258,5 +260,29 @@ describe("createRawClient", () => {
     ]);
 
     expect(result).toEqual({ kind: "err", error: "socket hang up" });
+  });
+
+  it("leaves timing out to Node's fetch", async () => {
+    const { requests } = await run([typesRoute]);
+
+    expect(requests[0]?.abortSignal).toBeUndefined();
+  });
+
+  // The body timeout fails reading the body, which core-sdk wraps.
+  it.each([
+    ["headers", nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT")],
+    [
+      "body",
+      new AdapterParseError({
+        message: "Failed to parse the response.",
+        error: nodeFetchTimeoutError("UND_ERR_BODY_TIMEOUT"),
+      }),
+    ],
+  ])("reports Node's %s timeout as a timeout", async (_timeout, thrown) => {
+    const { result } = await run([
+      { method: "GET", path: /\/types$/, replies: [{ throws: thrown }] },
+    ]);
+
+    expect(result).toEqual({ kind: "err", error: "The server did not respond in time." });
   });
 });

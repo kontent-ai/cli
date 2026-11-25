@@ -1,5 +1,6 @@
 import { inspect } from "node:util";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
+import { isNodeFetchTimeoutError, NODE_FETCH_TIMEOUT_MESSAGE } from "../http/nodeFetchTimeout.js";
 import { statusLine } from "../http/statusLine.js";
 
 export type IapiErrorContext = Readonly<{ isVerbose: boolean }>;
@@ -12,7 +13,7 @@ export const formatIapiError = (error: KontentSdkError, context: IapiErrorContex
   const apiResponse = "kontentErrorResponse" in details ? details.kontentErrorResponse : undefined;
 
   const lines = [
-    `[${details.reason}] ${error.message}`,
+    headline(error),
     "status" in details ? statusLine(details.status, details.statusText) : undefined,
     apiResponse?.message ? `message: ${apiResponse.message}` : undefined,
     apiResponse?.request_id ? `request-id: ${apiResponse.request_id}` : undefined,
@@ -25,3 +26,8 @@ export const formatIapiError = (error: KontentSdkError, context: IapiErrorContex
 
   return lines.filter((line) => line !== undefined).join("\n");
 };
+
+const headline = (error: KontentSdkError): string =>
+  isNodeFetchTimeoutError(error.details)
+    ? NODE_FETCH_TIMEOUT_MESSAGE
+    : `[${error.details.reason}] ${error.message}`;

@@ -1,5 +1,5 @@
 import type { Writable } from "node:stream";
-import { chalkStderr } from "chalk";
+import { styleText } from "node:util";
 import type { Argv } from "yargs";
 
 export const ALL_LOG_LEVELS = ["none", "standard", "verbose"] as const;
@@ -19,6 +19,10 @@ export type Logger = Readonly<{
   error: (...messages: ReadonlyArray<string>) => void;
   isVerbose: boolean;
 }>;
+
+/** Colors text bound for stderr, so NO_COLOR and a non-TTY stderr turn it off. */
+export const styleStderr = (format: Parameters<typeof styleText>[0], text: string): string =>
+  styleText(format, text, { stream: process.stderr });
 
 export const addLogLevelOptions = <PreviousOptions>(
   inputYargs: Argv<PreviousOptions>,
@@ -54,12 +58,12 @@ export const createLogger = (verbosity: LogLevel, sink: Writable = process.stder
     warning: (logAtLevel, ...messages) =>
       write(
         logAtLevel,
-        messages.map((message) => `${chalkStderr.yellow("Warning:")} ${message}`),
+        messages.map((message) => `${styleStderr("yellow", "Warning:")} ${message}`),
       ),
     error: (...messages) =>
       write(
         "standard",
-        messages.map((message) => `${chalkStderr.red("Error:")} ${message}`),
+        messages.map((message) => `${styleStderr("red", "Error:")} ${message}`),
       ),
     isVerbose: verbosity === "verbose",
   };

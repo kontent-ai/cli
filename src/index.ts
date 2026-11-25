@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import chalk, { chalkStderr } from "chalk";
 import { isCI } from "ci-info";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -15,7 +14,7 @@ import {
   registerTelemetrySignalFlush,
 } from "./cli/adapters/telemetry/tracking.js";
 import { commandsToRegister } from "./cli/commands/registry.js";
-import { addLogLevelOptions } from "./cli/log.js";
+import { addLogLevelOptions, styleStderr } from "./cli/log.js";
 import type { CommandDeps } from "./cli/types/yargs.js";
 import { resolveKontentTarget } from "./core/kontentUrl/kontentUrl.js";
 import { isErr } from "./core/lib/result.js";
@@ -54,7 +53,7 @@ const initialYargs = emptyYargs
   .scriptName("kontent")
   .locale("en")
   .epilogue("Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai")
-  .demandCommand(1, chalk.red("You need to provide a command to run."))
+  .demandCommand(1, styleStderr("red", "You need to provide a command to run."))
   .strict()
   .config("configFile", "Path to a JSON file with CLI parameters.")
   .help("h")
@@ -74,7 +73,7 @@ const kontentTarget = resolveKontentTarget({
     typeof __KONTENT_URL__ === "string" && __KONTENT_URL__ !== "" ? __KONTENT_URL__ : undefined,
 });
 if (isErr(kontentTarget)) {
-  console.error(`${chalkStderr.red("Error:")} ${kontentTarget.error}`);
+  console.error(`${styleStderr("red", "Error:")} ${kontentTarget.error}`);
   process.exit(1);
 }
 
