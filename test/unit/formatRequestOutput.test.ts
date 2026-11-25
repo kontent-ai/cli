@@ -128,8 +128,11 @@ describe("formatRequestOutput", () => {
     const output = formatRequestOutput(err({ kind: "config-unreadable", message }), false);
 
     expect(output.stderr).toEqual([{ level: "error", text: message }]);
-    expect(output.isFailure).toBe(true);
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "config-unreadable" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: "config-unreadable",
+    });
   });
 
   it("points at the stored environment on 403", () => {

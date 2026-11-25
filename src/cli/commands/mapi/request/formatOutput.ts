@@ -31,7 +31,7 @@ const formatErrorOutput = (error: RequestError): PassthroughOutput =>
   match(error)
     .returnType<PassthroughOutput>()
     .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
-    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.kind, e.message))
+    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.message, failureOutcome(e.kind)))
     .with({ kind: "auth-failed" }, ({ error: authError }) =>
       failedOutput(
         authError.kind === "not-logged-in"
