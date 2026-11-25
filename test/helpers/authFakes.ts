@@ -14,7 +14,7 @@ export const fakeTokenStorage = (stored: TokenSet | null) =>
 
 export const fakeLegacyTokens = () =>
   ({
-    remove: vi.fn(() => Promise.resolve()),
+    remove: vi.fn(async () => undefined),
   }) satisfies LegacyEntry;
 
 export const fakeTokenRefresh = (reply?: Result<TokenSet, AuthError>) =>

@@ -17,12 +17,12 @@ vi.mock("@napi-rs/keyring", () => {
   function AsyncEntry(service: string, account: string) {
     const key = JSON.stringify([service, account]);
     return {
-      getPassword: () => Promise.resolve(keychain.get(key)),
-      setPassword: (password: string) => {
+      getPassword: async () => keychain.get(key),
+      setPassword: async (password: string) => {
         keychain.set(key, password);
-        return Promise.resolve();
+        return await Promise.resolve();
       },
-      deleteCredential: () => Promise.resolve(keychain.delete(key)),
+      deleteCredential: async () => keychain.delete(key),
     };
   }
   return { AsyncEntry };
@@ -52,7 +52,7 @@ const logoutOf = async (context: LoginContext) =>
     logger: createLogger("none"),
     tokens: createKeyringStorage(context),
     legacyTokens: createLegacyTokens(createLogger("none")),
-    config: { write: vi.fn(() => Promise.resolve(ok(undefined))) },
+    config: { write: vi.fn(async () => ok(undefined)) },
   });
 
 describe("logins of different contexts", () => {

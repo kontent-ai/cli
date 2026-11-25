@@ -18,7 +18,7 @@ import {
 // A keychain that refuses every call, for the legacy delete's failure path.
 vi.mock("@napi-rs/keyring", () => ({
   AsyncEntry: function AsyncEntry() {
-    return { getPassword: () => Promise.reject(new Error("keychain locked")) };
+    return { getPassword: async () => Promise.reject(new Error("keychain locked")) };
   },
 }));
 
@@ -93,10 +93,8 @@ describe("the legacy keyring entry", () => {
     const effects = {
       ...effectsWith({ session: err({ kind: "not-logged-in" }), signIn: ok(FRESH_TOKENS) }),
       tokens: {
-        write: vi.fn(() =>
-          Promise.resolve(
-            err({ kind: "storage-write-failed", cause: new Error("locked") } as const),
-          ),
+        write: vi.fn(async () =>
+          err({ kind: "storage-write-failed", cause: new Error("locked") } as const),
         ),
       },
     };

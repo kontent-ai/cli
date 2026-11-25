@@ -10,7 +10,7 @@ import { fakeLegacyTokens, fakeTokenStorage } from "../helpers/authFakes.js";
 // A keychain that refuses every call, for the legacy delete's failure path.
 vi.mock("@napi-rs/keyring", () => ({
   AsyncEntry: function AsyncEntry() {
-    return { getPassword: () => Promise.reject(new Error("keychain locked")) };
+    return { getPassword: async () => Promise.reject(new Error("keychain locked")) };
   },
 }));
 
@@ -99,7 +99,7 @@ describe("logout when the legacy keyring entry cannot be removed", () => {
       logger,
       tokens: fakeTokenStorage(null),
       legacyTokens: createLegacyTokens(logger),
-      config: { write: vi.fn(() => Promise.resolve(ok(undefined))) },
+      config: { write: vi.fn(async () => ok(undefined)) },
     });
 
     expect(result).toEqual(ok(undefined));
