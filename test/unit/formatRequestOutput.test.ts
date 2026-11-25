@@ -44,7 +44,7 @@ describe("formatRequestOutput", () => {
         text: expect.stringContaining("137 bytes of text/html") as unknown,
       }),
     );
-    expect(output.isFailure).toBe(true);
+    expect(output.outcome).toMatchObject({ status: "error", reason: "failure" });
   });
 
   it("announces an empty success body on stderr instead of leaving stdout silent", () => {
@@ -55,7 +55,7 @@ describe("formatRequestOutput", () => {
 
     expect(output.stdout).toBe("");
     expect(output.stderr).toEqual([{ level: "info", text: "HTTP 204" }]);
-    expect(output.isFailure).toBe(false);
+    expect(output.outcome).toMatchObject({ status: "success" });
   });
 
   it("prints a 4xx body on stdout and its diagnosis on stderr", () => {
@@ -72,8 +72,9 @@ describe("formatRequestOutput", () => {
     expect(output.stdout).toContain("The requested content type was not found.");
     expect(stderrText(output)).toContain("HTTP 404");
     expect(stderrText(output)).not.toContain("The requested content type was not found.");
-    expect(output.telemetry).toEqual({
-      outcome: "fail",
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
       errorCode: "http-404",
       properties: { "status-code": 404, "auth-source": "login" },
     });
@@ -91,7 +92,7 @@ describe("formatRequestOutput", () => {
 
     expect(output.stdout).toBe("");
     expect(stderrText(output)).toContain("fetch failed: getaddrinfo ENOTFOUND");
-    expect(output.isFailure).toBe(true);
+    expect(output.outcome).toMatchObject({ status: "error", reason: "failure" });
   });
 
   it("explains where a credential can come from when none is found", () => {
@@ -103,7 +104,11 @@ describe("formatRequestOutput", () => {
     expect(stderrText(output)).toBe(
       "No Management API credential found. Run `kontent login`, or pass --mapiKey <key>, send an Authorization header, or set KONTENT_MAPI_KEY.",
     );
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "auth:not-logged-in" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "auth-required",
+      errorCode: "auth:not-logged-in",
+    });
   });
 
   it("tells how to set an environment when none is found", () => {
@@ -111,7 +116,11 @@ describe("formatRequestOutput", () => {
 
     expect(stderrText(output)).toContain("--envId <id>");
     expect(stderrText(output)).toContain("kontent environment use <id>");
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "missing-env-id" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: "missing-env-id",
+    });
   });
 
   it("fails with the config error when the stored environment cannot be read", () => {
@@ -119,8 +128,11 @@ describe("formatRequestOutput", () => {
     const output = formatRequestOutput(err({ kind: "config-unreadable", message }), false);
 
     expect(output.stderr).toEqual([{ level: "error", text: message }]);
-    expect(output.isFailure).toBe(true);
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "config-unreadable" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: "config-unreadable",
+    });
   });
 
   it("points at the stored environment on 403", () => {
@@ -142,6 +154,27 @@ describe("formatRequestOutput", () => {
 
     expect(stderrText(output)).toContain("Run `kontent login` to sign in again.");
     expect(stderrText(output)).not.toContain("Used the stored default environment");
+  });
+
+  it.each([
+    { authSource: "login", reason: "auth-required" },
+    { authSource: "mapi-key", reason: "failure" },
+    { authSource: "header", reason: "failure" },
+  ] as const)("asks for a new login on a 401 only for the $authSource token: $reason", ({
+    authSource,
+    reason,
+  }) => {
+    const output = formatRequestOutput(
+      outcome({ statusCode: 401, statusText: "Unauthorized" }, { authSource }),
+      false,
+    );
+
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason,
+      errorCode: "http-401",
+      properties: { "status-code": 401, "auth-source": authSource },
+    });
   });
 
   it("leaves the stored-environment hint out when --envId was passed", () => {

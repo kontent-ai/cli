@@ -1,6 +1,7 @@
 import type { Argv } from "yargs";
 import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
+import { runCommand } from "../../shared/runCommand.js";
 import { MAX_LIMIT, withDocsOptions } from "../cliOptions.js";
 
 export const searchCommand = {
@@ -32,8 +33,9 @@ export const register: RegisterCommand = (sub, deps) =>
     command: searchCommand.command,
     describe: searchCommand.describe,
     builder: (b) => searchCommand.builder(b),
-    handler: async (args) => {
-      const { runSearch } = await import("../runDocs.js");
-      await runSearch(args, deps);
-    },
+    handler: async (args) =>
+      runCommand({ trackAs: "docs search", args, deps }, async (logger) => {
+        const { runSearch } = await import("../runDocs.js");
+        return runSearch(args, logger);
+      }),
   });

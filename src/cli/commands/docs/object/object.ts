@@ -1,6 +1,7 @@
 import type { Argv } from "yargs";
 import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
+import { runCommand } from "../../shared/runCommand.js";
 import { withDocsOptions } from "../cliOptions.js";
 
 export const objectCommand = {
@@ -30,8 +31,9 @@ export const register: RegisterCommand = (sub, deps) =>
     command: objectCommand.command,
     describe: objectCommand.describe,
     builder: (b) => objectCommand.builder(b),
-    handler: async (args) => {
-      const { runObject } = await import("../runDocs.js");
-      await runObject(args, deps);
-    },
+    handler: async (args) =>
+      runCommand({ trackAs: "docs object", args, deps }, async (logger) => {
+        const { runObject } = await import("../runDocs.js");
+        return runObject(args, logger);
+      }),
   });

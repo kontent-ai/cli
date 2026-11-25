@@ -1,4 +1,5 @@
 import type { RegisterCommand } from "../../../../types/yargs.js";
+import { runCommand } from "../../../shared/runCommand.js";
 
 export const register: RegisterCommand = (sub, deps) =>
   sub.command({
@@ -16,8 +17,9 @@ export const register: RegisterCommand = (sub, deps) =>
           default: "./karma-nextjs-app",
           describe: "Target directory for the cloned app (must be empty or non-existent)",
         }),
-    handler: async (args) => {
-      const { runBootstrap } = await import("./runBootstrap.js");
-      await runBootstrap(args, deps);
-    },
+    handler: async (args) =>
+      runCommand({ trackAs: "project sample bootstrap", args, deps }, async (logger) => {
+        const { runBootstrap } = await import("./runBootstrap.js");
+        return runBootstrap(args, deps, logger);
+      }),
   });

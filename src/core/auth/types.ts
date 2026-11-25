@@ -1,12 +1,12 @@
 export type TokenSet = Readonly<{
   accessToken: string;
-  refreshToken?: string;
-  expiresAt?: number;
+  refreshToken?: string | undefined;
+  expiresAt?: number | undefined;
   // Small account label derived from the id token at login time. We persist
   // this instead of the raw id token, whose size overflows Windows' credential
   // limit: 2560 bytes of secret, which @napi-rs/keyring stores as UTF-16, so
   // about 1280 characters (the entry name does not count).
-  identifier?: string;
+  identifier?: string | undefined;
 }>;
 
 export type AuthDecision =
@@ -20,7 +20,11 @@ export type AuthError =
   | { readonly kind: "expired-token" }
   | { readonly kind: "discovery-failed"; readonly cause: unknown }
   | { readonly kind: "device-auth-failed"; readonly cause: unknown }
-  | { readonly kind: "poll-failed"; readonly code: string; readonly description?: string }
+  | {
+      readonly kind: "poll-failed";
+      readonly code: string;
+      readonly description?: string | undefined;
+    }
   | { readonly kind: "refresh-failed"; readonly cause: unknown }
   // Auth0 answered invalid_grant: the refresh token is expired, revoked, or
   // already rotated. Unlike refresh-failed, this is not retryable.

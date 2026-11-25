@@ -4,6 +4,7 @@ import type {
   MapiRequestError,
 } from "../../src/cli/adapters/mapi/environments.js";
 import {
+  formatUseFailure,
   selectEnvironment,
   type UseEffects,
 } from "../../src/cli/commands/environment/runEnvironment.js";
@@ -65,5 +66,28 @@ describe("selectEnvironment", () => {
     expect(result).toEqual(
       ok({ kind: "unverified", envId: ENV_ID, reason: { kind: "not-logged-in" } }),
     );
+  });
+});
+
+describe("formatUseFailure", () => {
+  it("asks for a new login when the Management API rejects the login token", () => {
+    expect(
+      formatUseFailure({ kind: "environment-info-failed", status: 401, message: "" }, ENV_ID),
+    ).toEqual({
+      message: "Your session is no longer valid. Run `kontent login` to sign in again.",
+      outcome: { status: "error", reason: "auth-required", errorCode: "environment-info-failed" },
+    });
+  });
+
+  it.each([
+    { kind: "environment-info-failed", status: 404, message: "Not found" },
+    { kind: "environment-info-failed", status: undefined, message: "fetch failed" },
+    { kind: "config-write-failed", message: "EACCES" },
+  ] as const)("fails without asking for a login on $kind $status", (error) => {
+    expect(formatUseFailure(error, ENV_ID).outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: error.kind,
+    });
   });
 });

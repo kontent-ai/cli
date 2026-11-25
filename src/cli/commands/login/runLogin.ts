@@ -15,8 +15,9 @@ import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/sto
 import { type Session, session } from "../../adapters/auth/tokenAccess.js";
 import { createUserIdCache, type UserIdCache } from "../../adapters/auth/userId.js";
 import { systemClock } from "../../adapters/clock/clock.js";
-import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
+import type { Logger } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
+import type { CommandOutcome } from "../shared/commandOutcome.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
 
 export type LoginOutcome = Readonly<{
@@ -49,20 +50,22 @@ export const login = async (effects: LoginEffects): Promise<Result<LoginOutcome,
     .otherwise(async (error) => err(error));
 };
 
-export const runLogin = async (args: LogOptions, deps: CommandDeps): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = deps.telemetry.startCommandTracking("login", logger);
-
+export const runLogin = async (deps: CommandDeps, logger: Logger): Promise<CommandOutcome> => {
   const result = await login(createLoginEffects(logger, deps.kontentTarget));
   if (isErr(result)) {
-    tracker.fail(result.error.kind);
     logger.error(formatAuthError(result.error));
-    process.exitCode = 1;
-    return;
+    return loginFailureOutcome(result.error);
   }
-  tracker.succeed();
   logger.info("standard", formatLoginOutcome(result.value));
+  return { status: "success" };
 };
+
+// Denying access in the browser is the user stopping, like an aborted prompt.
+export const loginFailureOutcome = (error: AuthError): CommandOutcome => ({
+  status: "error",
+  reason: error.kind === "access-denied" ? "cancelled" : "failure",
+  errorCode: error.kind,
+});
 
 const signInWithDeviceFlow = async (
   effects: LoginEffects,

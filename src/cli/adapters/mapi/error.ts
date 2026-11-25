@@ -28,7 +28,7 @@ export const mapiErrorStatus = (cause: unknown): number | undefined =>
 
 const requestInfo = (
   originalError: unknown,
-): { method?: string; url?: string; status?: number } => {
+): { method?: string | undefined; url?: string | undefined; status?: number | undefined } => {
   if (typeof originalError !== "object" || originalError === null) {
     return {};
   }

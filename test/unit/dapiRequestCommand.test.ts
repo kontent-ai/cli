@@ -3,7 +3,11 @@ import yargs from "yargs";
 import { requestCommand } from "../../src/cli/commands/dapi/request/request.js";
 import { addLogLevelOptions } from "../../src/cli/log.js";
 
-type Parsed = Readonly<{ endpoint?: string; header?: ReadonlyArray<string>; maxPages?: number }>;
+type Parsed = Readonly<{
+  endpoint?: string | undefined;
+  header?: ReadonlyArray<string> | undefined;
+  maxPages?: number | undefined;
+}>;
 
 // The real command definition with a handler that only records what yargs parsed.
 const parse = async (

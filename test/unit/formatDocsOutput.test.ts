@@ -8,8 +8,7 @@ describe("formatDocsOutput", () => {
     expect(formatDocsOutput(ok([{ title: "Language variant" }]), false)).toEqual({
       stdout: `[\n  {\n    "title": "Language variant"\n  }\n]\n`,
       error: undefined,
-      isFailure: false,
-      telemetry: { outcome: "succeed" },
+      outcome: { status: "success" },
     });
   });
 
@@ -44,8 +43,7 @@ describe("formatDocsOutput", () => {
     expect(output).toEqual({
       stdout: "",
       error: "The Learn service is unreachable.",
-      isFailure: true,
-      telemetry: { outcome: "fail", errorCode: "request-failed" },
+      outcome: { status: "error", reason: "failure", errorCode: "request-failed" },
     });
   });
 });

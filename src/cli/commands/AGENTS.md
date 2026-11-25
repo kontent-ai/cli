@@ -5,10 +5,13 @@
 - A command whose options have behavior of their own (`nargs`, arrays, `.check`) exports its definition (`command`, `describe`, `builder`) as `<cmd>Command` next to `register`; parser tests reuse it with a capturing handler.
 - `run<Cmd>.ts` exports two functions:
   - `<cmd>(effects)`: the workflow. Effects in, `Result` out; sequences the effects and calls core.
-  - `run<Cmd>(args, deps)`: builds the real effects from adapters, calls the workflow, and presents the result: messages, streams, `process.exitCode`, the telemetry tracker.
+  - `run<Cmd>(args, deps, logger)`: builds the real effects from adapters, calls the workflow, presents the result (messages, streams) and returns an outcome.
 - New command: export `register: RegisterCommand` (see `login/login.ts`), add it to `commandsToRegister` in `registry.ts` or a parent's `subcommandsToRegister`, then run `pnpm docs:generate`.
 - A command gets its own folder when it has its own README page or files beyond its register file. Otherwise its register file sits in the group folder and it is documented in the group's README; subcommands that share a workflow use one group-level `run<Group>.ts`.
 - `shared/` holds presentation used by several command groups. A workflow wanted by several groups is either plumbing (an adapter) or a rule (core).
+- A command returns an outcome; it never sets the exit code or reports telemetry itself. The shared wrapper does both.
+- Exit codes (`src/core/lib/exitCodes.ts`): 0 success, 1 failure, 2 usage error (caught by yargs, never an outcome), 4 when logging in is the fix, 130 cancelled.
+- Expected failures are outcomes, not throws.
 
 ## Workflows
 
@@ -21,8 +24,7 @@
 
 ## Run functions
 
-- Signature `run<Cmd>(args, deps)`: parsed arguments first, `CommandDeps` second, anything specific to the command after. Wiring that is fixed per subcommand (telemetry name, which workflow) stays out of `args`.
-- A `run<Cmd>` that logs starts with `const logger = createLoggerFromArgs(args)`; a payload-only one takes none.
+- Signature `run<Cmd>(args, deps, logger)`: parsed arguments, `CommandDeps`, the logger, each only when used, then anything specific to the command. Wiring that is fixed per subcommand (telemetry name, which workflow) stays out of `args`.
 - Resolving arguments into real inputs (the `--input` file, stdin) happens here, through adapters.
 
 ## Environment id

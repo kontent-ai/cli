@@ -3,6 +3,8 @@ import {
   decideAfterRefreshFailure,
   decideAuth,
   EXPIRY_SKEW_MS,
+  isLoginRequired,
+  isSessionRejected,
 } from "../../src/core/auth/session.js";
 import type { TokenSet } from "../../src/core/auth/types.js";
 
@@ -55,5 +57,30 @@ describe("decideAfterRefreshFailure", () => {
     [{ kind: "discovery-failed", cause: new Error("ENOTFOUND") }, "keep-session"],
   ] as const)("maps %o to %s", (error, expected) => {
     expect(decideAfterRefreshFailure(error)).toBe(expected);
+  });
+});
+
+describe("isLoginRequired", () => {
+  it.each([
+    [{ kind: "not-logged-in" }, true],
+    [{ kind: "session-expired", refreshError: { kind: "refresh-rejected", cause: null } }, true],
+    [{ kind: "expired-token" }, false],
+    [{ kind: "access-denied" }, false],
+    [{ kind: "refresh-failed", cause: new Error("ETIMEDOUT") }, false],
+    [{ kind: "storage-read-failed", cause: new Error("locked") }, false],
+  ] as const)("maps %o to %s", (error, expected) => {
+    expect(isLoginRequired(error)).toBe(expected);
+  });
+});
+
+describe("isSessionRejected", () => {
+  it.each([
+    [{ status: 401, isLoginToken: true }, true],
+    [{ status: 401, isLoginToken: false }, false],
+    [{ status: 403, isLoginToken: true }, false],
+    [{ status: 500, isLoginToken: true }, false],
+    [{ status: undefined, isLoginToken: true }, false],
+  ] as const)("maps %o to %s", (response, expected) => {
+    expect(isSessionRejected(response)).toBe(expected);
   });
 });
