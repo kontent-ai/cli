@@ -71,19 +71,23 @@ describe("request body reader", () => {
     expect(result.error.message).toContain("ENOENT");
   });
 
-  // Root ignores the mode bits, so the file would open either way.
-  it.skipIf(process.getuid?.() === 0)("reports a file it may not read", async () => {
-    const path = join(tempDir, "noperm.json");
-    await writeFile(path, "{}");
-    await chmod(path, 0o000);
+  // Root ignores the mode bits, and Windows chmod only toggles the read-only
+  // attribute, so in both cases the file stays readable.
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "reports a file it may not read",
+    async () => {
+      const path = join(tempDir, "noperm.json");
+      await writeFile(path, "{}");
+      await chmod(path, 0o000);
 
-    const result = await createRequestBodyReader(pipedStdin("")).read(path);
-    // Back to readable so the suite's rm of the temp dir cannot trip on it.
-    await chmod(path, 0o644);
+      const result = await createRequestBodyReader(pipedStdin("")).read(path);
+      // Back to readable so the suite's rm of the temp dir cannot trip on it.
+      await chmod(path, 0o644);
 
-    assertErr(result);
-    expect(result.error.message).toContain("EACCES");
-  });
+      assertErr(result);
+      expect(result.error.message).toContain("EACCES");
+    },
+  );
 
   it("rejects a directory", async () => {
     const result = await createRequestBodyReader(pipedStdin("")).read(tempDir);
