@@ -1,5 +1,6 @@
 allowBuilds:
   esbuild: true
+minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@kontent-ai/*'
 verifyDepsBeforeRun: error

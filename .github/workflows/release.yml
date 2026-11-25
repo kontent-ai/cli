@@ -6,22 +6,16 @@ on:
 
 permissions:
   contents: read
-  # Required for npm OIDC Trusted Publishing
-  id-token: write
 
 jobs:
-  publish:
+  preflight:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Setup pnpm and Node.js
-        uses: pnpm/setup@v2
-        with:
-          runtime: node@26
-          cache: true
-          require-lockfile: true
+          fetch-depth: 0
 
       - name: Verify tag matches package.json version
         run: |
@@ -32,16 +26,53 @@ jobs:
             exit 1
           fi
 
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: ESLint
-        run: pnpm lint
-      - name: Biome
-        run: pnpm biome:check
-      - name: Test
-        run: pnpm test
+      - name: Prerelease flag must match the version
+        env:
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-'; then HAS_SUFFIX=true; else HAS_SUFFIX=false; fi
+          if [ "$IS_PRERELEASE" != "$HAS_SUFFIX" ]; then
+            echo "::error::Prerelease is $IS_PRERELEASE but version is $VERSION. Prereleases need a -suffix (0.12.0-beta.1); full releases must not have one."
+            exit 1
+          fi
 
-      - name: Select Amplitude key
+      - name: Full releases must come from master
+        if: ${{ !github.event.release.prerelease }}
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master || {
+            echo "::error::Full releases must come from master. Publish a prerelease to release from another branch."
+            exit 1
+          }
+
+  ci:
+    needs: [preflight]
+    uses: ./.github/workflows/ci.yml
+
+  e2e:
+    needs: [preflight]
+    uses: ./.github/workflows/e2e.yml
+    secrets:
+      E2E_MAPI_KEY: ${{ secrets.E2E_MAPI_KEY }}
+      E2E_SOURCE_ENV_ID: ${{ secrets.E2E_SOURCE_ENV_ID }}
+
+  # Uploads the tarball before any code from outside the lockfile runs.
+  build:
+    needs: [preflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+        with:
+          runtime: node@26
+          cache: false
+          require-lockfile: true
+
+      - name: Check Amplitude key
         env:
           PROD_KEY: ${{ secrets.KONTENT_CLI_AMPLITUDE_API_KEY }}
           DEV_KEY: ${{ secrets.KONTENT_CLI_AMPLITUDE_API_KEY_DEV }}
@@ -49,31 +80,88 @@ jobs:
         run: |
           if [ "$IS_PRERELEASE" = "true" ]; then
             KEY="$DEV_KEY"
-            NAME="development"
+            SECRET_NAME="KONTENT_CLI_AMPLITUDE_API_KEY_DEV"
           else
             KEY="$PROD_KEY"
-            NAME="production"
+            SECRET_NAME="KONTENT_CLI_AMPLITUDE_API_KEY"
           fi
           if [ -z "$KEY" ]; then
-            echo "::error::Amplitude $NAME key is not set. Configure the matching secret before releasing."
+            echo "::error::The $SECRET_NAME secret is not set. Configure it before releasing."
             exit 1
           fi
-          echo "::add-mask::$KEY"
-          echo "KONTENT_CLI_AMPLITUDE_API_KEY=$KEY" >> "$GITHUB_ENV"
 
       - name: Build
         env:
+          KONTENT_CLI_RELEASE_BUILD: "1"
+          # The check above guarantees the dev key is set, so `||` never falls back to prod for a prerelease.
+          KONTENT_CLI_AMPLITUDE_API_KEY: ${{ github.event.release.prerelease && secrets.KONTENT_CLI_AMPLITUDE_API_KEY_DEV || secrets.KONTENT_CLI_AMPLITUDE_API_KEY }}
           KONTENT_AUTH0_DOMAIN: ${{ vars.KONTENT_AUTH0_DOMAIN }}
           KONTENT_AUTH0_CLIENT_ID: ${{ vars.KONTENT_AUTH0_CLIENT_ID }}
           KONTENT_AUTH0_AUDIENCE: ${{ vars.KONTENT_AUTH0_AUDIENCE }}
         run: pnpm build
 
-      # --ignore-scripts: publish the Build step's dist/ as-is; otherwise the
-      # `prepare` hook rebuilds without KONTENT_AUTH0_* env and bakes empty config.
+      # --ignore-scripts: pack the Build step's dist/; `prepare` would rebuild it
+      # without the release config.
+      - name: Pack
+        run: pnpm pack --ignore-scripts --out "$RUNNER_TEMP/kontent-cli.tgz"
+
+      - name: Upload the tarball
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/kontent-cli.tgz
+          if-no-files-found: error
+
+  # Installs the tarball the way users do, resolving its dependencies fresh, so it
+  # runs in a job of its own without id-token.
+  release-smoke:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download the tarball
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/package
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      - name: Install the tarball
+        run: npm install --ignore-scripts --no-audit --no-fund --prefix "$RUNNER_TEMP/smoke" "$RUNNER_TEMP/package/kontent-cli.tgz"
+      - name: Run the installed CLI
+        run: |
+          "$RUNNER_TEMP/smoke/node_modules/.bin/kontent" --version
+
+  # The only job with id-token. It runs no repository or dependency code: it publishes
+  # the smoke-tested tarball with the npm CLI, which supports trusted publishing from
+  # 11.5.1 (Node 26 bundles a newer one).
+  publish:
+    needs: [ci, e2e, build, release-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Required for npm OIDC Trusted Publishing
+      id-token: write
+    steps:
+      - name: Download the tarball
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: ${{ runner.temp }}/package
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
       - name: Publish (latest)
         if: ${{ !github.event.release.prerelease }}
-        run: pnpm publish --access public --no-git-checks --ignore-scripts
+        run: npm publish "$RUNNER_TEMP/package/kontent-cli.tgz" --access public --ignore-scripts
 
       - name: Publish (prerelease)
         if: ${{ github.event.release.prerelease }}
-        run: pnpm publish --tag prerelease --access public --no-git-checks --ignore-scripts
+        run: npm publish "$RUNNER_TEMP/package/kontent-cli.tgz" --tag prerelease --access public --ignore-scripts
