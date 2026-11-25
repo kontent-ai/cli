@@ -36,6 +36,28 @@ export const formatPage = (page: PagedPage, shouldSlurp: boolean): string => {
 export const closePages = (shouldSlurp: boolean, hasPrinted: boolean): string =>
   shouldSlurp && hasPrinted ? "\n]\n" : "";
 
+const formatErrorOutput = (error: RequestError): PassthroughOutput =>
+  match(error)
+    .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
+    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.kind, e.message))
+    .with({ kind: "delivery-unavailable" }, () =>
+      failedOutput(
+        "delivery-unavailable",
+        "The Delivery API doesn't run on a local stack. Set KONTENT_URL to kontent.ai or an on-demand environment (https://<label>-draft.devkontentmasters.com) to use `kontent dapi`.",
+      ),
+    )
+    .with({ kind: "missing-preview-key" }, () =>
+      failedOutput(
+        "missing-preview-key",
+        "--preview needs a Delivery API key with Content preview access. Set KONTENT_DAPI_KEY, pass --dapiKey <key>, or send an Authorization header.",
+      ),
+    )
+    .with({ kind: "invalid-header" }, (e) => failedOutput(e.kind, e.message))
+    .with({ kind: "invalid-endpoint" }, { kind: "transport" }, (e) =>
+      failedOutput(e.kind, e.message, { "auth-source": e.authSource }),
+    )
+    .exhaustive();
+
 const formatOutcome = (outcome: PrintedOutcome, shouldIncludeHeaders: boolean): PassthroughOutput =>
   match(outcome)
     .with({ kind: "response" }, ({ response, authSource }) => {
@@ -72,6 +94,27 @@ const formatSingleResponse = (
     describeFailure: (failed) => formatFailure(failed, authSource),
   });
 
+const formatFailure = (response: PassthroughResponse, authSource: DapiAuthSource): string => {
+  const summary = `HTTP ${response.statusCode}`;
+
+  return response.statusCode === 401 ? `${summary}\n${formatCredentialHint(authSource)}` : summary;
+};
+
+const formatCredentialHint = (source: DapiAuthSource): string =>
+  match(source)
+    .with("header", () => "Check the Authorization header you supplied.")
+    .with(
+      "dapi-key",
+      () =>
+        "Check your Delivery API key: it must cover this environment, with Secure access, or Content preview access for --preview.",
+    )
+    .with(
+      "none",
+      () =>
+        "This environment has secure access enabled. Set KONTENT_DAPI_KEY or pass --dapiKey <key> with a Delivery API key that has Secure access.",
+    )
+    .exhaustive();
+
 const formatPagedEnd = (
   end: PagedEnd,
   authSource: DapiAuthSource,
@@ -107,27 +150,6 @@ const formatPagedEnd = (
     )
     .exhaustive();
 
-const formatErrorOutput = (error: RequestError): PassthroughOutput =>
-  match(error)
-    .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
-    .with({ kind: "delivery-unavailable" }, () =>
-      failedOutput(
-        "delivery-unavailable",
-        "The Delivery API doesn't run on a local stack. Set KONTENT_URL to kontent.ai or an on-demand environment (https://<label>-draft.devkontentmasters.com) to use `kontent dapi`.",
-      ),
-    )
-    .with({ kind: "missing-preview-key" }, () =>
-      failedOutput(
-        "missing-preview-key",
-        "--preview needs a Delivery API key with Content preview access. Set KONTENT_DAPI_KEY, pass --dapiKey <key>, or send an Authorization header.",
-      ),
-    )
-    .with({ kind: "invalid-header" }, (e) => failedOutput(e.kind, e.message))
-    .with({ kind: "invalid-endpoint" }, { kind: "transport" }, (e) =>
-      failedOutput(e.kind, e.message, { "auth-source": e.authSource }),
-    )
-    .exhaustive();
-
 // The user adds back their other options: only the endpoint and the continuation change.
 const formatResumeCommand = (resume: ResumePoint): string =>
   [
@@ -140,24 +162,3 @@ const formatResumeCommand = (resume: ResumePoint): string =>
 
 // Single quotes keep "?" and "&" literal; a quote inside the value is closed, escaped and reopened.
 const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
-
-const formatFailure = (response: PassthroughResponse, authSource: DapiAuthSource): string => {
-  const summary = `HTTP ${response.statusCode}`;
-
-  return response.statusCode === 401 ? `${summary}\n${formatCredentialHint(authSource)}` : summary;
-};
-
-const formatCredentialHint = (source: DapiAuthSource): string =>
-  match(source)
-    .with("header", () => "Check the Authorization header you supplied.")
-    .with(
-      "dapi-key",
-      () =>
-        "Check your Delivery API key: it must cover this environment, with Secure access, or Content preview access for --preview.",
-    )
-    .with(
-      "none",
-      () =>
-        "This environment has secure access enabled. Set KONTENT_DAPI_KEY or pass --dapiKey <key> with a Delivery API key that has Secure access.",
-    )
-    .exhaustive();

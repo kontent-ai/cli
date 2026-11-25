@@ -6,6 +6,7 @@ const KEY = "amplitude-key";
 const consentFor = (inputs: Partial<ConsentInputs>) =>
   decideTelemetryConsent({
     optOutVariables: { doNotTrack: undefined, kontentDoNotTrack: undefined },
+    isConfigReadable: true,
     telemetryEnabled: undefined,
     amplitudeApiKey: KEY,
     isCiRun: false,
@@ -29,6 +30,19 @@ describe("decideTelemetryConsent", () => {
       isEnabled: false,
       reason: "kontent-do-not-track-env",
     });
+  });
+
+  it("an unreadable config turns it off, after the environment opt-outs", () => {
+    expect(consentFor({ isConfigReadable: false, telemetryEnabled: true })).toEqual({
+      isEnabled: false,
+      reason: "config-unreadable",
+    });
+    expect(
+      consentFor({
+        optOutVariables: { doNotTrack: undefined, kontentDoNotTrack: "1" },
+        isConfigReadable: false,
+      }),
+    ).toEqual({ isEnabled: false, reason: "kontent-do-not-track-env" });
   });
 
   it("a disabled config wins over CI", () => {

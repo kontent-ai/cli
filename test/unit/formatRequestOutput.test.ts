@@ -114,6 +114,15 @@ describe("formatRequestOutput", () => {
     expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "missing-env-id" });
   });
 
+  it("fails with the config error when the stored environment cannot be read", () => {
+    const message = "Config file at /x/config.json is not valid JSON. Fix or delete it.";
+    const output = formatRequestOutput(err({ kind: "config-unreadable", message }), false);
+
+    expect(output.stderr).toEqual([{ level: "error", text: message }]);
+    expect(output.isFailure).toBe(true);
+    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "config-unreadable" });
+  });
+
   it("points at the stored environment on 403", () => {
     const output = formatRequestOutput(
       outcome({ statusCode: 403, statusText: "Forbidden" }, { env: STORED_ENV }),

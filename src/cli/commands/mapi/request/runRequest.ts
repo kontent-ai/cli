@@ -1,8 +1,7 @@
 import { match } from "ts-pattern";
 import type { AuthError } from "../../../../core/auth/types.js";
-import { decideEnvId, type ResolvedEnvId } from "../../../../core/environment/envId.js";
+import type { ResolvedEnvId } from "../../../../core/environment/envId.js";
 import { mapiBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
-import { isNone } from "../../../../core/lib/option.js";
 import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
 import { type AuthSource, decideMapiCredential } from "../../../../core/mapi/credential.js";
 import { resolveMapiEndpoint } from "../../../../core/mapi/endpoint.js";
@@ -18,10 +17,8 @@ import {
 } from "../../../adapters/requestBody/requestBody.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
-import {
-  emitPassthroughOutput,
-  usingStoredEnvironmentMessage,
-} from "../../shared/passthroughOutput.js";
+import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
+import { type EnvIdError, resolveEnvId } from "../../shared/resolveEnvId.js";
 import { formatRequestOutput } from "./formatOutput.js";
 
 export type RequestInput = Readonly<{
@@ -54,7 +51,7 @@ export type RequestOutcome = Readonly<{
  * API answers with, including 4xx and 5xx, is an `ok` outcome.
  */
 export type RequestError =
-  | Readonly<{ kind: "missing-env-id" }>
+  | EnvIdError
   | RequestArgsError
   | RequestBodyError
   | Readonly<{ kind: "auth-failed"; error: AuthError }>
@@ -68,15 +65,9 @@ export const request = async (
   effects: RequestEffects,
   input: RequestInput,
 ): Promise<Result<RequestOutcome, RequestError>> => {
-  const storedEnvId = input.envId === undefined ? (await effects.config.read()).envId : undefined;
-  const env = decideEnvId({ envIdFromFlag: input.envId, storedEnvId });
-  if (isNone(env)) {
-    return err({ kind: "missing-env-id" });
-  }
-  // A stored id is announced because nothing on the command line shows which environment
-  // a request, possibly a DELETE, is about to hit.
-  if (env.value.source === "stored") {
-    effects.logger.info("standard", usingStoredEnvironmentMessage(env.value.envId));
+  const env = await resolveEnvId(effects, input.envId);
+  if (isErr(env)) {
+    return env;
   }
 
   // Planned before the input is read: there is no point opening a file the request can never carry.
