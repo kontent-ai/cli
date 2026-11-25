@@ -32,6 +32,11 @@ export const summarizeUnexpectedError = (error: unknown): string => {
   return /[.!?]$/.test(summary) ? summary : `${summary}.`;
 };
 
+const startTracking = (params: RunCommandParams, logger: Logger): CommandTracker | null =>
+  params.trackAs === null
+    ? null
+    : params.deps.telemetry.startCommandTracking(params.trackAs, logger);
+
 // The --verbose hint only where --verbose has a stack to show.
 const formatUnexpectedError = (error: unknown, isVerbose: boolean): string => {
   const summary = summarizeUnexpectedError(error);
@@ -41,11 +46,6 @@ const formatUnexpectedError = (error: unknown, isVerbose: boolean): string => {
   }
   return isVerbose ? `${summary}\n${stack}` : `${summary} Run again with --verbose for details.`;
 };
-
-const startTracking = (params: RunCommandParams, logger: Logger): CommandTracker | null =>
-  params.trackAs === null
-    ? null
-    : params.deps.telemetry.startCommandTracking(params.trackAs, logger);
 
 const recordOutcome = (tracker: CommandTracker | null, outcome: CommandOutcome): void => {
   if (tracker === null) {
