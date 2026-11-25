@@ -1,5 +1,4 @@
-import chalk from "chalk";
-
+import { styleStderr } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
 import { register as registerEndpoint } from "./endpoint/endpoint.js";
 import { register as registerObject } from "./object/object.js";
@@ -18,7 +17,7 @@ export const register: RegisterCommand = (y, deps) =>
     builder: (sub) =>
       subcommandsToRegister
         .reduce((current, registerSub) => registerSub(current, deps), sub)
-        .demandCommand(1, chalk.red("You need to provide a docs subcommand."))
+        .demandCommand(1, styleStderr("red", "You need to provide a docs subcommand."))
         .strict()
         .epilogue(
           'Every command prints a JSON array of candidates the service ranked by score; --limit says how many of them to keep.\nRun "kontent docs search" first when unsure which endpoint or object you need.',

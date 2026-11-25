@@ -19,6 +19,7 @@ import { match, P } from "ts-pattern";
 import { errorMessage } from "../../../core/lib/error.js";
 import { err, ok, type Result } from "../../../core/lib/result.js";
 import type { Logger } from "../../log.js";
+import { isNodeFetchTimeoutError, NODE_FETCH_TIMEOUT_MESSAGE } from "./nodeFetchTimeout.js";
 import { cliSdkInfo } from "./sdkInfo.js";
 
 const MAX_RETRY_ATTEMPTS = 3;
@@ -77,6 +78,10 @@ export type RawClient = Readonly<{
  * core-sdk's http service parses `application/json` and hands back a null payload
  * for anything else, which is all this needs: the APIs answer JSON on every status,
  * and binary only ever travels request-side, on a Management API asset upload.
+ *
+ * No CLI deadline: an upload or a large response may legitimately run for minutes, and
+ * core-sdk cannot tell that from a stall. Node's fetch gives up on its own when the
+ * response headers or the next chunk of body take longer than 300 s.
  */
 export const createRawClient = (
   params: Readonly<{ logger: Logger; adapter?: HttpAdapter }>,
@@ -215,6 +220,8 @@ const fromSdkError = (error: KontentSdkError): Result<RawResponse, string> =>
       ({ adapterResponse }) =>
         adapterResponse === undefined ? err(error.message) : ok(toRawResponse(adapterResponse)),
     )
+    // Must win over the generic adapterError and parseError messages below.
+    .when(isNodeFetchTimeoutError, () => err(NODE_FETCH_TIMEOUT_MESSAGE))
     .with({ reason: "aborted" }, () => err("The request was aborted."))
     .with({ reason: "parseError" }, () => err("The response could not be parsed as JSON."))
     // core-sdk's own message only points at the wrapped error; the cause is what the user can act on.

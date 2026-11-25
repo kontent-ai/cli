@@ -134,6 +134,12 @@ export const runBootstrap = async (
 ): Promise<void> => {
   const logger = createLoggerFromArgs(args);
   const tracker = deps.telemetry.startCommandTracking("project sample bootstrap", logger);
+  if (!process.stdin.isTTY) {
+    logger.error("`kontent project sample bootstrap` needs an interactive terminal.");
+    tracker.fail("not-interactive");
+    process.exitCode = 1;
+    return;
+  }
   prompts.intro("Bootstrap a Kontent.ai project");
 
   const tokens = await session.tokens();

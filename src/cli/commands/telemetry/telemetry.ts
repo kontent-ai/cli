@@ -1,5 +1,4 @@
-import chalk from "chalk";
-
+import { styleStderr } from "../../log.js";
 import type { RegisterCommand } from "../../types/yargs.js";
 import { register as registerDisable } from "./disable.js";
 import { register as registerEnable } from "./enable.js";
@@ -18,7 +17,7 @@ export const register: RegisterCommand = (y, deps) =>
     builder: (sub) =>
       subcommandsToRegister
         .reduce((current, registerSub) => registerSub(current, deps), sub)
-        .demandCommand(1, chalk.red("You need to provide a telemetry subcommand."))
+        .demandCommand(1, styleStderr("red", "You need to provide a telemetry subcommand."))
         .strict(),
     handler: () => {
       // parent command is a group; subcommands handle execution
