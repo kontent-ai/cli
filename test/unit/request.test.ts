@@ -41,13 +41,13 @@ const fakeEffects = (
   const { logger, infos } = fakeLogger();
   const effects = {
     logger,
-    config: { read: vi.fn(() => Promise.resolve({ envId: options.storedEnvId })) },
-    bodyReader: { read: vi.fn(() => Promise.resolve(options.body ?? ok(new Blob(["{}"])))) },
+    config: { read: vi.fn(async () => ({ envId: options.storedEnvId })) },
+    bodyReader: { read: vi.fn(async () => options.body ?? ok(new Blob(["{}"]))) },
     session: {
-      tokens: vi.fn(() => Promise.resolve(options.tokens ?? ok({ accessToken: "login-token" }))),
+      tokens: vi.fn(async () => options.tokens ?? ok({ accessToken: "login-token" })),
     },
     mapi: {
-      send: vi.fn(() => Promise.resolve(options.sent ?? ok(OK_RESPONSE))),
+      send: vi.fn(async () => options.sent ?? ok(OK_RESPONSE)),
     },
   } satisfies RequestEffects;
   return { effects, infos };
@@ -137,7 +137,7 @@ describe("request", () => {
     await request(effects, input({ input: "body.json" }));
 
     expect(effects.mapi.send).toHaveBeenCalledWith(
-      expect.objectContaining({ method: "POST", body: expect.any(Blob) }),
+      expect.objectContaining({ method: "POST", body: expect.any(Blob) as unknown }),
       "login-token",
     );
   });

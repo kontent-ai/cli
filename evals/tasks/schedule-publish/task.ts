@@ -22,7 +22,7 @@ export const schedulePublish: EvalTask = {
   prompt:
     'Write an article called "Winter release notes" and schedule it to go live in two weeks at 9:00 UTC.',
   check: async (client) => {
-    const items = await lookup("Listing content items", () =>
+    const items = await lookup("Listing content items", async () =>
       client.listContentItems().toAllPromise(),
     );
     if (isErr(items)) {
@@ -36,7 +36,7 @@ export const schedulePublish: EvalTask = {
       ]);
     }
 
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -44,19 +44,23 @@ export const schedulePublish: EvalTask = {
     }
     const articleType = isSome(articleLookup.value) ? articleLookup.value.value.data : undefined;
 
-    const variantLookup = await lookupByCodename("winter release notes language variant", () =>
-      client
-        .viewLanguageVariant()
-        .byItemId(article.id)
-        .byLanguageCodename(DEFAULT_CODENAME)
-        .toPromise(),
+    const variantLookup = await lookupByCodename(
+      "winter release notes language variant",
+      async () =>
+        client
+          .viewLanguageVariant()
+          .byItemId(article.id)
+          .byLanguageCodename(DEFAULT_CODENAME)
+          .toPromise(),
     );
     if (isErr(variantLookup)) {
       return variantLookup;
     }
     const variant = isSome(variantLookup.value) ? variantLookup.value.value.data : undefined;
 
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }

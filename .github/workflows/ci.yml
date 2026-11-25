@@ -42,6 +42,9 @@ jobs:
       fail-fast: false
       matrix:
         node: ["22.12.0", "24", "26"]
+        include:
+          - node: "26"
+            coverage: true
     name: test (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     steps:
@@ -55,4 +58,8 @@ jobs:
           cache: true
           require-lockfile: true
       - name: Test
+        if: ${{ !matrix.coverage }}
         run: pnpm test
+      - name: Test with coverage
+        if: ${{ matrix.coverage }}
+        run: pnpm test:coverage

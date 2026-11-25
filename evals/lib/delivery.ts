@@ -14,7 +14,7 @@ export const readAnswer = async <T>(
   schema: z.ZodMiniType<T>,
 ): Promise<Result<Result<T, string>, string>> => {
   const raw = await tryAsync(
-    () => readFile(join(workspaceDir, ANSWER_FILE), "utf8"),
+    async () => readFile(join(workspaceDir, ANSWER_FILE), "utf8"),
     (cause) => cause,
   );
   if (isErr(raw)) {

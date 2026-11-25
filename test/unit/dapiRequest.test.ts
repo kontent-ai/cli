@@ -38,9 +38,9 @@ const fakeEffects = (
 ) => {
   const effects = {
     logger: fakeLogger(),
-    config: { read: vi.fn(() => Promise.resolve({ envId: options.storedEnvId })) },
+    config: { read: vi.fn(async () => ({ envId: options.storedEnvId })) },
     dapi: {
-      send: vi.fn(() => Promise.resolve(options.sent ?? ok(response()))),
+      send: vi.fn(async () => options.sent ?? ok(response())),
       pages: vi.fn(async function* () {
         yield* options.pages ?? [];
       }),

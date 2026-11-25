@@ -20,7 +20,7 @@ export const draftSummary: EvalTask = {
   dependsOn: ["update-language-variant"],
   prompt: `Start a new draft of "Launch announcement" with the summary "${DRAFT_SUMMARY}" Do not publish it.`,
   check: async (client) => {
-    const items = await lookup("Listing content items", () =>
+    const items = await lookup("Listing content items", async () =>
       client.listContentItems().toAllPromise(),
     );
     if (isErr(items)) {
@@ -53,7 +53,7 @@ export const draftSummary: EvalTask = {
       ]);
     }
 
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -78,7 +78,7 @@ export const draftSummary: EvalTask = {
             )}`,
           };
 
-    const variantLookup = await lookupByCodename("launch announcement language variant", () =>
+    const variantLookup = await lookupByCodename("launch announcement language variant", async () =>
       client
         .viewLanguageVariant()
         .byItemId(article.id)
@@ -90,13 +90,15 @@ export const draftSummary: EvalTask = {
     }
     const variant = isSome(variantLookup.value) ? variantLookup.value.value.data : undefined;
 
-    const publishedLookup = await lookupByCodename("launch announcement published version", () =>
-      client
-        .viewLanguageVariant()
-        .byItemId(article.id)
-        .byLanguageCodename(DEFAULT_CODENAME)
-        .published()
-        .toPromise(),
+    const publishedLookup = await lookupByCodename(
+      "launch announcement published version",
+      async () =>
+        client
+          .viewLanguageVariant()
+          .byItemId(article.id)
+          .byLanguageCodename(DEFAULT_CODENAME)
+          .published()
+          .toPromise(),
     );
     if (isErr(publishedLookup)) {
       return publishedLookup;
@@ -105,7 +107,9 @@ export const draftSummary: EvalTask = {
       ? publishedLookup.value.value.data
       : undefined;
 
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }

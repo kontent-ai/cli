@@ -15,7 +15,7 @@ export const contentTypeWithSnippet: EvalTask = {
   prompt:
     "We're starting a blog. I need an Article content type, codename article, with these elements: Title (text, codename title, required), Body (rich text, codename body, no tables or images in it for now), Author (text, codename author), Summary (text, codename summary, at most 160 characters), URL slug (codename url_slug, generated from the title), Hero image (asset, codename hero_image, one file at most), Related articles (linked items, codename related, only Articles allowed), Topics (taxonomy, codename topics, using our Topics taxonomy group) and Publish date (date and time, codename publish_date). We'll want the same SEO fields on other types later, so make Meta title and Meta description a reusable snippet, codename seo, with elements meta_title and meta_description, and put it on Article too.",
   check: async (client) => {
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -28,7 +28,7 @@ export const contentTypeWithSnippet: EvalTask = {
     const articleType = articleLookup.value.value.data;
     const elements = articleType.elements;
 
-    const snippetLookup = await lookupByCodename("seo content type snippet", () =>
+    const snippetLookup = await lookupByCodename("seo content type snippet", async () =>
       client.viewContentTypeSnippet().byTypeCodename("seo").toPromise(),
     );
     if (isErr(snippetLookup)) {
@@ -36,7 +36,7 @@ export const contentTypeWithSnippet: EvalTask = {
     }
     const seoSnippet = isSome(snippetLookup.value) ? snippetLookup.value.value.data : undefined;
 
-    const taxonomyLookup = await lookupByCodename("topics taxonomy", () =>
+    const taxonomyLookup = await lookupByCodename("topics taxonomy", async () =>
       client.getTaxonomy().byTaxonomyCodename("topics").toPromise(),
     );
     if (isErr(taxonomyLookup)) {

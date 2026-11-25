@@ -5,7 +5,7 @@ export default defineConfig([
   globalIgnores(["dist", "node_modules", "coverage"]),
   {
     extends: [kontentAiConfig],
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.ts", "test/**/*.ts", "evals/**/*.ts", "scripts/**/*.ts"],
     languageOptions: {
       parserOptions: {
         project: ["./tsconfig.json"],
