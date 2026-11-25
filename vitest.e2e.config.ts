@@ -24,6 +24,8 @@ export default defineConfig({
     include: ["test/e2e/**/*.test.ts"],
     globalSetup: ["test/e2e/globalSetup.ts"],
     fileParallelism: false,
+    // The tests are one dependent chain: after the first failure the rest only fail too.
+    bail: 1,
     testTimeout: 30_000,
     // Covers globalSetup's teardown (deleting the clone), which the default
     // 10s would kill mid-delete. Vitest puts no timeout on globalSetup itself.

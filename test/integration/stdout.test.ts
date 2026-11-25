@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 // A closed pipe exists only between two processes, so this test spawns one. It
 // runs the source through tsx rather than dist/, which is gitignored and not
@@ -9,12 +12,15 @@ import { describe, expect, it } from "vitest";
 // the e2e suite covers it.
 const runWithClosedStdout = async (
   args: ReadonlyArray<string>,
+  homeDir: string,
 ): Promise<Readonly<{ exitCode: number; stderr: string }>> =>
   new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["--import", "tsx", entryPath, ...args], {
       env: {
         ...(process.env.PATH === undefined ? {} : { PATH: process.env.PATH }),
-        ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }),
+        HOME: homeDir,
+        XDG_CONFIG_HOME: homeDir,
+        APPDATA: homeDir,
         DO_NOT_TRACK: "1",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -40,7 +46,10 @@ describe("a reader that closes the pipe early", () => {
   // tsx compiles the CLI's import graph on every spawn - about a second idle, but
   // CPU-bound, so a loaded machine stretches it well past the 5s default.
   it("does not turn into an EPIPE crash", async () => {
-    const result = await runWithClosedStdout(["telemetry", "status"]);
+    const homeDir = await mkdtemp(join(tmpdir(), "kontent-stdout-"));
+    onTestFinished(async () => rm(homeDir, { recursive: true, force: true }));
+
+    const result = await runWithClosedStdout(["telemetry", "status"], homeDir);
 
     // The exit code is the real check - an unhandled stream error is fatal. The
     // EPIPE match only names the bug in the failure message.

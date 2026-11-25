@@ -4,16 +4,27 @@ on:
   push:
     branches: [master]
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Only superseded PR runs are cancelled. Every other run gets its own group, so
+# neither a pending master run nor a run called from a release is ever cancelled.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Setup pnpm and Node.js
-        uses: pnpm/setup@v2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           runtime: node@26
           cache: true
@@ -36,23 +47,29 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # The engines.node minimum, the previous LTS major and the current one.
+  # Ubuntu: the engines.node minimum, the previous LTS major and the current one.
+  # Windows: the current major, since config paths and file permissions differ there.
   test:
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         node: ["22.12.0", "24", "26"]
         include:
-          - node: "26"
+          - os: windows-latest
+            node: "26"
+          - os: ubuntu-latest
+            node: "26"
             coverage: true
-    name: test (node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Setup pnpm and Node.js
-        uses: pnpm/setup@v2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           runtime: node@${{ matrix.node }}
           cache: true

@@ -8,6 +8,19 @@ try {
   // no .env file present; fine
 }
 
+const RELEASE_REQUIRED_VARS = [
+  "KONTENT_CLI_AMPLITUDE_API_KEY",
+  "KONTENT_AUTH0_DOMAIN",
+  "KONTENT_AUTH0_CLIENT_ID",
+  "KONTENT_AUTH0_AUDIENCE",
+] as const;
+
+const isReleaseBuild = process.env.KONTENT_CLI_RELEASE_BUILD === "1";
+const missingVars = RELEASE_REQUIRED_VARS.filter((name) => !process.env[name]);
+if (isReleaseBuild && missingVars.length > 0) {
+  throw new Error(`Release build is missing: ${missingVars.join(", ")}`);
+}
+
 export default defineConfig({
   entry: ["src/index.ts"],
   define: {
@@ -24,6 +37,6 @@ export default defineConfig({
   clean: true,
   shims: false,
   dts: false,
-  sourcemap: true,
+  sourcemap: false,
   unbundle: false,
 });
