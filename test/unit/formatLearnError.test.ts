@@ -1,7 +1,8 @@
-import { KontentSdkError } from "@kontent-ai/core-sdk";
+import { AdapterParseError, KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
 import { formatLearnError } from "../../src/cli/adapters/learn/formatLearnError.js";
+import { nodeFetchTimeoutError } from "../helpers/nodeFetchTimeoutError.js";
 
 const URL_TEXT = "https://learn-mcp.kontent.ai/search?text=roles";
 
@@ -48,6 +49,32 @@ describe("formatLearnError", () => {
 
     expect(message).toContain("fetch failed: getaddrinfo ENOTFOUND learn-mcp.kontent.ai");
     expect(message).not.toContain("status:");
+  });
+
+  it.each([
+    {
+      timeout: "headers",
+      details: {
+        reason: "adapterError",
+        originalError: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT"),
+      },
+    },
+    {
+      timeout: "body",
+      details: {
+        reason: "parseError",
+        originalError: new AdapterParseError({
+          message: "Failed to parse the response.",
+          error: nodeFetchTimeoutError("UND_ERR_BODY_TIMEOUT"),
+        }),
+      },
+    },
+  ] as const)("reports Node's $timeout timeout as a timeout", ({ details }) => {
+    const message = formatLearnError(new KontentSdkError({ baseErrorData, details }));
+
+    expect(message.split("\n")[0]).toBe(
+      "Could not reach the Learn service: The server did not respond in time.",
+    );
   });
 
   it("says the shape was unexpected when the schema rejects the payload", () => {

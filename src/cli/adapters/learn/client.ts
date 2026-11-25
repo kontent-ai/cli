@@ -11,6 +11,7 @@ import {
   type SdkInfo,
 } from "@kontent-ai/core-sdk";
 import { originOf } from "../../../core/lib/baseUrl.js";
+import { MAX_RETRY_DELAY_MS } from "../http/retryDelay.js";
 import { cliSdkInfo } from "../http/sdkInfo.js";
 import type { ApiReference } from "./apiReference.js";
 
@@ -29,8 +30,11 @@ export const createLearnClient = (
   return {
     config: {
       baseUrl,
+      // No CLI deadline until core-sdk-js#57 adds a timeout option; Node's fetch limits apply.
       httpService: getDefaultHttpService({
         ...(params.adapter === undefined ? {} : { adapter: params.adapter }),
+        // Only the cap: max retries and which errors retry keep core-sdk's defaults.
+        retryStrategy: { maxRetryDelayMs: MAX_RETRY_DELAY_MS },
       }),
       // core-sdk runs the schema only when this is on; without it the endpoint
       // schemas would be types with nothing behind them.
