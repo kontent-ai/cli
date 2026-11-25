@@ -1,10 +1,6 @@
 import { match } from "ts-pattern";
 import { isOk } from "../../../core/lib/result.js";
-import {
-  decideTelemetryConsent,
-  type OptOutVariables,
-  type TelemetryOffReason,
-} from "../../../core/telemetry/consent.js";
+import { decideTelemetryConsent, type OptOutVariables } from "../../../core/telemetry/consent.js";
 import {
   type CommandOutcome,
   type EventProperties,
@@ -12,21 +8,11 @@ import {
 } from "../../../core/telemetry/events.js";
 import type { Logger } from "../../log.js";
 import type { Clock } from "../clock/clock.js";
-import type { CliConfigStore } from "../config/cliConfig.js";
-import { formatTelemetryOffReason } from "./consent.js";
-import { amplitudeApiKey } from "./context.js";
+import type { CliConfig, CliConfigStore } from "../config/cliConfig.js";
 import { type IdentityEffects, resolveIdentity } from "./identity.js";
-import {
-  createAmplitudeSink,
-  createDebugTelemetrySink,
-  type TelemetrySink,
-  type TrackOutcome,
-} from "./sink.js";
+import { createDebugTelemetrySink, type TelemetrySink, type TrackOutcome } from "./sink.js";
 
 const FLUSH_TIMEOUT_MS = 1500;
-
-const FIRST_RUN_NOTICE = `The Kontent.ai CLI sends anonymous usage telemetry (command name, success/failure,
-duration) to help improve it. Opt out: kontent telemetry disable`;
 
 export type CommandTracker = Readonly<{
   succeed: (props?: EventProperties) => void;
@@ -38,13 +24,6 @@ export type Telemetry = Readonly<{
   flush: () => Promise<void>;
 }>;
 
-export type TelemetryMode =
-  | { readonly kind: "live" }
-  | { readonly kind: "disabled"; readonly reason: TelemetryOffReason }
-  | { readonly kind: "notice-run"; readonly hasPersistedNotice: boolean }
-  | { readonly kind: "debug" }
-  | { readonly kind: "init-failed" };
-
 export type TelemetryEffects = Readonly<{
   config: Pick<CliConfigStore, "read" | "write">;
   clock: Clock;
@@ -52,11 +31,12 @@ export type TelemetryEffects = Readonly<{
   optOutVariables: OptOutVariables;
   isCiRun: boolean;
   isDebug: boolean;
+  amplitudeApiKey: string;
+  createSink: (apiKey: string, requestTimeoutMs: number) => TelemetrySink;
 }>;
 
 export type TelemetryInit = Readonly<{
   telemetry: Telemetry;
-  mode: TelemetryMode;
 }>;
 
 const noopTracker: CommandTracker = {
@@ -71,9 +51,9 @@ export const noopTelemetry: Telemetry = {
 
 export const createTelemetry = async (effects: TelemetryEffects): Promise<TelemetryInit> => {
   try {
-    const { sink, mode } = await resolveSink(effects);
+    const sink = await resolveSink(effects);
     if (sink === null) {
-      return { telemetry: noopTelemetry, mode };
+      return { telemetry: noopTelemetry };
     }
 
     const telemetry: Telemetry = {
@@ -130,71 +110,11 @@ export const createTelemetry = async (effects: TelemetryEffects): Promise<Teleme
       },
     };
 
-    return { telemetry, mode };
+    return { telemetry };
   } catch {
-    return { telemetry: noopTelemetry, mode: { kind: "init-failed" } };
+    return { telemetry: noopTelemetry };
   }
 };
-
-type SinkResolution = Readonly<{
-  sink: TelemetrySink | null;
-  mode: TelemetryMode;
-}>;
-
-const resolveSink = async (effects: TelemetryEffects): Promise<SinkResolution> => {
-  const config = await effects.config.read();
-  const consent = decideTelemetryConsent({
-    optOutVariables: effects.optOutVariables,
-    telemetryEnabled: config.telemetryEnabled,
-    amplitudeApiKey,
-    isCiRun: effects.isCiRun,
-  });
-
-  if (effects.isDebug) {
-    const decisionText = consent.isEnabled ? "enabled" : `disabled (${consent.reason})`;
-    process.stderr.write(`[telemetry debug] decision: ${decisionText}; nothing will be sent\n`);
-    return { sink: createDebugTelemetrySink(), mode: { kind: "debug" } };
-  }
-
-  if (!consent.isEnabled) {
-    return { sink: null, mode: { kind: "disabled", reason: consent.reason } };
-  }
-
-  if (config.telemetryNoticeShown !== true) {
-    // Written during createTelemetry(), before yargs runs the handler that
-    // produces the event, so the disclosure always precedes the data.
-    process.stderr.write(`${FIRST_RUN_NOTICE}\n\n`);
-    const persisted = await effects.config.write({ telemetryNoticeShown: true });
-    return {
-      sink: createAmplitudeSink(amplitudeApiKey),
-      mode: { kind: "notice-run", hasPersistedNotice: isOk(persisted) },
-    };
-  }
-
-  return { sink: createAmplitudeSink(amplitudeApiKey), mode: { kind: "live" } };
-};
-
-export const formatTelemetryMode = (mode: TelemetryMode): string =>
-  match(mode)
-    .with({ kind: "live" }, () => "Telemetry: enabled")
-    .with(
-      { kind: "disabled" },
-      (m) => `Telemetry: disabled (${formatTelemetryOffReason(m.reason)})`,
-    )
-    .with({ kind: "notice-run" }, (m) =>
-      m.hasPersistedNotice
-        ? "Telemetry: enabled (first run, notice shown)"
-        : "Telemetry: enabled (first run, notice shown; could not save config, notice will repeat)",
-    )
-    .with({ kind: "debug" }, () => "Telemetry: debug dry-run (printing payloads, sending nothing)")
-    .with({ kind: "init-failed" }, () => "Telemetry: disabled (initialization failed)")
-    .exhaustive();
-
-const formatTrackOutcome = (outcome: Exclude<TrackOutcome, { kind: "skipped" }>): string =>
-  match(outcome)
-    .with({ kind: "accepted" }, (o) => `Telemetry: event accepted (${o.code})`)
-    .with({ kind: "rejected" }, (o) => `Telemetry: event rejected (${o.code}: ${o.message})`)
-    .exhaustive();
 
 export const registerTelemetrySignalFlush = (telemetry: Telemetry): void => {
   const signals: ReadonlyArray<NodeJS.Signals> = ["SIGINT", "SIGTERM"];
@@ -212,6 +132,48 @@ export const registerTelemetrySignalFlush = (telemetry: Telemetry): void => {
     });
   }
 };
+
+const FIRST_RUN_NOTICE = `The Kontent.ai CLI sends anonymous usage telemetry (command name, success/failure,
+duration) to help improve it. Opt out: kontent telemetry disable`;
+
+const resolveSink = async (effects: TelemetryEffects): Promise<TelemetrySink | null> => {
+  const read = await effects.config.read();
+  // An unreadable config turns telemetry off, so the notice check below only ever sees a real one.
+  const config: CliConfig = isOk(read) ? read.value : {};
+  const consent = decideTelemetryConsent({
+    optOutVariables: effects.optOutVariables,
+    isConfigReadable: isOk(read),
+    telemetryEnabled: config.telemetryEnabled,
+    amplitudeApiKey: effects.amplitudeApiKey,
+    isCiRun: effects.isCiRun,
+  });
+
+  if (effects.isDebug) {
+    const decisionText = consent.isEnabled ? "enabled" : `disabled (${consent.reason})`;
+    process.stderr.write(`[telemetry debug] decision: ${decisionText}; nothing will be sent\n`);
+    return createDebugTelemetrySink();
+  }
+
+  if (!consent.isEnabled) {
+    return null;
+  }
+
+  if (config.telemetryNoticeShown !== true) {
+    // Written during createTelemetry(), before yargs runs the handler that
+    // produces the event, so the disclosure always precedes the data.
+    process.stderr.write(`${FIRST_RUN_NOTICE}\n\n`);
+    // A failed write only means the notice shows again on the next run.
+    await effects.config.write({ telemetryNoticeShown: true });
+  }
+
+  return effects.createSink(effects.amplitudeApiKey, FLUSH_TIMEOUT_MS);
+};
+
+const formatTrackOutcome = (outcome: Exclude<TrackOutcome, { kind: "skipped" }>): string =>
+  match(outcome)
+    .with({ kind: "accepted" }, (o) => `Telemetry: event accepted (${o.code})`)
+    .with({ kind: "rejected" }, (o) => `Telemetry: event rejected (${o.code}: ${o.message})`)
+    .exhaustive();
 
 const delay = async (ms: number): Promise<void> =>
   new Promise((resolve) => {

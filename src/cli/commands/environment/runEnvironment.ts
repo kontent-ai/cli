@@ -3,9 +3,13 @@ import type { AuthError } from "../../../core/auth/types.js";
 import { mapiBaseUrl } from "../../../core/kontentUrl/kontentUrl.js";
 import { isGuid } from "../../../core/lib/guid.js";
 import { fromNullable, isNone, type Option } from "../../../core/lib/option.js";
-import { err, isErr, mapErr, ok, type Result } from "../../../core/lib/result.js";
+import { err, isErr, map, mapErr, ok, type Result } from "../../../core/lib/result.js";
 import { type Session, session } from "../../adapters/auth/tokenAccess.js";
-import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliConfig.js";
+import {
+  type CliConfigStore,
+  type ConfigReadError,
+  cliConfigStore,
+} from "../../adapters/config/cliConfig.js";
 import { createEnvironments, type Environments } from "../../adapters/mapi/environments.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
@@ -102,11 +106,17 @@ export const runUse = async (
 };
 
 export const runCurrent = async (args: LogOptions): Promise<void> => {
-  const envId = await currentEnvironment({ config: cliConfigStore });
+  const logger = createLoggerFromArgs(args);
+
+  const current = await currentEnvironment({ config: cliConfigStore });
+  if (isErr(current)) {
+    logger.error(current.error.message);
+    process.exitCode = 1;
+    return;
+  }
+  const envId = current.value;
   if (isNone(envId)) {
-    createLoggerFromArgs(args).error(
-      "No default environment is set. Run `kontent environment use <envId>`.",
-    );
+    logger.error("No default environment is set. Run `kontent environment use <envId>`.");
     process.exitCode = 1;
     return;
   }
@@ -160,16 +170,21 @@ const formatUnverifiedReason = (reason: AuthError): string =>
 
 type CurrentEffects = Readonly<{ config: Pick<CliConfigStore, "read"> }>;
 
-const currentEnvironment = async (effects: CurrentEffects): Promise<Option<string>> =>
-  fromNullable((await effects.config.read()).envId);
+const currentEnvironment = async (
+  effects: CurrentEffects,
+): Promise<Result<Option<string>, ConfigReadError>> =>
+  map(await effects.config.read(), (config) => fromNullable(config.envId));
 
 type ClearEffects = Readonly<{ config: Pick<CliConfigStore, "read" | "write"> }>;
 
 type ClearOutcome = "cleared" | "was-not-set";
 
 const clearEnvironment = async (effects: ClearEffects): Promise<Result<ClearOutcome, string>> => {
-  const { envId } = await effects.config.read();
-  if (envId === undefined) {
+  const config = await effects.config.read();
+  if (isErr(config)) {
+    return err(config.error.message);
+  }
+  if (config.value.envId === undefined) {
     return ok("was-not-set");
   }
   const written = await effects.config.write({ envId: undefined });

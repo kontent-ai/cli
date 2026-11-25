@@ -166,8 +166,11 @@ importers:
 
   .:
     dependencies:
+      '@amplitude/analytics-core':
+        specifier: ^2.50.0
+        version: 2.50.0
       '@amplitude/analytics-node':
-        specifier: ^1.5.59
+        specifier: ^1.5.60
         version: 1.5.60
       '@clack/prompts':
         specifier: ^1.2.0

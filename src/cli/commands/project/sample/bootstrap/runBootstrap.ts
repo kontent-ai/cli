@@ -50,7 +50,7 @@ export type BootstrapEffects = Readonly<{
   logger: Logger;
   clock: Clock;
   prompts: Pick<Prompts, "spinner" | "confirm" | "select" | "note">;
-  files: Files;
+  files: Pick<Files, "entries" | "readText" | "writeText">;
   projects: Projects;
   deliveryKeys: DeliveryKeys;
   templates: Templates;
@@ -266,9 +266,6 @@ const resolveDeliveryKey = async (
   return ok(apiKey.value);
 };
 
-const formatKeyOption = (key: DeliveryKeySummary): string =>
-  `${key.name}  (${key.tokenSeedId.slice(0, 8)}…, expires ${key.expiresAt.slice(0, 10)})`;
-
 const createKeyAndReturnSecret = async (
   effects: BootstrapEffects,
   containerId: string,
@@ -287,6 +284,9 @@ const createKeyAndReturnSecret = async (
   createSpinner.stop(`Created delivery API key "${created.value.name}"`);
   return ok(created.value.apiKey);
 };
+
+const formatKeyOption = (key: DeliveryKeySummary): string =>
+  `${key.name}  (${key.tokenSeedId.slice(0, 8)}…, expires ${key.expiresAt.slice(0, 10)})`;
 
 const ENV_OUTPUT_FILE = ".env.local";
 

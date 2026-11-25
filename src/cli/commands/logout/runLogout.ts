@@ -23,7 +23,7 @@ export const logout = async (effects: LogoutEffects): Promise<Result<void, AuthE
   if (isErr(clearedUserData)) {
     effects.logger.warning(
       "standard",
-      `Could not clear cached user data: ${clearedUserData.error}`,
+      `Could not clear the stored default environment and user ID; they stay in the config file: ${clearedUserData.error}`,
     );
   }
   return ok(undefined);

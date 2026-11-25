@@ -105,6 +105,7 @@ Telemetry is automatically off when:
 - the `DO_NOT_TRACK` environment variable is set;
 - the `KONTENT_DO_NOT_TRACK` environment variable is set;
 - it has been disabled in the config file (`telemetryEnabled: false`);
+- the config file exists but can't be read (e.g. it is not valid JSON);
 - a CI environment is detected;
 - the build has no telemetry API key (e.g. local development builds).
 

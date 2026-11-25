@@ -1,57 +1,48 @@
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { z } from "zod/mini";
 
-import { errorMessage } from "../../../core/lib/error.js";
 import { isGuid } from "../../../core/lib/guid.js";
-import { err, ok, type Result } from "../../../core/lib/result.js";
+import { isNone } from "../../../core/lib/option.js";
+import {
+  err,
+  flatMap,
+  fromThrowable,
+  isErr,
+  map,
+  ok,
+  type Result,
+} from "../../../core/lib/result.js";
+import { files } from "../files/files.js";
 
-export type CliConfig = Readonly<{
-  telemetryEnabled?: boolean;
-  telemetryNoticeShown?: boolean;
-  userId?: string;
-  deviceId?: string;
-  // Only a GUID reads back, so a hand-edited value never reaches a request URL.
-  envId?: string;
+export type CliConfig = Readonly<z.infer<typeof cliConfigSchema>>;
+
+/** The config file exists but cannot be used; a missing file is an empty config instead. */
+export type ConfigReadError = Readonly<{
+  message: string;
 }>;
 
 export type CliConfigStore = Readonly<{
   path: () => string;
-  read: () => Promise<CliConfig>;
+  read: () => Promise<Result<CliConfig, ConfigReadError>>;
+  // Refuses to write over a file it cannot read, so a corrupt config is never silently replaced.
   write: (patch: Partial<CliConfig>) => Promise<Result<void, string>>;
 }>;
 
 export const cliConfigStore: CliConfigStore = {
   path: () => path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json"),
 
-  read: async () => {
-    try {
-      const raw = await readFile(cliConfigStore.path(), "utf8");
-      return parseCliConfig(JSON.parse(raw));
-    } catch {
-      return {};
-    }
-  },
+  read: async () => map(await readStoredConfig(cliConfigStore.path()), ({ config }) => config),
 
   write: async (patch) => {
-    const configPath = cliConfigStore.path();
-    try {
-      await mkdir(path.dirname(configPath), { recursive: true });
-      const current = await cliConfigStore.read();
-      const next = { ...current, ...patch };
-      await writeFile(configPath, `${JSON.stringify(next, null, 2)}\n`, {
-        encoding: "utf8",
-        mode: 0o600,
-      });
-      // writeFile applies `mode` only when it creates the file; if the file
-      // already exists with looser permissions (created by hand, or by a tool
-      // that did not set a mode), the write above would silently keep them.
-      // The explicit chmod makes owner-only access hold after every write.
-      await chmod(configPath, 0o600);
-      return ok(undefined);
-    } catch (cause) {
-      return err(errorMessage(cause));
+    const current = await readStoredConfig(cliConfigStore.path());
+    if (isErr(current)) {
+      return err(current.error.message);
     }
+    // Every stored key is kept as it is, including ones this version does not know or
+    // rejects on read, so a newer CLI's settings and hand edits survive.
+    const next = { ...current.value.raw, ...patch };
+    return files.writeTextAtomic(cliConfigStore.path(), `${JSON.stringify(next, null, 2)}\n`);
   },
 };
 
@@ -65,20 +56,66 @@ const resolveConfigBaseDir = (): string => {
   return path.join(os.homedir(), ".config");
 };
 
-const parseCliConfig = (parsed: unknown): CliConfig => {
-  if (typeof parsed !== "object" || parsed === null) {
-    return {};
+type StoredConfig = Readonly<{
+  config: CliConfig;
+  raw: Readonly<Record<string, unknown>>;
+}>;
+
+const readStoredConfig = async (
+  configPath: string,
+): Promise<Result<StoredConfig, ConfigReadError>> => {
+  const raw = await files.readText(configPath);
+  if (isErr(raw)) {
+    return err({ message: `Config file at ${configPath} could not be read: ${raw.error}` });
   }
-  const raw = parsed as Record<string, unknown>;
-  return {
-    ...(typeof raw.telemetryEnabled === "boolean"
-      ? { telemetryEnabled: raw.telemetryEnabled }
-      : {}),
-    ...(typeof raw.telemetryNoticeShown === "boolean"
-      ? { telemetryNoticeShown: raw.telemetryNoticeShown }
-      : {}),
-    ...(typeof raw.userId === "string" ? { userId: raw.userId } : {}),
-    ...(typeof raw.deviceId === "string" ? { deviceId: raw.deviceId } : {}),
-    ...(typeof raw.envId === "string" && isGuid(raw.envId) ? { envId: raw.envId } : {}),
-  };
+  if (isNone(raw.value)) {
+    return ok({ config: {}, raw: {} });
+  }
+  const text = raw.value.value;
+  const parsed = fromThrowable(
+    (): unknown => JSON.parse(text),
+    () => configFileError(configPath, "is not valid JSON"),
+  );
+  return flatMap(parsed, (value) => parseStoredConfig(value, configPath));
+};
+
+const configFileError = (configPath: string, problem: string): ConfigReadError => ({
+  message: `Config file at ${configPath} ${problem}. Fix or delete it.`,
+});
+
+const dropInvalid = <T extends z.core.SomeType>(schema: T) =>
+  z.catch(z.optional(schema), undefined);
+
+const cliConfigSchema = z.object({
+  // Dropping a malformed opt-out would silently turn telemetry back on.
+  telemetryEnabled: z.optional(z.boolean()),
+  telemetryNoticeShown: dropInvalid(z.boolean()),
+  userId: dropInvalid(z.string()),
+  deviceId: dropInvalid(z.string()),
+  // Only a GUID reads back, so a hand-edited value never reaches a request URL.
+  envId: dropInvalid(z.string().check(z.refine(isGuid))),
+});
+
+// Checked rather than parsed: zod copies objects and drops an own `__proto__` key, which the
+// write must keep like any other key.
+const jsonObjectSchema = z.custom<Readonly<Record<string, unknown>>>(
+  (value) => typeof value === "object" && value !== null && !Array.isArray(value),
+);
+
+const parseStoredConfig = (
+  parsed: unknown,
+  configPath: string,
+): Result<StoredConfig, ConfigReadError> => {
+  const raw = jsonObjectSchema.safeParse(parsed);
+  if (!raw.success) {
+    return err(configFileError(configPath, "does not hold a JSON object"));
+  }
+  // Every other field drops an invalid value, so only telemetryEnabled can fail here.
+  const config = cliConfigSchema.safeParse(raw.data);
+  if (!config.success) {
+    return err(
+      configFileError(configPath, "has a telemetryEnabled value that is not true or false"),
+    );
+  }
+  return ok({ config: config.data, raw: raw.data });
 };

@@ -146,4 +146,13 @@ describe("formatRequestOutput (dapi)", () => {
     expect(errorText(output)).toContain("KONTENT_DAPI_KEY");
     expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "missing-preview-key" });
   });
+
+  it("fails with the config error when the stored environment cannot be read", () => {
+    const message = "Config file at /x/config.json is not valid JSON. Fix or delete it.";
+    const output = formatRequestOutput(err({ kind: "config-unreadable", message }), false);
+
+    expect(output.stderr).toEqual([{ level: "error", text: message }]);
+    expect(output.isFailure).toBe(true);
+    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "config-unreadable" });
+  });
 });

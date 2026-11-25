@@ -3,6 +3,7 @@ import { isTruthyEnv } from "../lib/env.js";
 export type TelemetryOffReason =
   | "do-not-track-env"
   | "kontent-do-not-track-env"
+  | "config-unreadable"
   | "config-disabled"
   | "ci"
   | "missing-api-key";
@@ -19,6 +20,7 @@ export type OptOutVariables = Readonly<{
 
 export type ConsentInputs = Readonly<{
   optOutVariables: OptOutVariables;
+  isConfigReadable: boolean;
   telemetryEnabled: boolean | undefined;
   amplitudeApiKey: string;
   isCiRun: boolean;
@@ -26,6 +28,7 @@ export type ConsentInputs = Readonly<{
 
 export const decideTelemetryConsent = ({
   optOutVariables,
+  isConfigReadable,
   telemetryEnabled,
   amplitudeApiKey,
   isCiRun,
@@ -35,6 +38,9 @@ export const decideTelemetryConsent = ({
   }
   if (isTruthyEnv(optOutVariables.kontentDoNotTrack)) {
     return { isEnabled: false, reason: "kontent-do-not-track-env" };
+  }
+  if (!isConfigReadable) {
+    return { isEnabled: false, reason: "config-unreadable" };
   }
   if (telemetryEnabled === false) {
     return { isEnabled: false, reason: "config-disabled" };
