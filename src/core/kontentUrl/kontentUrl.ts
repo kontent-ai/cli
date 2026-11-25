@@ -4,7 +4,7 @@ import { originOf } from "../lib/baseUrl.js";
 import { fromNullable, map, type Option, some } from "../lib/option.js";
 import { err, flatMap, fromThrowable, ok, type Result } from "../lib/result.js";
 
-const DEFAULT_KONTENT_DOMAIN = "kontent.ai";
+export const DEFAULT_KONTENT_DOMAIN = "kontent.ai";
 
 // The only domains the CLI may talk to, besides on-demand environments and this machine's
 // loopback addresses. Guards a poisoned KONTENT_URL from steering authenticated requests
@@ -38,6 +38,20 @@ export const mapiBaseUrl = (target: KontentTarget): string =>
   match(target)
     .with({ kind: "domain" }, ({ domain }) => `https://manage.${domain}/v2`)
     .with({ kind: "host" }, ({ baseUrl }) => `${originOf(baseUrl)}/manageApi/v2`)
+    .exhaustive();
+
+// What tells two targets apart: the domain, or the whole origin of a host (scheme included).
+export const targetKey = (target: KontentTarget): string =>
+  match(target)
+    .with({ kind: "domain" }, ({ domain }) => domain)
+    .with({ kind: "host" }, ({ baseUrl }) => originOf(baseUrl))
+    .exhaustive();
+
+// The host part alone, with the port when there is one.
+export const targetHost = (target: KontentTarget): string =>
+  match(target)
+    .with({ kind: "domain" }, ({ domain }) => domain)
+    .with({ kind: "host" }, ({ baseUrl }) => baseUrl.host)
     .exhaustive();
 
 /**

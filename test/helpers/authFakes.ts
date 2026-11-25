@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import type { DeviceSignIn, TokenRefresh } from "../../src/cli/adapters/auth/auth0.js";
-import type { TokenStorage } from "../../src/cli/adapters/auth/storage.js";
+import type { LegacyEntry, TokenStorage } from "../../src/cli/adapters/auth/storage.js";
 import type { UserIdCache } from "../../src/cli/adapters/auth/userId.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { ok, type Result } from "../../src/core/lib/result.js";
@@ -11,6 +11,11 @@ export const fakeTokenStorage = (stored: TokenSet | null) =>
     write: vi.fn(async () => ok(undefined)),
     clear: vi.fn(async () => ok(undefined)),
   }) satisfies TokenStorage;
+
+export const fakeLegacyTokens = () =>
+  ({
+    remove: vi.fn(() => Promise.resolve()),
+  }) satisfies LegacyEntry;
 
 export const fakeTokenRefresh = (reply?: Result<TokenSet, AuthError>) =>
   ({

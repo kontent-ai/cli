@@ -7,8 +7,8 @@ import { type AuthSource, decideMapiCredential } from "../../../../core/mapi/cre
 import { resolveMapiEndpoint } from "../../../../core/mapi/endpoint.js";
 import { planRequest, type RequestArgsError } from "../../../../core/mapi/raw/request.js";
 import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
-import { type Session, session } from "../../../adapters/auth/tokenAccess.js";
-import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
+import { createSession, type Session } from "../../../adapters/auth/tokenAccess.js";
+import type { CliConfigStore } from "../../../adapters/config/cliConfig.js";
 import { createRawClient, type RawClient } from "../../../adapters/http/rawClient.js";
 import {
   createRequestBodyReader,
@@ -161,9 +161,9 @@ export const runRequest = async (
   const result = await request(
     {
       logger,
-      config: cliConfigStore,
+      config: deps.config,
       bodyReader: createRequestBodyReader(process.stdin),
-      session,
+      session: createSession(deps.kontentTarget),
       mapi: createRawClient({ logger }),
     },
     // KONTENT_MAPI_KEY is read here rather than through a yargs option: the CLI does not

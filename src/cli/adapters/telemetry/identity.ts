@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { isErr, isOk } from "../../../core/lib/result.js";
-import { createKeyringStorage, type TokenStorage } from "../auth/storage.js";
-import { type CliConfigStore, cliConfigStore } from "../config/cliConfig.js";
+import { isOk } from "../../../core/lib/result.js";
+import type { CliConfigStore } from "../config/cliConfig.js";
 
 export type TelemetryIdentity = Readonly<{
   deviceId: string;
@@ -9,20 +8,19 @@ export type TelemetryIdentity = Readonly<{
 }>;
 
 export type IdentityEffects = Readonly<{
-  tokens: Pick<TokenStorage, "read">;
   config: Pick<CliConfigStore, "read" | "write">;
   newDeviceId: () => string;
 }>;
 
 export const resolveIdentity = async (effects: IdentityEffects): Promise<TelemetryIdentity> => {
   const deviceId = await resolveDeviceId(effects);
-  const userId = await resolveUserId(effects);
-  return userId === null ? { deviceId } : { deviceId, userId };
+  const config = await effects.config.read();
+  const userId = isOk(config) ? config.value.userId : undefined;
+  return isValidId(userId) ? { deviceId, userId } : { deviceId };
 };
 
-export const systemIdentityEffects = (): IdentityEffects => ({
-  tokens: createKeyringStorage(),
-  config: cliConfigStore,
+export const systemIdentityEffects = (config: CliConfigStore): IdentityEffects => ({
+  config,
   newDeviceId: randomUUID,
 });
 
@@ -42,19 +40,3 @@ const MIN_ID_LENGTH = 5;
 
 const isValidId = (value: unknown): value is string =>
   typeof value === "string" && value.length >= MIN_ID_LENGTH;
-
-/**
- * Resolves the cached user id, gated on stored tokens. The cache can outlive its
- * session (failed logout clear, copied config file), so the keyring decides who
- * is logged in.
- */
-const resolveUserId = async (effects: IdentityEffects): Promise<string | null> => {
-  const stored = await effects.tokens.read();
-  if (isErr(stored) || stored.value === null) {
-    return null;
-  }
-
-  const config = await effects.config.read();
-  const cachedUserId = isOk(config) ? config.value.userId : undefined;
-  return isValidId(cachedUserId) ? cachedUserId : null;
-};

@@ -5,6 +5,7 @@ import { isSessionRejected } from "../../../../../core/auth/session.js";
 import { iapiBaseUrl, mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../../core/lib/option.js";
 import { err, isErr, ok, type Result } from "../../../../../core/lib/result.js";
+import { hasOverride } from "../../../../../core/overrides/overrides.js";
 import { planDeliveryKeyRequest } from "../../../../../core/project/deliveryKeyRequest.js";
 import { applyEnvOverrides } from "../../../../../core/project/envFile.js";
 import { PREVIEW_PORT } from "../../../../../core/project/previewSpace.js";
@@ -15,7 +16,7 @@ import {
   type SampleApp,
   supportedProjectTypes,
 } from "../../../../../core/project/samples.js";
-import { session } from "../../../../adapters/auth/tokenAccess.js";
+import { createSession } from "../../../../adapters/auth/tokenAccess.js";
 import { createUserIdCache } from "../../../../adapters/auth/userId.js";
 import { type Clock, systemClock } from "../../../../adapters/clock/clock.js";
 import { type Files, files } from "../../../../adapters/files/files.js";
@@ -145,20 +146,28 @@ export const runBootstrap = async (
   deps: CommandDeps,
   logger: Logger,
 ): Promise<CommandOutcome> => {
+  // The sample's .env gets only the environment ID and delivery key, so the app always talks
+  // to production Kontent.ai.
+  if (hasOverride(deps.overrides)) {
+    logger.error("`kontent project sample bootstrap` works only against production Kontent.ai.");
+    return failureOutcome("override-active");
+  }
   if (!process.stdin.isTTY) {
     logger.error("`kontent project sample bootstrap` needs an interactive terminal.");
     return failureOutcome("not-interactive");
   }
   prompts.intro("Bootstrap a Kontent.ai project");
 
-  const tokens = await session.tokens();
+  const tokens = await createSession(deps.kontentTarget).tokens();
   if (isErr(tokens)) {
     logger.error(formatAuthError(tokens.error));
     return authFailure(tokens.error, { project: args.envId });
   }
   const { accessToken } = tokens.value;
   const iapiUrl = iapiBaseUrl(deps.kontentTarget);
-  await createUserIdCache(logger, iapiUrl).ensure(accessToken, { shouldForceRefresh: false });
+  await createUserIdCache(logger, iapiUrl, deps.config).ensure(accessToken, {
+    shouldForceRefresh: false,
+  });
 
   const iapiClient = createIapiClient({ token: accessToken, baseUrl: iapiUrl });
   const mapiClient = createMapiClient({

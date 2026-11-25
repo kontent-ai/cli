@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { createLegacyTokens } from "../../src/cli/adapters/auth/storage.js";
 import type { CliConfigStore } from "../../src/cli/adapters/config/cliConfig.js";
 import { type LogoutEffects, logout } from "../../src/cli/commands/logout/runLogout.js";
 import type { Logger } from "../../src/cli/log.js";
 import type { AuthError } from "../../src/core/auth/types.js";
 import { err, ok } from "../../src/core/lib/result.js";
-import { fakeTokenStorage } from "../helpers/authFakes.js";
+import { fakeLegacyTokens, fakeTokenStorage } from "../helpers/authFakes.js";
+
+// A keychain that refuses every call, for the legacy delete's failure path.
+vi.mock("@napi-rs/keyring", () => ({
+  AsyncEntry: function AsyncEntry() {
+    return { getPassword: () => Promise.reject(new Error("keychain locked")) };
+  },
+}));
 
 const CORRUPT =
   "Config file at /config/kontent/cli/config.json is not valid JSON. Fix or delete it.";
@@ -23,6 +31,7 @@ const effectsWith = (write: CliConfigStore["write"]) =>
   ({
     logger: fakeLogger(),
     tokens: fakeTokenStorage(null),
+    legacyTokens: fakeLegacyTokens(),
     config: { write: vi.fn(write) },
   }) satisfies LogoutEffects;
 
@@ -74,5 +83,29 @@ describe("logout", () => {
 
     expect(result).toEqual(err(CLEAR_FAILED));
     expect(effects.config.write).not.toHaveBeenCalled();
+  });
+});
+
+describe("logout when the legacy keyring entry cannot be removed", () => {
+  it("still succeeds and says why at verbose", async () => {
+    const logger = {
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+      isVerbose: true,
+    } satisfies Logger;
+
+    const result = await logout({
+      logger,
+      tokens: fakeTokenStorage(null),
+      legacyTokens: createLegacyTokens(logger),
+      config: { write: vi.fn(() => Promise.resolve(ok(undefined))) },
+    });
+
+    expect(result).toEqual(ok(undefined));
+    expect(logger.warning).toHaveBeenCalledWith(
+      "verbose",
+      "Could not remove the old keyring entry: keychain locked",
+    );
   });
 });

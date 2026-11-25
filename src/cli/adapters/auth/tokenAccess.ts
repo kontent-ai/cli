@@ -1,6 +1,8 @@
 import { match } from "ts-pattern";
+import { loginContextFor } from "../../../core/auth/loginContext.js";
 import { decideAfterRefreshFailure, decideAuth } from "../../../core/auth/session.js";
 import type { AuthError, TokenSet } from "../../../core/auth/types.js";
+import type { KontentTarget } from "../../../core/kontentUrl/kontentUrl.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
 import { type Clock, systemClock } from "../clock/clock.js";
 import { createTokenRefresh, type TokenRefresh } from "./auth0.js";
@@ -60,11 +62,13 @@ export const getValidTokens = async (
     .exhaustive();
 };
 
-export const session: Session = {
-  tokens: async () =>
-    getValidTokens({
-      tokens: createKeyringStorage(),
-      tokenRefresh: createTokenRefresh(getAuth0Config(), systemClock),
+export const createSession = (target: KontentTarget): Session => ({
+  tokens: async () => {
+    const auth0 = getAuth0Config();
+    return await getValidTokens({
+      tokens: createKeyringStorage(loginContextFor(auth0, target)),
+      tokenRefresh: createTokenRefresh(auth0, systemClock),
       clock: systemClock,
-    }),
-};
+    });
+  },
+});

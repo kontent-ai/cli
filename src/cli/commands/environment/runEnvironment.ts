@@ -5,12 +5,8 @@ import { mapiBaseUrl } from "../../../core/kontentUrl/kontentUrl.js";
 import { isGuid } from "../../../core/lib/guid.js";
 import { fromNullable, isNone, type Option } from "../../../core/lib/option.js";
 import { err, isErr, map, mapErr, ok, type Result } from "../../../core/lib/result.js";
-import { type Session, session } from "../../adapters/auth/tokenAccess.js";
-import {
-  type CliConfigStore,
-  type ConfigReadError,
-  cliConfigStore,
-} from "../../adapters/config/cliConfig.js";
+import { createSession, type Session } from "../../adapters/auth/tokenAccess.js";
+import type { CliConfigStore, ConfigReadError } from "../../adapters/config/cliConfig.js";
 import { createEnvironments, type Environments } from "../../adapters/mapi/environments.js";
 import type { Logger } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
@@ -78,9 +74,9 @@ export const runUse = async (
 
   const result = await selectEnvironment(
     {
-      session,
+      session: createSession(deps.kontentTarget),
       environments: createEnvironments(mapiBaseUrl(deps.kontentTarget)),
-      config: cliConfigStore,
+      config: deps.config,
     },
     envId,
   );
@@ -125,8 +121,8 @@ export const formatUseFailure = (
   };
 };
 
-export const runCurrent = async (logger: Logger): Promise<CommandOutcome> => {
-  const current = await currentEnvironment({ config: cliConfigStore });
+export const runCurrent = async (deps: CommandDeps, logger: Logger): Promise<CommandOutcome> => {
+  const current = await currentEnvironment({ config: deps.config });
   if (isErr(current)) {
     logger.error(current.error.message);
     return { status: "error", reason: "failure", errorCode: "config-unreadable" };
@@ -140,8 +136,8 @@ export const runCurrent = async (logger: Logger): Promise<CommandOutcome> => {
   return { status: "success" };
 };
 
-export const runClear = async (logger: Logger): Promise<CommandOutcome> => {
-  const result = await clearEnvironment({ config: cliConfigStore });
+export const runClear = async (deps: CommandDeps, logger: Logger): Promise<CommandOutcome> => {
+  const result = await clearEnvironment({ config: deps.config });
   if (isErr(result)) {
     logger.error(`Failed to update the config: ${result.error}`);
     return { status: "error", reason: "failure", errorCode: "config-write-failed" };

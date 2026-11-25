@@ -9,6 +9,6 @@ export const register: RegisterCommand = (y, deps) =>
     handler: async (args) =>
       runCommand({ trackAs: "logout", args, deps }, async (logger) => {
         const { runLogout } = await import("./runLogout.js");
-        return runLogout(logger);
+        return runLogout(deps, logger);
       }),
   });

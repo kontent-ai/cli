@@ -3,24 +3,28 @@
 import { isCI } from "ci-info";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { getAuth0Config } from "./cli/adapters/auth/config.js";
 import { systemClock } from "./cli/adapters/clock/clock.js";
-import { cliConfigStore } from "./cli/adapters/config/cliConfig.js";
+import { createCliConfigStore } from "./cli/adapters/config/cliConfig.js";
 import { isTelemetryDebug, readOptOutVariables } from "./cli/adapters/telemetry/consent.js";
 import { amplitudeApiKey, cliVersion } from "./cli/adapters/telemetry/context.js";
 import { systemIdentityEffects } from "./cli/adapters/telemetry/identity.js";
 import { createAmplitudeSink } from "./cli/adapters/telemetry/sink.js";
 import {
   createTelemetry,
+  noopTelemetry,
   registerTelemetrySignalFlush,
 } from "./cli/adapters/telemetry/tracking.js";
 import { commandsToRegister } from "./cli/commands/registry.js";
 import { EXIT_CODES } from "./cli/commands/shared/exitCodes.js";
+import { formatOverrideWarning } from "./cli/commands/shared/overrideWarning.js";
 import { summarizeUnexpectedError } from "./cli/commands/shared/runCommand.js";
 import { usageHint } from "./cli/commands/shared/usageHint.js";
-import { addLogLevelOptions, styleStderr } from "./cli/log.js";
+import { addLogLevelOptions, createLoggerFromArgs, styleStderr } from "./cli/log.js";
 import type { CommandDeps } from "./cli/types/yargs.js";
-import { resolveKontentTarget } from "./core/kontentUrl/kontentUrl.js";
 import { isErr } from "./core/lib/result.js";
+import { hasOverride } from "./core/overrides/overrides.js";
+import { resolveRunContext } from "./core/overrides/runContext.js";
 
 // A reader that stops early (`... | head`) exits and takes the read end of the
 // pipe with it, while we are still writing. The write then fails with EPIPE and
@@ -71,33 +75,49 @@ const withLogLevel = addLogLevelOptions(initialYargs);
 // undeclared case (tsx).
 declare const __KONTENT_URL__: string | undefined;
 
-const kontentTarget = resolveKontentTarget({
-  fromEnv: process.env.KONTENT_URL,
-  baked:
-    typeof __KONTENT_URL__ === "string" && __KONTENT_URL__ !== "" ? __KONTENT_URL__ : undefined,
+const runContext = resolveRunContext({
+  kontentUrl: process.env.KONTENT_URL,
+  bakedKontentUrl: typeof __KONTENT_URL__ === "string" ? __KONTENT_URL__ : undefined,
+  auth0: getAuth0Config(),
+  // An empty environment leaves only the values baked into this build.
+  builtInAuth0: getAuth0Config({}),
 });
-if (isErr(kontentTarget)) {
-  console.error(`${styleStderr("red", "Error:")} ${kontentTarget.error}`);
+if (isErr(runContext)) {
+  console.error(`${styleStderr("red", "Error:")} ${runContext.error}`);
   process.exit(1);
 }
 
-const { telemetry } = await createTelemetry({
-  config: cliConfigStore,
-  clock: systemClock,
-  identity: systemIdentityEffects(),
-  optOutVariables: readOptOutVariables(process.env),
-  isCiRun: isCI,
-  isDebug: isTelemetryDebug(process.env),
-  amplitudeApiKey,
-  createSink: createAmplitudeSink,
-});
-const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
+const { target, overrides, configFolder } = runContext.value;
+const config = createCliConfigStore(configFolder);
+// Override runs are internal (QA, local stacks), so they send no telemetry.
+const { telemetry } = hasOverride(overrides)
+  ? { telemetry: noopTelemetry }
+  : await createTelemetry({
+      config,
+      clock: systemClock,
+      identity: systemIdentityEffects(config),
+      optOutVariables: readOptOutVariables(process.env),
+      isCiRun: isCI,
+      isDebug: isTelemetryDebug(process.env),
+      amplitudeApiKey,
+      createSink: createAmplitudeSink,
+    });
+const deps: CommandDeps = { telemetry, kontentTarget: target, overrides, config };
 registerTelemetrySignalFlush(telemetry);
+
+const overrideWarning = formatOverrideWarning(overrides);
+
+// Runs after parsing (so --logLevel is known) and before the command handler.
+const withRunNotes = withLogLevel.middleware((args) => {
+  if (overrideWarning !== null) {
+    createLoggerFromArgs(args).warning("standard", overrideWarning);
+  }
+});
 
 const isReported = (error: unknown): boolean => error instanceof Error && "wasReported" in error;
 
 const cli = commandsToRegister
-  .reduce((current, register) => register(current, deps), withLogLevel)
+  .reduce((current, register) => register(current, deps), withRunNotes)
   // Replaces the full help yargs prints on a usage error. It has to throw: yargs runs the
   // command once the handler returns. A throw from inside a .check() comes back in here,
   // so the error is marked as reported rather than printed twice.

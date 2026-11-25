@@ -2,11 +2,12 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cliConfigStore } from "../../src/cli/adapters/config/cliConfig.js";
+import { createCliConfigStore } from "../../src/cli/adapters/config/cliConfig.js";
 import { ok } from "../../src/core/lib/result.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 describe("cli config store", () => {
+  const store = createCliConfigStore("cli");
   let configHome: string;
 
   beforeAll(async () => {
@@ -33,7 +34,7 @@ describe("cli config store", () => {
   it("reads back a stored environment id only when it is a GUID", async () => {
     await writeRawConfig(JSON.stringify({ envId: "../projects/other" }));
 
-    const config = await cliConfigStore.read();
+    const config = await store.read();
 
     assertOk(config);
     expect(config.value.envId).toBeUndefined();
@@ -80,32 +81,32 @@ describe("cli config store", () => {
   ])("$name", async ({ stored, expected }) => {
     await writeRawConfig(JSON.stringify(stored));
 
-    expect(await cliConfigStore.read()).toEqual(ok(expected));
+    expect(await store.read()).toEqual(ok(expected));
   });
 
   it("keeps an own __proto__ key when it writes", async () => {
     await writeRawConfig('{"__proto__": {"telemetryEnabled": "x"}, "custom": 1}');
 
-    assertOk(await cliConfigStore.read());
-    assertOk(await cliConfigStore.write({ telemetryNoticeShown: true }));
+    assertOk(await store.read());
+    assertOk(await store.write({ telemetryNoticeShown: true }));
 
-    expect(await readFile(cliConfigStore.path(), "utf8")).toBe(
+    expect(await readFile(store.path(), "utf8")).toBe(
       '{\n  "__proto__": {\n    "telemetryEnabled": "x"\n  },\n  "custom": 1,\n  "telemetryNoticeShown": true\n}\n',
     );
   });
 
   it("reads a missing file as an empty config", async () => {
-    expect(await cliConfigStore.read()).toEqual(ok({}));
+    expect(await store.read()).toEqual(ok({}));
   });
 
   it("reports a file that is not valid JSON", async () => {
     await writeRawConfig('{"telemetryEnabled": false,}');
 
-    const config = await cliConfigStore.read();
+    const config = await store.read();
 
     assertErr(config);
     expect(config.error).toEqual({
-      message: `Config file at ${cliConfigStore.path()} is not valid JSON. Fix or delete it.`,
+      message: `Config file at ${store.path()} is not valid JSON. Fix or delete it.`,
     });
   });
 
@@ -117,14 +118,14 @@ describe("cli config store", () => {
   ])("reports %s, a top level that is not an object", async (text) => {
     await writeRawConfig(text);
 
-    const config = await cliConfigStore.read();
+    const config = await store.read();
 
     assertErr(config);
     expect(config.error.message).toBe(
-      `Config file at ${cliConfigStore.path()} does not hold a JSON object. Fix or delete it.`,
+      `Config file at ${store.path()} does not hold a JSON object. Fix or delete it.`,
     );
-    assertErr(await cliConfigStore.write({ telemetryEnabled: true }));
-    expect(await readFile(cliConfigStore.path(), "utf8")).toBe(text);
+    assertErr(await store.write({ telemetryEnabled: true }));
+    expect(await readFile(store.path(), "utf8")).toBe(text);
   });
 
   // Dropping it would read as "not opted out" and turn telemetry back on.
@@ -136,48 +137,44 @@ describe("cli config store", () => {
     const text = `{"telemetryEnabled": ${value}}`;
     await writeRawConfig(text);
 
-    const config = await cliConfigStore.read();
+    const config = await store.read();
 
     assertErr(config);
     expect(config.error.message).toBe(
-      `Config file at ${cliConfigStore.path()} has a telemetryEnabled value that is not true or false. Fix or delete it.`,
+      `Config file at ${store.path()} has a telemetryEnabled value that is not true or false. Fix or delete it.`,
     );
-    assertErr(await cliConfigStore.write({ telemetryNoticeShown: true }));
-    expect(await readFile(cliConfigStore.path(), "utf8")).toBe(text);
+    assertErr(await store.write({ telemetryNoticeShown: true }));
+    expect(await readFile(store.path(), "utf8")).toBe(text);
   });
 
   it("reports a config.json it cannot read and refuses to write", async () => {
-    await mkdir(cliConfigStore.path(), { recursive: true });
+    await mkdir(store.path(), { recursive: true });
 
-    const config = await cliConfigStore.read();
+    const config = await store.read();
 
     assertErr(config);
-    expect(config.error.message).toContain(
-      `Config file at ${cliConfigStore.path()} could not be read:`,
-    );
-    assertErr(await cliConfigStore.write({ telemetryEnabled: false }));
-    expect(await readdir(cliConfigStore.path())).toEqual([]);
+    expect(config.error.message).toContain(`Config file at ${store.path()} could not be read:`);
+    assertErr(await store.write({ telemetryEnabled: false }));
+    expect(await readdir(store.path())).toEqual([]);
   });
 
   it("refuses to write over a file that is not valid JSON", async () => {
     const corrupt = '{"telemetryEnabled": false,}';
     await writeRawConfig(corrupt);
 
-    const written = await cliConfigStore.write({ telemetryEnabled: true });
+    const written = await store.write({ telemetryEnabled: true });
 
     assertErr(written);
-    expect(await readFile(cliConfigStore.path(), "utf8")).toBe(corrupt);
+    expect(await readFile(store.path(), "utf8")).toBe(corrupt);
   });
 
   it("merges a patch into the stored config without leaving a temp file behind", async () => {
     await writeRawConfig(JSON.stringify({ telemetryEnabled: false }));
 
-    const written = await cliConfigStore.write({ telemetryNoticeShown: true });
+    const written = await store.write({ telemetryNoticeShown: true });
 
     assertOk(written);
-    expect(await cliConfigStore.read()).toEqual(
-      ok({ telemetryEnabled: false, telemetryNoticeShown: true }),
-    );
+    expect(await store.read()).toEqual(ok({ telemetryEnabled: false, telemetryNoticeShown: true }));
     expect(await readdir(join(configHome, "kontent", "cli"))).toEqual(["config.json"]);
   });
 
@@ -191,17 +188,15 @@ describe("cli config store", () => {
     };
     await writeRawConfig(JSON.stringify({ ...unknownFields, telemetryEnabled: false }));
 
-    const written = await cliConfigStore.write({ telemetryNoticeShown: true });
+    const written = await store.write({ telemetryNoticeShown: true });
 
     assertOk(written);
-    expect(JSON.parse(await readFile(cliConfigStore.path(), "utf8"))).toEqual({
+    expect(JSON.parse(await readFile(store.path(), "utf8"))).toEqual({
       ...unknownFields,
       telemetryEnabled: false,
       telemetryNoticeShown: true,
     });
-    expect(await cliConfigStore.read()).toEqual(
-      ok({ telemetryEnabled: false, telemetryNoticeShown: true }),
-    );
+    expect(await store.read()).toEqual(ok({ telemetryEnabled: false, telemetryNoticeShown: true }));
   });
 
   // Validation applies to reads only; a value this version rejects may be valid for another one.
@@ -217,10 +212,10 @@ describe("cli config store", () => {
       }),
     );
 
-    const written = await cliConfigStore.write({ telemetryEnabled: false });
+    const written = await store.write({ telemetryEnabled: false });
 
     assertOk(written);
-    const stored: unknown = JSON.parse(await readFile(cliConfigStore.path(), "utf8"));
+    const stored: unknown = JSON.parse(await readFile(store.path(), "utf8"));
     expect(Object.keys(stored as object)).toEqual([
       "zeta",
       "envId",
@@ -239,16 +234,16 @@ describe("cli config store", () => {
       alpha: [1],
       telemetryEnabled: false,
     });
-    expect(await cliConfigStore.read()).toEqual(ok({ telemetryEnabled: false }));
+    expect(await store.read()).toEqual(ok({ telemetryEnabled: false }));
   });
 
   it("removes the fields logout clears even when their values are rejected on read", async () => {
     await writeRawConfig(JSON.stringify({ envId: "not-a-guid", userId: 42, custom: 1 }));
 
-    const written = await cliConfigStore.write({ userId: undefined, envId: undefined });
+    const written = await store.write({ userId: undefined, envId: undefined });
 
     assertOk(written);
-    expect(JSON.parse(await readFile(cliConfigStore.path(), "utf8"))).toEqual({ custom: 1 });
+    expect(JSON.parse(await readFile(store.path(), "utf8"))).toEqual({ custom: 1 });
   });
 
   it("removes the fields logout clears and keeps the rest", async () => {
@@ -262,10 +257,10 @@ describe("cli config store", () => {
       }),
     );
 
-    const written = await cliConfigStore.write({ userId: undefined, envId: undefined });
+    const written = await store.write({ userId: undefined, envId: undefined });
 
     assertOk(written);
-    expect(JSON.parse(await readFile(cliConfigStore.path(), "utf8"))).toEqual({
+    expect(JSON.parse(await readFile(store.path(), "utf8"))).toEqual({
       telemetryEnabled: false,
       deviceId: "device",
       custom: { kept: true },
@@ -276,8 +271,8 @@ describe("cli config store", () => {
     const text = '{"custom": {"kept": true}, "telemetryEnabled": "false"}';
     await writeRawConfig(text);
 
-    assertErr(await cliConfigStore.read());
-    assertErr(await cliConfigStore.write({ telemetryNoticeShown: true }));
-    expect(await readFile(cliConfigStore.path(), "utf8")).toBe(text);
+    assertErr(await store.read());
+    assertErr(await store.write({ telemetryNoticeShown: true }));
+    expect(await readFile(store.path(), "utf8")).toBe(text);
   });
 });
