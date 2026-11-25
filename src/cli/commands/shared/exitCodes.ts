@@ -1,4 +1,3 @@
-// Follows `gh help exit-codes`.
 export const EXIT_CODES = {
   success: 0,
   failure: 1,
