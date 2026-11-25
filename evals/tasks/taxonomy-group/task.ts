@@ -17,7 +17,7 @@ export const taxonomyGroup: EvalTask = {
   prompt:
     "Create a taxonomy group called Topics, codename topics, with the terms News (codename news), Product (codename product) and Engineering (codename engineering). One of them should sit underneath another one as a sub-term.",
   check: async (client) => {
-    const topicsLookup = await lookupByCodename("topics taxonomy", () =>
+    const topicsLookup = await lookupByCodename("topics taxonomy", async () =>
       client.getTaxonomy().byTaxonomyCodename("topics").toPromise(),
     );
     if (isErr(topicsLookup)) {

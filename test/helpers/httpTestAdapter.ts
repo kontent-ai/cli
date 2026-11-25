@@ -28,7 +28,7 @@ export const httpTestAdapter = (routes: ReadonlyArray<HttpRoute>): HttpTestAdapt
   const callCounts = new Map<HttpRoute, number>();
 
   const adapter: HttpAdapter = {
-    executeRequest: (options) => {
+    executeRequest: async (options) => {
       requests.push(options);
 
       const route = routes.find(
@@ -50,7 +50,7 @@ export const httpTestAdapter = (routes: ReadonlyArray<HttpRoute>): HttpTestAdapt
         throw reply.throws;
       }
 
-      return Promise.resolve({
+      return await Promise.resolve({
         payload: reply.payload ?? null,
         responseHeaders: replyHeaders(reply),
         status: reply.status ?? 200,

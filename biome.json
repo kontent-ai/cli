@@ -2,7 +2,7 @@
   "$schema": "https://biomejs.dev/schemas/2.0.x/schema.json",
   "extends": ["@kontent-ai/biome-config/base"],
   "files": {
-    "includes": ["src/**/*.ts"]
+    "includes": ["src/**/*.ts", "test/**/*.ts", "evals/**/*.ts", "scripts/**/*.ts"]
   },
   "linter": {
     "rules": {

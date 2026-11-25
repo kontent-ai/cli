@@ -25,7 +25,7 @@ export const updateLanguageVariant: EvalTask = {
   prompt:
     'Update the published "Launch announcement" article. New title "Launch announcement 2026". Summary: "Everything new in the 2026 release." Body should have a heading "What\'s new", a short paragraph, and a bullet list with three items. Tag it with the Topics terms Product and News. Link "Winter release notes" as a related article. Then publish it again. Do not create a new article.',
   check: async (client) => {
-    const items = await lookup("Listing content items", () =>
+    const items = await lookup("Listing content items", async () =>
       client.listContentItems().toAllPromise(),
     );
     if (isErr(items)) {
@@ -71,7 +71,7 @@ export const updateLanguageVariant: EvalTask = {
       ]);
     }
 
-    const articleLookup = await lookupByCodename("article content type", () =>
+    const articleLookup = await lookupByCodename("article content type", async () =>
       client.viewContentType().byTypeCodename("article").toPromise(),
     );
     if (isErr(articleLookup)) {
@@ -96,7 +96,7 @@ export const updateLanguageVariant: EvalTask = {
             )}`,
           };
 
-    const variantLookup = await lookupByCodename("launch announcement language variant", () =>
+    const variantLookup = await lookupByCodename("launch announcement language variant", async () =>
       client
         .viewLanguageVariant()
         .byItemId(article.id)
@@ -114,7 +114,7 @@ export const updateLanguageVariant: EvalTask = {
           (element.element.codename ?? idToCodename.get(element.element.id)) === codename,
       );
 
-    const taxonomyLookup = await lookupByCodename("topics taxonomy", () =>
+    const taxonomyLookup = await lookupByCodename("topics taxonomy", async () =>
       client.getTaxonomy().byTaxonomyCodename("topics").toPromise(),
     );
     if (isErr(taxonomyLookup)) {
@@ -126,7 +126,9 @@ export const updateLanguageVariant: EvalTask = {
 
     const winterReleaseNotes = findItemsByName(allItems, "winter release notes")[0];
 
-    const workflows = await lookup("Listing workflows", () => client.listWorkflows().toPromise());
+    const workflows = await lookup("Listing workflows", async () =>
+      client.listWorkflows().toPromise(),
+    );
     if (isErr(workflows)) {
       return workflows;
     }

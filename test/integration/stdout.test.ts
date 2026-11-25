@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // built by `pnpm test`: a bundle-based test would fail on CI for a missing
 // artifact and pass locally against a stale one. Bundling goes untested here;
 // the e2e suite covers it.
-const runWithClosedStdout = (
+const runWithClosedStdout = async (
   args: ReadonlyArray<string>,
 ): Promise<Readonly<{ exitCode: number; stderr: string }>> =>
   new Promise((resolve, reject) => {

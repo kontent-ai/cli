@@ -28,13 +28,17 @@ describe("kontent mapi and dapi e2e", () => {
   let secondItemId: string;
   let assetId: string;
 
-  const mapi = (endpoint: string, extraArgs: ReadonlyArray<string> = [], options?: CliRunOptions) =>
+  const mapi = async (
+    endpoint: string,
+    extraArgs: ReadonlyArray<string> = [],
+    options?: CliRunOptions,
+  ) =>
     runCli(
       ["mapi", endpoint, "--envId", envId, "--mapiKey", config.mapiKey, ...extraArgs],
       options,
     );
 
-  const dapi = (endpoint: string, extraArgs: ReadonlyArray<string> = []) =>
+  const dapi = async (endpoint: string, extraArgs: ReadonlyArray<string> = []) =>
     runCli(["dapi", endpoint, "--envId", envId, ...extraArgs]);
 
   it("starts from an empty clone", async () => {
@@ -146,7 +150,7 @@ describe("kontent mapi and dapi e2e", () => {
     "serves the published item through Delivery",
     async () => {
       const result = await pollUntil(
-        () => dapi(`items/${itemCodename}`, ["--waitForNewContent"]),
+        async () => dapi(`items/${itemCodename}`, ["--waitForNewContent"]),
         hasLeftPropagation,
       );
 
@@ -204,7 +208,7 @@ describe("kontent mapi and dapi e2e", () => {
     "follows next_page with --paginate --slurp, one item per page",
     async () => {
       const result = await pollUntil(
-        () =>
+        async () =>
           dapi(`items?system.type=${typeCodename}&limit=1`, [
             "--paginate",
             "--slurp",
@@ -229,7 +233,7 @@ describe("kontent mapi and dapi e2e", () => {
     const result = await dapi(`items/missing_${runSuffix}`);
 
     expect(result.exitCode).toBe(1);
-    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) });
+    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) as unknown });
     expect(result.stderr).toContain("HTTP 404");
   });
 
@@ -246,7 +250,7 @@ describe("kontent mapi and dapi e2e", () => {
 
   it("unpublishes the variants", async () => {
     const results = await Promise.all(
-      [itemId, secondItemId].map((id) =>
+      [itemId, secondItemId].map(async (id) =>
         mapi(`items/${id}/variants/codename/default/unpublish`, ["-X", "PUT"]),
       ),
     );
@@ -259,7 +263,7 @@ describe("kontent mapi and dapi e2e", () => {
 
   it("deletes the items", async () => {
     const results = await Promise.all(
-      [itemId, secondItemId].map((id) => mapi(`items/${id}`, ["-X", "DELETE"])),
+      [itemId, secondItemId].map(async (id) => mapi(`items/${id}`, ["-X", "DELETE"])),
     );
 
     expect(results.map((result) => [result.exitCode, result.stdout])).toEqual([
@@ -272,7 +276,7 @@ describe("kontent mapi and dapi e2e", () => {
     const result = await mapi(`items/${itemId}`);
 
     expect(result.exitCode).toBe(1);
-    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) });
+    expect(parseStdout(result)).toMatchObject({ message: expect.any(String) as unknown });
     expect(result.stderr).toContain("HTTP 404");
   });
 
@@ -301,7 +305,7 @@ const splitOnce = (text: string, separator: string): readonly [string, string] =
 };
 
 // Publishing reaches Delivery asynchronously, so the first reads can still miss it.
-const pollUntil = (
+const pollUntil = async (
   run: () => Promise<CliResult>,
   isReady: (result: CliResult) => boolean,
 ): Promise<CliResult> => {
@@ -313,7 +317,7 @@ const pollUntil = (
     await sleep(DELIVERY_POLL_INTERVAL_MS);
     return attempt(remaining - 1);
   };
-  return attempt(DELIVERY_POLL_ATTEMPTS);
+  return await attempt(DELIVERY_POLL_ATTEMPTS);
 };
 
 // Only a 404 means the item is still on its way; any other failure is final.
