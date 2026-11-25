@@ -1,11 +1,11 @@
 import { isErr, type Result } from "../../../core/lib/result.js";
+import type { CommandOutcome } from "../shared/commandOutcome.js";
 import type { DocsError } from "./runDocs.js";
 
 export type DocsOutput = Readonly<{
   stdout: string;
   error: string | undefined;
-  isFailure: boolean;
-  telemetry: Readonly<{ outcome: "succeed" }> | Readonly<{ outcome: "fail"; errorCode: string }>;
+  outcome: CommandOutcome;
 }>;
 
 /** Everything a docs command writes, decided as data so the streams can be asserted on. */
@@ -17,8 +17,7 @@ export const formatDocsOutput = (
     return {
       stdout: "",
       error: result.error.message,
-      isFailure: true,
-      telemetry: { outcome: "fail", errorCode: result.error.kind },
+      outcome: { status: "error", reason: "failure", errorCode: result.error.kind },
     };
   }
 
@@ -27,8 +26,7 @@ export const formatDocsOutput = (
   return {
     stdout: `${payload}\n`,
     error: undefined,
-    isFailure: false,
-    telemetry: { outcome: "succeed" },
+    outcome: { status: "success" },
   };
 };
 

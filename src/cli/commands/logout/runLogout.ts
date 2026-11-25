@@ -2,8 +2,8 @@ import type { AuthError } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
 import { createKeyringStorage, type TokenStorage } from "../../adapters/auth/storage.js";
 import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliConfig.js";
-import { createLoggerFromArgs, type Logger, type LogOptions } from "../../log.js";
-import type { CommandDeps } from "../../types/yargs.js";
+import type { Logger } from "../../log.js";
+import type { CommandOutcome } from "../shared/commandOutcome.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
 
 export type LogoutEffects = Readonly<{
@@ -29,17 +29,12 @@ export const logout = async (effects: LogoutEffects): Promise<Result<void, AuthE
   return ok(undefined);
 };
 
-export const runLogout = async (args: LogOptions, deps: CommandDeps): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = deps.telemetry.startCommandTracking("logout", logger);
-
+export const runLogout = async (logger: Logger): Promise<CommandOutcome> => {
   const result = await logout({ logger, tokens: createKeyringStorage(), config: cliConfigStore });
   if (isErr(result)) {
-    tracker.fail(result.error.kind);
     logger.error(formatAuthError(result.error));
-    process.exitCode = 1;
-    return;
+    return { status: "error", reason: "failure", errorCode: result.error.kind };
   }
-  tracker.succeed();
   logger.info("standard", "Logged out.");
+  return { status: "success" };
 };

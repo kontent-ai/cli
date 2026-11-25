@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { KontentSdkError } from "@kontent-ai/core-sdk";
 import { match, P } from "ts-pattern";
+import { isSessionRejected } from "../../../../../core/auth/session.js";
 import { iapiBaseUrl, mapiBaseUrl } from "../../../../../core/kontentUrl/kontentUrl.js";
 import { isNone } from "../../../../../core/lib/option.js";
 import { err, isErr, ok, type Result } from "../../../../../core/lib/result.js";
@@ -34,9 +35,15 @@ import {
 import { createSpaces, type Spaces } from "../../../../adapters/mapi/spaces.js";
 import { type Prompts, prompts } from "../../../../adapters/prompts/prompts.js";
 import { type Templates, templates } from "../../../../adapters/templates/templates.js";
-import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../../log.js";
+import type { Logger } from "../../../../log.js";
 import type { CommandDeps } from "../../../../types/yargs.js";
+import {
+  authFailure,
+  type CommandOutcome,
+  failureOutcome,
+} from "../../../shared/commandOutcome.js";
 import { noEnvironmentAccessMessage } from "../../../shared/environmentAccess.js";
+import type { ErrorReason } from "../../../shared/exitCodes.js";
 import { formatAuthError } from "../../../shared/formatAuthError.js";
 import { sessionExpiredMessage } from "../../../shared/sessionExpired.js";
 import { ensureLocalhostSpace, type SpaceSetupError } from "./space.js";
@@ -72,7 +79,9 @@ type BootstrapError =
   | { readonly kind: "list-keys-failed"; readonly sdkError: KontentSdkError }
   | { readonly kind: "key-detail-failed"; readonly sdkError: KontentSdkError }
   | { readonly kind: "create-key-failed"; readonly sdkError: KontentSdkError }
-  | { readonly kind: "clone-failed"; readonly message: string };
+  | { readonly kind: "clone-failed"; readonly message: string }
+  | { readonly kind: "env-template-read-failed"; readonly message: string }
+  | { readonly kind: "env-file-write-failed"; readonly message: string };
 
 export const bootstrap = async (
   effects: BootstrapEffects,
@@ -119,7 +128,10 @@ export const bootstrap = async (
   }
   cloneSpinner.stop(`Cloned into ${params.path}`);
 
-  await wireEnvFile(effects, params, sample, deliveryKey.value);
+  const wired = await wireEnvFile(effects, params, sample, deliveryKey.value);
+  if (isErr(wired)) {
+    return wired;
+  }
 
   if (sample.previewSpace) {
     await setupLocalhostSpace(effects, sample.previewSpace);
@@ -129,25 +141,20 @@ export const bootstrap = async (
 };
 
 export const runBootstrap = async (
-  args: LogOptions & BootstrapParams,
+  args: BootstrapParams,
   deps: CommandDeps,
-): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = deps.telemetry.startCommandTracking("project sample bootstrap", logger);
+  logger: Logger,
+): Promise<CommandOutcome> => {
   if (!process.stdin.isTTY) {
     logger.error("`kontent project sample bootstrap` needs an interactive terminal.");
-    tracker.fail("not-interactive");
-    process.exitCode = 1;
-    return;
+    return failureOutcome("not-interactive");
   }
   prompts.intro("Bootstrap a Kontent.ai project");
 
   const tokens = await session.tokens();
   if (isErr(tokens)) {
-    tracker.fail(`auth:${tokens.error.kind}`, { project: args.envId });
     logger.error(formatAuthError(tokens.error));
-    process.exitCode = 1;
-    return;
+    return authFailure(tokens.error, { project: args.envId });
   }
   const { accessToken } = tokens.value;
   const iapiUrl = iapiBaseUrl(deps.kontentTarget);
@@ -175,18 +182,63 @@ export const runBootstrap = async (
     args,
   );
   if (isErr(result)) {
-    tracker.fail(bootstrapErrorCode(result.error), { project: args.envId });
-    handleBootstrapError(args, logger, result.error);
-    return;
+    const failure = formatBootstrapFailure(result.error, args.envId, logger.isVerbose);
+    match(failure.message)
+      .with({ channel: "outro" }, ({ text }) => prompts.outro(text))
+      .with({ channel: "error" }, ({ text }) => logger.error(text))
+      .exhaustive();
+    return failure.outcome;
   }
 
-  tracker.succeed({
-    project: args.envId,
-    subscription: result.value.subscriptionId,
-    "sample-project-type": result.value.sampleProjectType,
-  });
   prompts.note(`cd ${args.path}\nnpm ci\nnpm run dev:https`, "Next steps");
   prompts.outro("Done.");
+  return {
+    status: "success",
+    properties: {
+      project: args.envId,
+      subscription: result.value.subscriptionId,
+      "sample-project-type": result.value.sampleProjectType,
+    },
+  };
+};
+
+type BootstrapFailure = Readonly<{
+  // An aborted prompt closes the session like a finished run; anything else is an error.
+  message: Readonly<{ channel: "outro" | "error"; text: string }>;
+  outcome: CommandOutcome;
+}>;
+
+export const formatBootstrapFailure = (
+  error: BootstrapError,
+  envId: string,
+  isVerbose: boolean,
+): BootstrapFailure => {
+  const isLoginRequired =
+    "sdkError" in error &&
+    isSessionRejected({ status: iapiHttpStatus(error.sdkError), isLoginToken: true });
+  const failWith = (reason: ErrorReason): CommandOutcome => ({
+    status: "error",
+    reason,
+    errorCode: bootstrapErrorCode(error),
+    properties: { project: envId },
+  });
+
+  if (isLoginRequired) {
+    return {
+      message: { channel: "error", text: sessionExpiredMessage },
+      outcome: failWith("auth-required"),
+    };
+  }
+  return match(error)
+    .returnType<BootstrapFailure>()
+    .with({ kind: "aborted" }, (e) => ({
+      message: { channel: "outro", text: e.message },
+      outcome: failWith("cancelled"),
+    }))
+    .otherwise((e) => ({
+      message: { channel: "error", text: formatBootstrapError(e, envId, isVerbose) },
+      outcome: failWith("failure"),
+    }));
 };
 
 // A missing directory counts as empty: the clone creates it.
@@ -301,21 +353,20 @@ const wireEnvFile = async (
   params: BootstrapParams,
   sample: SampleApp,
   deliveryKey: string,
-): Promise<void> => {
+): Promise<Result<void, BootstrapError>> => {
   const envSpinner = effects.prompts.spinner();
   envSpinner.start(`Writing ${ENV_OUTPUT_FILE}`);
 
   const template = await effects.files.readText(path.join(params.path, sample.envTemplateFile));
   if (isErr(template)) {
     envSpinner.error(`Failed to read ${sample.envTemplateFile}`);
-    effects.logger.error(template.error);
-    return;
+    return err({ kind: "env-template-read-failed", message: template.error });
   }
   if (isNone(template.value)) {
     envSpinner.stop(
       `${sample.envTemplateFile} not found in template; skipping ${ENV_OUTPUT_FILE} wiring`,
     );
-    return;
+    return ok(undefined);
   }
 
   const written = await effects.files.writeText(
@@ -324,10 +375,10 @@ const wireEnvFile = async (
   );
   if (isErr(written)) {
     envSpinner.error(`Failed to write ${ENV_OUTPUT_FILE}`);
-    effects.logger.error(written.error);
-    return;
+    return err({ kind: "env-file-write-failed", message: written.error });
   }
   envSpinner.stop(`Wrote ${ENV_OUTPUT_FILE}`);
+  return ok(undefined);
 };
 
 const setupLocalhostSpace = async (
@@ -370,34 +421,21 @@ const bootstrapErrorCode = (error: BootstrapError): string =>
     .with({ kind: "create-key-failed" }, (e) => `create-key-failed:${e.sdkError.details.reason}`)
     .otherwise((e) => e.kind);
 
-const handleBootstrapError = (
-  params: BootstrapParams,
-  logger: Logger,
-  error: BootstrapError,
-): void =>
-  match(error)
-    // soft exits: the user chose to stop or the environment is not eligible
-    .with({ kind: "aborted" }, (e) => {
-      prompts.outro(e.message);
-    })
-    .with({ kind: "unsupported-sample" }, (e) => {
-      prompts.outro(
-        `Bootstrap is only supported for ${supportedProjectTypes} environments. SampleProjectType is "${e.sampleValue ?? "(not set)"}".`,
-      );
-    })
-    .otherwise((hardError) => {
-      logger.error(formatBootstrapError(params, logger, hardError));
-      process.exitCode = 1;
-    });
-
 const formatBootstrapError = (
-  params: BootstrapParams,
-  logger: Logger,
-  error: Exclude<BootstrapError, { kind: "aborted" } | { kind: "unsupported-sample" }>,
+  error: Exclude<BootstrapError, { kind: "aborted" }>,
+  envId: string,
+  isVerbose: boolean,
 ): string =>
   match(error)
+    .with(
+      { kind: "unsupported-sample" },
+      (e) =>
+        `Bootstrap is only supported for ${supportedProjectTypes} environments. SampleProjectType is "${e.sampleValue ?? "(not set)"}".`,
+    )
     .with({ kind: "target-not-usable" }, (e) => e.message)
     .with({ kind: "clone-failed" }, (e) => e.message)
+    .with({ kind: "env-template-read-failed" }, (e) => e.message)
+    .with({ kind: "env-file-write-failed" }, (e) => e.message)
     .with(
       {
         kind: P.union(
@@ -408,12 +446,11 @@ const formatBootstrapError = (
           "create-key-failed",
         ),
       },
-      (e) => formatIapiFailure(e.sdkError, params.envId, logger.isVerbose),
+      (e) => formatIapiFailure(e.sdkError, envId, isVerbose),
     )
     .exhaustive();
 
 const formatIapiFailure = (error: KontentSdkError, envId: string, isVerbose: boolean): string =>
   match(iapiHttpStatus(error))
-    .with(401, () => sessionExpiredMessage)
     .with(403, () => noEnvironmentAccessMessage(envId))
     .otherwise(() => formatIapiError(error, { isVerbose }));

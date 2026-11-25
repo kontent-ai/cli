@@ -47,11 +47,12 @@ describe("formatRequestOutput (dapi)", () => {
   ] as const)("explains a 401 sent with $authSource", ({ authSource, hint }) => {
     const output = formatRequestOutput(ok(responseOutcome(401, authSource)), false);
 
-    expect(output.isFailure).toBe(true);
     expect(output.stdout).toContain('"message": "body"');
     expect(errorText(output)).toContain(hint);
-    expect(output.telemetry).toEqual({
-      outcome: "fail",
+    // No source here is the login token, so a new login would not fix it.
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
       errorCode: "http-401",
       properties: { "status-code": 401, "auth-source": authSource },
     });
@@ -121,7 +122,7 @@ describe("formatRequestOutput (dapi)", () => {
     );
 
     expect(output.stderr).toEqual([]);
-    expect(output.isFailure).toBe(false);
+    expect(output.outcome).toEqual({ status: "success", properties: { "auth-source": "none" } });
   });
 
   it("fails a later page with where to retry from", () => {
@@ -130,11 +131,11 @@ describe("formatRequestOutput (dapi)", () => {
       false,
     );
 
-    expect(output.isFailure).toBe(true);
     expect(errorText(output)).toContain("Page 4 failed: HTTP 500.");
     expect(errorText(output)).toContain("-H 'X-Continuation: token-4'");
-    expect(output.telemetry).toEqual({
-      outcome: "fail",
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
       errorCode: "page-failed",
       properties: { "auth-source": "none" },
     });
@@ -144,7 +145,11 @@ describe("formatRequestOutput (dapi)", () => {
     const output = formatRequestOutput(err({ kind: "missing-preview-key" }), false);
 
     expect(errorText(output)).toContain("KONTENT_DAPI_KEY");
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "missing-preview-key" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: "missing-preview-key",
+    });
   });
 
   it("fails with the config error when the stored environment cannot be read", () => {
@@ -152,7 +157,10 @@ describe("formatRequestOutput (dapi)", () => {
     const output = formatRequestOutput(err({ kind: "config-unreadable", message }), false);
 
     expect(output.stderr).toEqual([{ level: "error", text: message }]);
-    expect(output.isFailure).toBe(true);
-    expect(output.telemetry).toEqual({ outcome: "fail", errorCode: "config-unreadable" });
+    expect(output.outcome).toEqual({
+      status: "error",
+      reason: "failure",
+      errorCode: "config-unreadable",
+    });
   });
 });

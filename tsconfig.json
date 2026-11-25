@@ -11,6 +11,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
+    "exactOptionalPropertyTypes": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true

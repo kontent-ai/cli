@@ -5,7 +5,11 @@ import { addLogLevelOptions } from "../../src/cli/log.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 
-type Parsed = Readonly<{ endpoint?: string; header?: ReadonlyArray<string>; input?: string }>;
+type Parsed = Readonly<{
+  endpoint?: string | undefined;
+  header?: ReadonlyArray<string> | undefined;
+  input?: string | undefined;
+}>;
 
 // The real command definition with a handler that only records what yargs parsed.
 const parse = async (

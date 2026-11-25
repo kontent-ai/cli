@@ -194,7 +194,9 @@ async function* iterateRawPages(
     getNextPageData: (page) => options.nextPage(fromQueryResponse(page)),
   });
 
-  for await (const page of query.pagesSafe({ maxPagesCount: options.maxPages })) {
+  for await (const page of query.pagesSafe(
+    options.maxPages === undefined ? {} : { maxPagesCount: options.maxPages },
+  )) {
     yield page.success ? ok(fromQueryResponse(page.response)) : fromSdkError(page.error);
   }
 }

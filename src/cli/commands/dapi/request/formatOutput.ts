@@ -5,6 +5,7 @@ import type { PagedEnd, PagedPage } from "../../../../core/dapi/paging.js";
 import { isSome } from "../../../../core/lib/option.js";
 import { isErr, type Result } from "../../../../core/lib/result.js";
 import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
+import { failureOutcome } from "../../shared/commandOutcome.js";
 import {
   failedOutput,
   formatResponseOutput,
@@ -39,22 +40,22 @@ export const closePages = (shouldSlurp: boolean, hasPrinted: boolean): string =>
 const formatErrorOutput = (error: RequestError): PassthroughOutput =>
   match(error)
     .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
-    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.kind, e.message))
+    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.message, failureOutcome(e.kind)))
     .with({ kind: "delivery-unavailable" }, () =>
       failedOutput(
-        "delivery-unavailable",
         "The Delivery API doesn't run on a local stack. Set KONTENT_URL to kontent.ai or an on-demand environment (https://<label>-draft.devkontentmasters.com) to use `kontent dapi`.",
+        failureOutcome("delivery-unavailable"),
       ),
     )
     .with({ kind: "missing-preview-key" }, () =>
       failedOutput(
-        "missing-preview-key",
         "--preview needs a Delivery API key with Content preview access. Set KONTENT_DAPI_KEY, pass --dapiKey <key>, or send an Authorization header.",
+        failureOutcome("missing-preview-key"),
       ),
     )
-    .with({ kind: "invalid-header" }, (e) => failedOutput(e.kind, e.message))
+    .with({ kind: "invalid-header" }, (e) => failedOutput(e.message, failureOutcome(e.kind)))
     .with({ kind: "invalid-endpoint" }, { kind: "transport" }, (e) =>
-      failedOutput(e.kind, e.message, { "auth-source": e.authSource }),
+      failedOutput(e.message, failureOutcome(e.kind, { "auth-source": e.authSource })),
     )
     .exhaustive();
 
@@ -91,6 +92,7 @@ const formatSingleResponse = (
   formatResponseOutput(response, {
     shouldIncludeHeaders,
     properties: { "auth-source": authSource },
+    isLoginToken: false,
     describeFailure: (failed) => formatFailure(failed, authSource),
   });
 
@@ -132,20 +134,18 @@ const formatPagedEnd = (
             },
           ]
         : [],
-      isFailure: false,
-      telemetry: { outcome: "succeed", properties: { "auth-source": authSource } },
+      outcome: { status: "success", properties: { "auth-source": authSource } },
     }))
     .with({ kind: "first-page-response" }, ({ response }) =>
       formatSingleResponse(response, authSource, shouldIncludeHeaders),
     )
     .with({ kind: "first-page-transport" }, ({ message }) =>
-      failedOutput("transport", message, { "auth-source": authSource }),
+      failedOutput(message, failureOutcome("transport", { "auth-source": authSource })),
     )
     .with({ kind: "page-failed" }, ({ pageNumber, reason, resume }) =>
       failedOutput(
-        "page-failed",
         `Page ${pageNumber} failed: ${reason}. The pages before it were printed. To retry from that page, run:\n  ${formatResumeCommand(resume)}`,
-        { "auth-source": authSource },
+        failureOutcome("page-failed", { "auth-source": authSource }),
       ),
     )
     .exhaustive();
