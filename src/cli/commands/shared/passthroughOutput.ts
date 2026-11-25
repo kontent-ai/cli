@@ -65,9 +65,6 @@ export const formatResponseOutput = (
   };
 };
 
-export const usingStoredEnvironmentMessage = (envId: string): string =>
-  `Using the stored default environment ${envId}.`;
-
 export const emitPassthroughOutput = (
   output: PassthroughOutput,
   logger: Logger,

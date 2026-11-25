@@ -4,6 +4,7 @@ import { createInstance, Types } from "@amplitude/analytics-node";
 import type { TelemetryEvent } from "../../../core/telemetry/events.js";
 import { cliVersion } from "./context.js";
 import type { TelemetryIdentity } from "./identity.js";
+import { createBoundedTransport } from "./transport.js";
 
 export type TrackOutcome =
   | { readonly kind: "accepted"; readonly code: number }
@@ -29,7 +30,7 @@ export const createDebugTelemetrySink = (): TelemetrySink => ({
   flush: async () => {},
 });
 
-export const createAmplitudeSink = (apiKey: string): TelemetrySink => {
+export const createAmplitudeSink = (apiKey: string, requestTimeoutMs: number): TelemetrySink => {
   const client = createInstance();
   // Not awaited on purpose: events tracked before init resolves are queued internally.
   client.init(apiKey, {
@@ -37,9 +38,13 @@ export const createAmplitudeSink = (apiKey: string): TelemetrySink => {
     // The CLI process is short-lived; the default thresholds (300 events / 10 s)
     // would never fire before exit.
     flushQueueSize: 1,
-    flushIntervalMillis: 1000,
+    // 0 sends an event as soon as it is tracked. With a delay the event still waits on the
+    // SDK's ref'd timer when the exit flush runs, so that flush returns at once and the timer
+    // then holds the process open for the delay plus the request timeout.
+    flushIntervalMillis: 0,
     flushMaxRetries: 1,
     logLevel: Types.LogLevel.None,
+    transportProvider: createBoundedTransport(requestTimeoutMs),
   });
 
   return {
