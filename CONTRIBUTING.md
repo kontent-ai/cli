@@ -61,6 +61,10 @@ To start with coding, fork the repository you want to contribute to, create a ne
 Your pull request will now go through extensive checks by the subject matter experts on our team. Please be patient. Update your pull request according to feedback until it is approved by one of Kontent.ai maintainers. After that, one of our team members may adjust the branch you merge into based on the expected release schedule.
 
 
+## Custom Kontent.ai URL or login server
+
+Runs with `KONTENT_URL` or `KONTENT_AUTH0_*` set to a value other than the built-in one keep their config in `~/.config/kontent/cli-<host>/` (a custom Kontent.ai URL) or `~/.config/kontent/cli-<login server>/` (custom login settings) instead of `~/.config/kontent/cli/`, under `XDG_CONFIG_HOME` or `%APPDATA%` when set. These folders can be deleted safely.
+
 ## Code of Conduct
 <img align="right" width="100" height="100" src="https://i.imgur.com/cObdKQy.png">
 

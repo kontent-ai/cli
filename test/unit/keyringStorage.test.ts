@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
+import { loginContextFor } from "../../src/core/auth/loginContext.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import type { Result } from "../../src/core/lib/result.js";
 import { assertErr } from "../helpers/assertResult.js";
@@ -29,10 +30,15 @@ beforeEach(() => {
 
 const TOKENS: TokenSet = { accessToken: "access-token" };
 
+const CONTEXT = loginContextFor(
+  { domain: "login.example.com", clientId: "client", audience: "https://api.example.com/" },
+  { kind: "domain", domain: "kontent.ai" },
+);
+
 const operations: ReadonlyArray<readonly [string, () => Promise<Result<unknown, AuthError>>]> = [
-  ["read", async () => createKeyringStorage().read()],
-  ["write", async () => createKeyringStorage().write(TOKENS)],
-  ["clear", async () => createKeyringStorage().clear()],
+  ["read", async () => createKeyringStorage(CONTEXT).read()],
+  ["write", async () => createKeyringStorage(CONTEXT).write(TOKENS)],
+  ["clear", async () => createKeyringStorage(CONTEXT).clear()],
 ];
 
 // Verbatim from @napi-rs/keyring 1.3.0's index.js.

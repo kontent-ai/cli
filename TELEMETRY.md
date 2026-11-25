@@ -31,7 +31,7 @@ Every event carries a small, fixed set of properties:
 | `error-code`  | A machine-readable error code (only when `outcome` is `error`) |
 | `duration-ms` | Command execution time in milliseconds                 |
 | `device_id`   | Anonymous, randomly generated device identifier        |
-| `user_id`     | Your Kontent.ai user id (only when you are logged in)  |
+| `user_id`     | Your Kontent.ai user id (while one is cached)          |
 | `platform`    | Always `CLI`                                           |
 | `app_version` | CLI version                                            |
 | `os_name`     | Operating system name (e.g. `darwin`, `linux`, `win32`)|
@@ -79,13 +79,13 @@ As with `kontent mapi`, the endpoint path is never sent.
 
 - **`device_id`** — a random UUID generated on first run and stored locally. It
   identifies a machine, not a person.
-- **`user_id`** — your Kontent.ai user id, attached only while you are logged in.
-  It is cleared on `logout` so telemetry stops identifying the previous user.
+- **`user_id`** — your Kontent.ai user id, cached when you log in and sent with
+  every event while it is cached. It is cleared on `logout` so telemetry stops
+  identifying the previous user.
 
 The `device_id` is a random value with no link to your machine's hardware,
 network, or account, so an event cannot be traced back to a specific person
-through it. The `user_id` is your Kontent.ai user id and is only ever attached
-while you are signed in.
+through it.
 
 Both values are stored in the CLI config file with owner-only permissions
 (`0600`):

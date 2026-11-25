@@ -1,11 +1,18 @@
 import { match } from "ts-pattern";
+import type { LoginContext } from "../../../core/auth/loginContext.js";
 import { decideAfterRefreshFailure, decideAuth } from "../../../core/auth/session.js";
 import type { AuthError, TokenSet } from "../../../core/auth/types.js";
 import { err, isErr, ok, type Result } from "../../../core/lib/result.js";
 import { type Clock, systemClock } from "../clock/clock.js";
 import { createTokenRefresh, type TokenRefresh } from "./auth0.js";
-import { getAuth0Config } from "./config.js";
+import type { Auth0Config } from "./config.js";
 import { createKeyringStorage, type TokenStorage } from "./storage.js";
+
+/** The stored login a run uses, and the Auth0 settings that sign it in and refresh it. */
+export type LoginSetup = Readonly<{
+  context: LoginContext;
+  auth0: Auth0Config;
+}>;
 
 export type Session = Readonly<{
   tokens: () => Promise<Result<TokenSet, AuthError>>;
@@ -60,11 +67,11 @@ export const getValidTokens = async (
     .exhaustive();
 };
 
-export const session: Session = {
+export const createSession = (login: LoginSetup): Session => ({
   tokens: async () =>
     getValidTokens({
-      tokens: createKeyringStorage(),
-      tokenRefresh: createTokenRefresh(getAuth0Config(), systemClock),
+      tokens: createKeyringStorage(login.context),
+      tokenRefresh: createTokenRefresh(login.auth0, systemClock),
       clock: systemClock,
     }),
-};
+});

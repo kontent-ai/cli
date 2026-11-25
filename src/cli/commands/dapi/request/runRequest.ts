@@ -21,7 +21,7 @@ import { isNone, isSome, none, type Option } from "../../../../core/lib/option.j
 import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
 import type { HeaderError } from "../../../../core/passthrough/headers.js";
 import type { PassthroughResponse } from "../../../../core/passthrough/response.js";
-import { type CliConfigStore, cliConfigStore } from "../../../adapters/config/cliConfig.js";
+import type { CliConfigStore } from "../../../adapters/config/cliConfig.js";
 import {
   createRawClient,
   type RawClient,
@@ -180,7 +180,7 @@ export const runRequest = async (
   const isPreview = args.preview === true;
 
   const result = await request(
-    { logger, config: cliConfigStore, dapi: createRawClient({ logger }) },
+    { logger, config: deps.config, dapi: createRawClient({ logger }) },
     // KONTENT_DAPI_KEY is read here rather than through a yargs option: the CLI does not
     // map env vars onto flags (see `src/index.ts`), and it keeps the key off argv.
     {

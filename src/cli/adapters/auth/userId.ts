@@ -2,7 +2,7 @@ import type { BaseUrl } from "@kontent-ai/core-sdk";
 
 import { isErr } from "../../../core/lib/result.js";
 import type { Logger } from "../../log.js";
-import { type CliConfigStore, cliConfigStore } from "../config/cliConfig.js";
+import type { CliConfigStore } from "../config/cliConfig.js";
 import { createIapiClient } from "../iapi/client.js";
 import { createUsers, type Users } from "../iapi/users.js";
 
@@ -13,13 +13,17 @@ export type UserIdCache = Readonly<{
   ) => Promise<void>;
 }>;
 
-export const createUserIdCache = (logger: Logger, baseUrl: BaseUrl): UserIdCache => ({
+export const createUserIdCache = (
+  logger: Logger,
+  baseUrl: BaseUrl,
+  config: CliConfigStore,
+): UserIdCache => ({
   ensure: async (accessToken, options) =>
     ensureUserIdCached(
       {
         logger,
         users: createUsers(createIapiClient({ token: accessToken, baseUrl })),
-        config: cliConfigStore,
+        config,
       },
       options,
     ),

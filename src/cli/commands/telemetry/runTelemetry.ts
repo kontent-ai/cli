@@ -9,23 +9,20 @@ import {
   type TelemetryConsent,
   type TelemetryOffReason,
 } from "../../../core/telemetry/consent.js";
-import {
-  type CliConfigStore,
-  type ConfigReadError,
-  cliConfigStore,
-} from "../../adapters/config/cliConfig.js";
+import type { CliConfigStore, ConfigReadError } from "../../adapters/config/cliConfig.js";
 import { readOptOutVariables } from "../../adapters/telemetry/consent.js";
 import { amplitudeApiKey } from "../../adapters/telemetry/context.js";
 import type { Logger } from "../../log.js";
+import type { CommandDeps } from "../../types/yargs.js";
 import { type CommandOutcome, createFailureOutcome } from "../shared/commandOutcome.js";
 
 /**
  * Writes the report to stdout rather than logging it: it is the payload the
  * command exists to produce, so it belongs on stdout, ungated by --logLevel.
  */
-export const runStatus = async (): Promise<CommandOutcome> => {
+export const runStatus = async (deps: CommandDeps): Promise<CommandOutcome> => {
   const status = await telemetryStatus(
-    { config: cliConfigStore },
+    { config: deps.config },
     { optOutVariables: readOptOutVariables(process.env), isCiRun: isCI, amplitudeApiKey },
   );
   process.stdout.write(`${formatStatusReport(status)}\n`);
@@ -33,10 +30,11 @@ export const runStatus = async (): Promise<CommandOutcome> => {
 };
 
 export const runSetTelemetry = async (
+  deps: CommandDeps,
   logger: Logger,
   isEnabled: boolean,
 ): Promise<CommandOutcome> => {
-  const written = await setTelemetry({ config: cliConfigStore }, isEnabled);
+  const written = await setTelemetry({ config: deps.config }, isEnabled);
   if (isErr(written)) {
     logger.error(`Failed to update telemetry config: ${written.error}`);
     return createFailureOutcome("config-write-failed");

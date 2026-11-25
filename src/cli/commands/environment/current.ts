@@ -9,6 +9,6 @@ export const register: RegisterCommand = (sub, deps) =>
     handler: async (args) =>
       runCommand({ trackAs: null, args, deps }, async (logger) => {
         const { runCurrent } = await import("./runEnvironment.js");
-        return runCurrent(logger);
+        return runCurrent(deps, logger);
       }),
   });
