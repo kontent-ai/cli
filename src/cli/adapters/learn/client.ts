@@ -29,6 +29,7 @@ export const createLearnClient = (
   return {
     config: {
       baseUrl,
+      // No CLI deadline until core-sdk-js#57 adds a timeout option; Node's fetch limits apply.
       httpService: getDefaultHttpService({
         ...(params.adapter === undefined ? {} : { adapter: params.adapter }),
       }),
