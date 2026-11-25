@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createLegacyTokens } from "../../src/cli/adapters/auth/storage.js";
 import {
   type LoginEffects,
   login,
@@ -7,7 +8,19 @@ import {
 import { createLogger } from "../../src/cli/log.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok, type Result } from "../../src/core/lib/result.js";
-import { fakeDeviceSignIn, fakeTokenStorage, fakeUserIdCache } from "../helpers/authFakes.js";
+import {
+  fakeDeviceSignIn,
+  fakeLegacyTokens,
+  fakeTokenStorage,
+  fakeUserIdCache,
+} from "../helpers/authFakes.js";
+
+// A keychain that refuses every call, for the legacy delete's failure path.
+vi.mock("@napi-rs/keyring", () => ({
+  AsyncEntry: function AsyncEntry() {
+    return { getPassword: async () => Promise.reject(new Error("keychain locked")) };
+  },
+}));
 
 const FRESH_TOKENS: TokenSet = {
   accessToken: "new-access-token",
@@ -29,6 +42,7 @@ const effectsWith = (
     logger: createLogger("none"),
     session: { tokens: vi.fn(async () => replies.session) },
     tokens: fakeTokenStorage(null),
+    legacyTokens: fakeLegacyTokens(),
     deviceSignIn: fakeDeviceSignIn(replies.signIn),
     userIds: fakeUserIdCache(),
   }) satisfies LoginEffects;
@@ -52,6 +66,54 @@ describe("login with an expired session", () => {
     expect(effects.userIds.ensure).toHaveBeenCalledWith("new-access-token", {
       shouldForceRefresh: true,
     });
+  });
+});
+
+describe("the legacy keyring entry", () => {
+  it("is removed once after a fresh sign-in", async () => {
+    const effects = effectsWith({
+      session: err({ kind: "not-logged-in" }),
+      signIn: ok(FRESH_TOKENS),
+    });
+
+    await login(effects);
+
+    expect(effects.legacyTokens.remove).toHaveBeenCalledOnce();
+  });
+
+  it("stays when the user was already logged in", async () => {
+    const effects = effectsWith({ session: ok(FRESH_TOKENS) });
+
+    await login(effects);
+
+    expect(effects.legacyTokens.remove).not.toHaveBeenCalled();
+  });
+
+  it("stays when the new tokens cannot be written", async () => {
+    const effects = {
+      ...effectsWith({ session: err({ kind: "not-logged-in" }), signIn: ok(FRESH_TOKENS) }),
+      tokens: {
+        write: vi.fn(async () =>
+          err({ kind: "storage-write-failed", cause: new Error("locked") } as const),
+        ),
+      },
+    };
+
+    await login(effects);
+
+    expect(effects.legacyTokens.remove).not.toHaveBeenCalled();
+  });
+
+  it("does not fail the login when it cannot be removed", async () => {
+    const logger = createLogger("none");
+    const effects = {
+      ...effectsWith({ session: err({ kind: "not-logged-in" }), signIn: ok(FRESH_TOKENS) }),
+      legacyTokens: createLegacyTokens(logger),
+    };
+
+    const result = await login(effects);
+
+    expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
   });
 });
 

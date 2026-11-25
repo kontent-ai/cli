@@ -1,16 +1,19 @@
 import path from "node:path";
 import { KontentSdkError } from "@kontent-ai/core-sdk";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { DeliveryKeySummary } from "../../src/cli/adapters/iapi/deliveryKeys.js";
+import { prompts } from "../../src/cli/adapters/prompts/prompts.js";
 import {
   type BootstrapEffects,
   bootstrap,
   formatBootstrapFailure,
+  runBootstrap,
 } from "../../src/cli/commands/project/sample/bootstrap/runBootstrap.js";
-import { createLogger } from "../../src/cli/log.js";
+import { createLogger, type Logger } from "../../src/cli/log.js";
 import { none, type Option, some } from "../../src/core/lib/option.js";
 import { err, ok } from "../../src/core/lib/result.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
+import { commandDeps } from "../helpers/commandDeps.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const TARGET = "/work/app";
@@ -233,5 +236,66 @@ describe("formatBootstrapFailure", () => {
 
     expect(failure.message.channel).toBe("error");
     expect(failure.outcome).toMatchObject({ status: "error", reason: "failure" });
+  });
+});
+
+describe("runBootstrap under an override", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("refuses before any prompt", async () => {
+    const intro = vi.spyOn(prompts, "intro").mockImplementation(() => {});
+    const logger = {
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+      isVerbose: false,
+    } satisfies Logger;
+    const deps = commandDeps({
+      overrides: { kontentTarget: none, auth0: ["clientId"] },
+    });
+
+    const outcome = await runBootstrap({ envId: ENV_ID, path: TARGET }, deps, logger);
+
+    expect(outcome).toEqual({ status: "error", reason: "failure", errorCode: "override-active" });
+    expect(logger.error).toHaveBeenCalledWith(
+      "`kontent project sample bootstrap` works only against production Kontent.ai.",
+    );
+    expect(intro).not.toHaveBeenCalled();
+  });
+});
+
+describe("runBootstrap in CI", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // CI can attach a terminal, but nobody is there to answer the prompts.
+  it("refuses even with a terminal, before any prompt or sign-in", async () => {
+    const wasTty = process.stdin.isTTY;
+    process.stdin.isTTY = true;
+    onTestFinished(() => {
+      process.stdin.isTTY = wasTty;
+    });
+    const intro = vi.spyOn(prompts, "intro").mockImplementation(() => {});
+    const logger = {
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+      isVerbose: false,
+    } satisfies Logger;
+
+    const outcome = await runBootstrap(
+      { envId: ENV_ID, path: TARGET },
+      commandDeps({ isCiRun: true }),
+      logger,
+    );
+
+    expect(outcome).toEqual({ status: "error", reason: "failure", errorCode: "not-interactive" });
+    expect(logger.error).toHaveBeenCalledWith(
+      "`kontent project sample bootstrap` needs an interactive terminal.",
+    );
+    expect(intro).not.toHaveBeenCalled();
   });
 });

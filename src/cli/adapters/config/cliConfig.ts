@@ -29,21 +29,24 @@ export type CliConfigStore = Readonly<{
   write: (patch: Partial<CliConfig>) => Promise<Result<void, string>>;
 }>;
 
-export const cliConfigStore: CliConfigStore = {
-  path: () => path.join(resolveConfigBaseDir(), "kontent", "cli", "config.json"),
+export const createCliConfigStore = (folder: string): CliConfigStore => {
+  const store: CliConfigStore = {
+    path: () => path.join(resolveConfigBaseDir(), "kontent", folder, "config.json"),
 
-  read: async () => map(await readStoredConfig(cliConfigStore.path()), ({ config }) => config),
+    read: async () => map(await readStoredConfig(store.path()), ({ config }) => config),
 
-  write: async (patch) => {
-    const current = await readStoredConfig(cliConfigStore.path());
-    if (isErr(current)) {
-      return err(current.error.message);
-    }
-    // Every stored key is kept as it is, including ones this version does not know or
-    // rejects on read, so a newer CLI's settings and hand edits survive.
-    const next = { ...current.value.raw, ...patch };
-    return files.writeTextAtomic(cliConfigStore.path(), `${JSON.stringify(next, null, 2)}\n`);
-  },
+    write: async (patch) => {
+      const current = await readStoredConfig(store.path());
+      if (isErr(current)) {
+        return err(current.error.message);
+      }
+      // Every stored key is kept as it is, including ones this version does not know or
+      // rejects on read, so a newer CLI's settings and hand edits survive.
+      const next = { ...current.value.raw, ...patch };
+      return files.writeTextAtomic(store.path(), `${JSON.stringify(next, null, 2)}\n`);
+    },
+  };
+  return store;
 };
 
 const resolveConfigBaseDir = (): string => {

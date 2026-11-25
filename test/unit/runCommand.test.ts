@@ -10,6 +10,7 @@ import type { CommandDeps } from "../../src/cli/types/yargs.js";
 import type { AuthError } from "../../src/core/auth/types.js";
 import type { ErrorReason } from "../../src/core/lib/exitCodes.js";
 import type { EventProperties } from "../../src/core/telemetry/events.js";
+import { commandDeps } from "../helpers/commandDeps.js";
 
 type TrackedEvent =
   | Readonly<{ command: string; outcome: "success"; properties: EventProperties | undefined }>
@@ -33,7 +34,7 @@ const recordingDeps = (): Readonly<{ deps: CommandDeps; events: ReadonlyArray<Tr
     }),
     flush: async () => {},
   };
-  return { deps: { telemetry, kontentTarget: { kind: "domain", domain: "kontent.ai" } }, events };
+  return { deps: commandDeps({ telemetry }), events };
 };
 
 const run = async (

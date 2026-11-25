@@ -9,6 +9,6 @@ export const register: RegisterCommand = (sub, deps) =>
     handler: async (args) =>
       runCommand({ trackAs: null, args, deps }, async () => {
         const { runStatus } = await import("./runTelemetry.js");
-        return runStatus();
+        return runStatus(deps);
       }),
   });

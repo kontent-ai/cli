@@ -5,7 +5,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import type { TestProject } from "vitest/node";
+import type { Auth0Settings } from "../src/core/auth/loginContext.js";
 import { isErr, tryAsync } from "../src/core/lib/result.js";
+import { resolveRunContext } from "../src/core/overrides/runContext.js";
 import {
   cloneTestEnvironment,
   deleteTestEnvironment,
@@ -60,7 +62,7 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
   // Anything past this point that throws must still delete the clone: there
   // is no returned teardown yet for Vitest to call on our behalf.
   try {
-    const configTemplateDir = await seedConfigTemplate(environment.envId);
+    const configTemplateDir = await seedConfigTemplate(environment.envId, cliPackage);
     await probeDefaultEnvironment({
       cliEntry,
       cliPackage,
@@ -165,12 +167,28 @@ exec node "${join(repoRoot, "evals", "shim.ts")}" "${cliEntry}" "$@"
   return binDir;
 };
 
+// The same values on both sides: neither the probe nor the agent sets KONTENT_AUTH0_*.
+const NO_AUTH0_OVERRIDE: Auth0Settings = { domain: "", clientId: "", audience: "" };
+
 // Written directly rather than through `kontent environment use`: `use` would verify the id
 // with the operator's machine-wide keychain login, which the harness must not depend on. The
-// probe below proves the CLI under test reads it. The path mirrors getCliConfigPath.
-const seedConfigTemplate = async (envId: string): Promise<string> => {
+// probe below proves the CLI under test reads it. The folder is the one the CLI under test
+// resolves: the local build bakes KONTENT_URL from .env, a published package targets production.
+const seedConfigTemplate = async (
+  envId: string,
+  cliPackage: string | undefined,
+): Promise<string> => {
+  const runContext = resolveRunContext({
+    kontentUrl: undefined,
+    bakedKontentUrl: cliPackage === undefined ? process.env.KONTENT_URL : undefined,
+    auth0: NO_AUTH0_OVERRIDE,
+    builtInAuth0: NO_AUTH0_OVERRIDE,
+  });
+  if (isErr(runContext)) {
+    throw new Error(runContext.error);
+  }
   const templateDir = await mkdtemp(join(tmpdir(), "kontent-evals-config-"));
-  const configPath = join(templateDir, "kontent", "cli", "config.json");
+  const configPath = join(templateDir, "kontent", runContext.value.configFolder, "config.json");
   const config = { envId, telemetryNoticeShown: true, telemetryEnabled: false };
   await mkdir(dirname(configPath), { recursive: true });
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
