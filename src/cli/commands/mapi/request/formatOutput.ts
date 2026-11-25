@@ -28,6 +28,7 @@ export const formatRequestOutput = (
 const formatErrorOutput = (error: RequestError): PassthroughOutput =>
   match(error)
     .with({ kind: "missing-env-id" }, () => MISSING_ENV_ID_OUTPUT)
+    .with({ kind: "config-unreadable" }, (e) => failedOutput(e.kind, e.message))
     .with({ kind: "auth-failed" }, ({ error: authError }) =>
       failedOutput(
         `auth:${authError.kind}`,

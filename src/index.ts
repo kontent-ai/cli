@@ -7,15 +7,15 @@ import { hideBin } from "yargs/helpers";
 import { systemClock } from "./cli/adapters/clock/clock.js";
 import { cliConfigStore } from "./cli/adapters/config/cliConfig.js";
 import { isTelemetryDebug, readOptOutVariables } from "./cli/adapters/telemetry/consent.js";
-import { cliVersion } from "./cli/adapters/telemetry/context.js";
+import { amplitudeApiKey, cliVersion } from "./cli/adapters/telemetry/context.js";
 import { systemIdentityEffects } from "./cli/adapters/telemetry/identity.js";
+import { createAmplitudeSink } from "./cli/adapters/telemetry/sink.js";
 import {
   createTelemetry,
-  formatTelemetryMode,
   registerTelemetrySignalFlush,
 } from "./cli/adapters/telemetry/tracking.js";
 import { commandsToRegister } from "./cli/commands/registry.js";
-import { addLogLevelOptions, createLoggerFromArgs } from "./cli/log.js";
+import { addLogLevelOptions } from "./cli/log.js";
 import type { CommandDeps } from "./cli/types/yargs.js";
 import { resolveKontentTarget } from "./core/kontentUrl/kontentUrl.js";
 import { isErr } from "./core/lib/result.js";
@@ -78,24 +78,21 @@ if (isErr(kontentTarget)) {
   process.exit(1);
 }
 
-const { telemetry, mode } = await createTelemetry({
+const { telemetry } = await createTelemetry({
   config: cliConfigStore,
   clock: systemClock,
   identity: systemIdentityEffects(),
   optOutVariables: readOptOutVariables(process.env),
   isCiRun: isCI,
   isDebug: isTelemetryDebug(process.env),
+  amplitudeApiKey,
+  createSink: createAmplitudeSink,
 });
 const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
 registerTelemetrySignalFlush(telemetry);
 
-// Runs after parsing (so --verbose is known) and before the command handler.
-const withTelemetryModeLog = withLogLevel.middleware((args) => {
-  createLoggerFromArgs(args).info("verbose", formatTelemetryMode(mode));
-});
-
 await commandsToRegister
-  .reduce((current, register) => register(current, deps), withTelemetryModeLog)
+  .reduce((current, register) => register(current, deps), withLogLevel)
   .parseAsync();
 
 await telemetry.flush();

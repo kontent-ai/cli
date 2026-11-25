@@ -25,19 +25,24 @@ export const createUserIdCache = (logger: Logger, baseUrl: BaseUrl): UserIdCache
     ),
 });
 
-type UserIdEffects = Readonly<{
+export type UserIdEffects = Readonly<{
   logger: Logger;
   users: Users;
   config: Pick<CliConfigStore, "read" | "write">;
 }>;
 
 // Best-effort: never throws, so a /user failure can't break login.
-const ensureUserIdCached = async (
+export const ensureUserIdCached = async (
   effects: UserIdEffects,
   options: Readonly<{ shouldForceRefresh: boolean }>,
 ): Promise<void> => {
-  const cached = (await effects.config.read()).userId;
-  if (cached !== undefined && !options.shouldForceRefresh) {
+  const config = await effects.config.read();
+  // The write would be refused. Skipped silently: an unreadable config also turns telemetry off,
+  // so the missing userId is never used.
+  if (isErr(config)) {
+    return;
+  }
+  if (config.value.userId !== undefined && !options.shouldForceRefresh) {
     return;
   }
 

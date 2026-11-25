@@ -18,7 +18,7 @@ const effectsWith = (tokens: IdentityEffects["tokens"], config: CliConfig) =>
   ({
     tokens,
     config: {
-      read: vi.fn(async () => config),
+      read: vi.fn(async () => ok(config)),
       write: vi.fn(async () => ok(undefined)),
     },
     newDeviceId: () => GENERATED_DEVICE_ID,

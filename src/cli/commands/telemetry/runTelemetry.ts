@@ -1,13 +1,20 @@
 import { isCI } from "ci-info";
-import { isErr, type Result } from "../../../core/lib/result.js";
+import { match } from "ts-pattern";
+import { isSome, none, type Option, some } from "../../../core/lib/option.js";
+import { isErr, isOk, type Result } from "../../../core/lib/result.js";
 import {
   activeEnvOptOuts,
   decideTelemetryConsent,
   type OptOutVariables,
   type TelemetryConsent,
+  type TelemetryOffReason,
 } from "../../../core/telemetry/consent.js";
-import { type CliConfigStore, cliConfigStore } from "../../adapters/config/cliConfig.js";
-import { formatTelemetryOffReason, readOptOutVariables } from "../../adapters/telemetry/consent.js";
+import {
+  type CliConfigStore,
+  type ConfigReadError,
+  cliConfigStore,
+} from "../../adapters/config/cliConfig.js";
+import { readOptOutVariables } from "../../adapters/telemetry/consent.js";
 import { amplitudeApiKey } from "../../adapters/telemetry/context.js";
 import { createLoggerFromArgs, type LogOptions } from "../../log.js";
 
@@ -52,6 +59,7 @@ type TelemetryStatus = Readonly<{
   consent: TelemetryConsent;
   isEnabledInConfig: boolean;
   configPath: string;
+  configError: Option<ConfigReadError>;
 }>;
 
 const telemetryStatus = async (
@@ -59,10 +67,16 @@ const telemetryStatus = async (
   runtime: TelemetryRuntime,
 ): Promise<TelemetryStatus> => {
   const config = await effects.config.read();
+  const telemetryEnabled = isOk(config) ? config.value.telemetryEnabled : undefined;
   return {
-    consent: decideTelemetryConsent({ ...runtime, telemetryEnabled: config.telemetryEnabled }),
-    isEnabledInConfig: config.telemetryEnabled === true,
+    consent: decideTelemetryConsent({
+      ...runtime,
+      isConfigReadable: isOk(config),
+      telemetryEnabled,
+    }),
+    isEnabledInConfig: telemetryEnabled === true,
     configPath: effects.config.path(),
+    configError: isOk(config) ? none : some(config.error),
   };
 };
 
@@ -77,8 +91,19 @@ const formatStatusReport = (status: TelemetryStatus): string => {
     `Telemetry: ${status.consent.isEnabled ? "enabled" : "disabled"}`,
     reasonLine,
     `Config file: ${status.configPath}`,
+    ...(isSome(status.configError) ? [`Config error: ${status.configError.value.message}`] : []),
   ].join("\n");
 };
+
+const formatTelemetryOffReason = (reason: TelemetryOffReason): string =>
+  match(reason)
+    .with("do-not-track-env", () => "DO_NOT_TRACK environment variable is set")
+    .with("kontent-do-not-track-env", () => "KONTENT_DO_NOT_TRACK environment variable is set")
+    .with("config-unreadable", () => "the config file could not be read")
+    .with("config-disabled", () => "disabled in the config file")
+    .with("ci", () => "CI environment detected")
+    .with("missing-api-key", () => "this build has no telemetry API key")
+    .exhaustive();
 
 type SetEffects = Readonly<{ config: Pick<CliConfigStore, "write"> }>;
 

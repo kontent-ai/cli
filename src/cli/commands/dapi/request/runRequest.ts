@@ -16,7 +16,6 @@ import {
   stepPaging,
 } from "../../../../core/dapi/paging.js";
 import { buildDapiHeaders } from "../../../../core/dapi/request.js";
-import { decideEnvId } from "../../../../core/environment/envId.js";
 import { deliverBaseUrl } from "../../../../core/kontentUrl/kontentUrl.js";
 import { isNone, isSome, none, type Option } from "../../../../core/lib/option.js";
 import { err, isErr, map, ok, type Result } from "../../../../core/lib/result.js";
@@ -32,10 +31,8 @@ import {
 } from "../../../adapters/http/rawClient.js";
 import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
-import {
-  emitPassthroughOutput,
-  usingStoredEnvironmentMessage,
-} from "../../shared/passthroughOutput.js";
+import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
+import { type EnvIdError, resolveEnvId } from "../../shared/resolveEnvId.js";
 import { closePages, formatPage, formatRequestOutput } from "./formatOutput.js";
 
 export type RequestInput = Readonly<{
@@ -74,7 +71,7 @@ export type RequestOutcome =
  * answers a single request with, including 4xx and 5xx, is an `ok` outcome.
  */
 export type RequestError =
-  | Readonly<{ kind: "missing-env-id" }>
+  | EnvIdError
   | Readonly<{ kind: "delivery-unavailable" }>
   | HeaderError
   | DapiCredentialError
@@ -96,15 +93,9 @@ export const request = async (
   if (isNone(input.baseUrl)) {
     return err({ kind: "delivery-unavailable" });
   }
-  const storedEnvId = input.envId === undefined ? (await effects.config.read()).envId : undefined;
-  const env = decideEnvId({ envIdFromFlag: input.envId, storedEnvId });
-  if (isNone(env)) {
-    return err({ kind: "missing-env-id" });
-  }
-  // A stored id is announced because nothing on the command line shows which environment
-  // the request reads from.
-  if (env.value.source === "stored") {
-    effects.logger.info("standard", usingStoredEnvironmentMessage(env.value.envId));
+  const env = await resolveEnvId(effects, input.envId);
+  if (isErr(env)) {
+    return env;
   }
 
   const headers = buildDapiHeaders({
@@ -237,29 +228,20 @@ export const printPages = async (
   return printPages(pages, stdout, shouldSlurp, printedCount + 1);
 };
 
-const printOutcome = async (
-  outcome: RequestOutcome,
-  shouldSlurp: boolean,
-): Promise<PrintedOutcome> =>
-  outcome.kind === "response"
-    ? outcome
-    : {
-        kind: "paged-end",
-        end: await printPages(outcome.pages, process.stdout, shouldSlurp, 0),
-        authSource: outcome.authSource,
-      };
+const toPassthroughResponse = (response: RawResponse): PassthroughResponse => ({
+  statusCode: response.status,
+  statusText: response.statusText,
+  headers: response.responseHeaders,
+  body: response.payload,
+});
 
-// A pipe write only queues the page; fetching on before the reader takes it holds the whole
-// export in memory. A reader that quits mid-wait never drains, so close ends the wait too, and
-// the next write then fails.
-const waitForReader = async (stdout: EventEmitter): Promise<void> => {
-  const controller = new AbortController();
-  await Promise.race([
-    once(stdout, "drain", { signal: controller.signal }),
-    once(stdout, "close", { signal: controller.signal }),
-  ]).catch(() => undefined);
-  controller.abort();
-};
+const toRawNextPage = (next: NextPage): RawNextPage =>
+  match(next)
+    .returnType<RawNextPage>()
+    .with({ kind: "continuation" }, ({ token }) => ({ continuationToken: token }))
+    .with({ kind: "url" }, ({ url }) => ({ nextPageUrl: url }))
+    .with({ kind: "none" }, () => ({}))
+    .exhaustive();
 
 async function* streamPages(
   pages: AsyncIterable<Result<RawResponse, string>>,
@@ -283,17 +265,26 @@ async function* streamPages(
   return endPaging(state);
 }
 
-const toRawNextPage = (next: NextPage): RawNextPage =>
-  match(next)
-    .returnType<RawNextPage>()
-    .with({ kind: "continuation" }, ({ token }) => ({ continuationToken: token }))
-    .with({ kind: "url" }, ({ url }) => ({ nextPageUrl: url }))
-    .with({ kind: "none" }, () => ({}))
-    .exhaustive();
+const printOutcome = async (
+  outcome: RequestOutcome,
+  shouldSlurp: boolean,
+): Promise<PrintedOutcome> =>
+  outcome.kind === "response"
+    ? outcome
+    : {
+        kind: "paged-end",
+        end: await printPages(outcome.pages, process.stdout, shouldSlurp, 0),
+        authSource: outcome.authSource,
+      };
 
-const toPassthroughResponse = (response: RawResponse): PassthroughResponse => ({
-  statusCode: response.status,
-  statusText: response.statusText,
-  headers: response.responseHeaders,
-  body: response.payload,
-});
+// A pipe write only queues the page; fetching on before the reader takes it holds the whole
+// export in memory. A reader that quits mid-wait never drains, so close ends the wait too, and
+// the next write then fails.
+const waitForReader = async (stdout: EventEmitter): Promise<void> => {
+  const controller = new AbortController();
+  await Promise.race([
+    once(stdout, "drain", { signal: controller.signal }),
+    once(stdout, "close", { signal: controller.signal }),
+  ]).catch(() => undefined);
+  controller.abort();
+};
