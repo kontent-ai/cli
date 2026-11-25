@@ -89,7 +89,9 @@ describe("createMapiClient", () => {
       axiosRequestConfig: { ...mapiAxiosRequestConfig, timeout: 50 },
     });
 
-    const error: unknown = await httpService.getAsync({ url: `${baseUrl}/` }).catch((e) => e);
+    const error: unknown = await httpService
+      .getAsync({ url: `${baseUrl}/` })
+      .catch((e: unknown) => e);
 
     expect(mapiErrorMessage(error)).toBe("Request timed out after 30 s.");
   });
