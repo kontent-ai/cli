@@ -10,8 +10,8 @@ const NO_OVERRIDES: Overrides = { kontentTarget: none, auth0: [] };
 // In memory and empty: reads find nothing, writes succeed, nothing touches disk.
 const emptyConfig: CliConfigStore = {
   path: () => "config.json",
-  read: () => Promise.resolve({}),
-  write: () => Promise.resolve(ok(undefined)),
+  read: async () => ok({}),
+  write: async () => ok(undefined),
 };
 
 export const commandDeps = (
