@@ -1,9 +1,11 @@
 import { match } from "ts-pattern";
+import { isSessionRejected } from "../../../core/auth/session.js";
 import type { PassthroughResponse } from "../../../core/passthrough/response.js";
 import type { EventProperties } from "../../../core/telemetry/events.js";
-import type { CommandTracker } from "../../adapters/telemetry/tracking.js";
 import type { Logger } from "../../log.js";
+import { type CommandOutcome, failureOutcome } from "./commandOutcome.js";
 import { presentResponse } from "./presentResponse.js";
+import { sessionExpiredMessage } from "./sessionExpired.js";
 
 export type StderrLine = Readonly<{ level: "info" | "warning" | "error"; text: string }>;
 
@@ -11,26 +13,18 @@ export type StderrLine = Readonly<{ level: "info" | "warning" | "error"; text: s
 export type PassthroughOutput = Readonly<{
   stdout: string;
   stderr: ReadonlyArray<StderrLine>;
-  isFailure: boolean;
-  telemetry:
-    | Readonly<{ outcome: "succeed"; properties: EventProperties }>
-    | Readonly<{ outcome: "fail"; errorCode: string; properties?: EventProperties }>;
+  outcome: CommandOutcome;
 }>;
 
-export const failedOutput = (
-  errorCode: string,
-  message: string,
-  properties?: EventProperties,
-): PassthroughOutput => ({
+export const failedOutput = (message: string, outcome: CommandOutcome): PassthroughOutput => ({
   stdout: "",
   stderr: [{ level: "error", text: message }],
-  isFailure: true,
-  telemetry: { outcome: "fail", errorCode, ...(properties === undefined ? {} : { properties }) },
+  outcome,
 });
 
 export const MISSING_ENV_ID_OUTPUT: PassthroughOutput = failedOutput(
-  "missing-env-id",
   "No environment ID. Pass --envId <id>, or set a default with `kontent environment use <id>`.",
+  failureOutcome("missing-env-id"),
 );
 
 export const formatResponseOutput = (
@@ -38,11 +32,16 @@ export const formatResponseOutput = (
   params: Readonly<{
     shouldIncludeHeaders: boolean;
     properties: EventProperties;
+    isLoginToken: boolean;
     describeFailure: (response: PassthroughResponse) => string;
   }>,
 ): PassthroughOutput => {
   const presented = presentResponse(response, params.shouldIncludeHeaders);
   const isHttpFailure = response.statusCode >= 400;
+  const isLoginRequired = isSessionRejected({
+    status: response.statusCode,
+    isLoginToken: params.isLoginToken,
+  });
   const properties = { "status-code": response.statusCode, ...params.properties };
 
   const stderr: ReadonlyArray<StderrLine> = [
@@ -52,24 +51,36 @@ export const formatResponseOutput = (
     ...(presented.payload === "" && !isHttpFailure
       ? [{ level: "info" as const, text: `HTTP ${response.statusCode}` }]
       : []),
-    ...(isHttpFailure ? [{ level: "error" as const, text: params.describeFailure(response) }] : []),
+    ...(isHttpFailure
+      ? [
+          {
+            level: "error" as const,
+            text: isLoginRequired
+              ? `HTTP ${response.statusCode}\n${sessionExpiredMessage}`
+              : params.describeFailure(response),
+          },
+        ]
+      : []),
   ];
 
   return {
     stdout: presented.payload,
     stderr,
-    isFailure: isHttpFailure,
-    telemetry: isHttpFailure
-      ? { outcome: "fail", errorCode: `http-${response.statusCode}`, properties }
-      : { outcome: "succeed", properties },
+    outcome: isHttpFailure
+      ? {
+          status: "error",
+          reason: isLoginRequired ? "auth-required" : "failure",
+          errorCode: `http-${response.statusCode}`,
+          properties,
+        }
+      : { status: "success", properties },
   };
 };
 
 export const emitPassthroughOutput = (
   output: PassthroughOutput,
   logger: Logger,
-  tracker: CommandTracker,
-): void => {
+): CommandOutcome => {
   if (output.stdout !== "") {
     process.stdout.write(output.stdout);
   }
@@ -80,11 +91,5 @@ export const emitPassthroughOutput = (
       .with({ level: "error" }, ({ text }) => logger.error(text))
       .exhaustive();
   }
-  match(output.telemetry)
-    .with({ outcome: "succeed" }, ({ properties }) => tracker.succeed(properties))
-    .with({ outcome: "fail" }, ({ errorCode, properties }) => tracker.fail(errorCode, properties))
-    .exhaustive();
-  if (output.isFailure) {
-    process.exitCode = 1;
-  }
+  return output.outcome;
 };

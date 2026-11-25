@@ -29,8 +29,9 @@ import {
   type RawRequest,
   type RawResponse,
 } from "../../../adapters/http/rawClient.js";
-import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
+import type { Logger, LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
+import type { CommandOutcome } from "../../shared/commandOutcome.js";
 import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
 import { type EnvIdError, resolveEnvId } from "../../shared/resolveEnvId.js";
 import { closePages, formatPage, formatRequestOutput } from "./formatOutput.js";
@@ -171,9 +172,11 @@ type RequestArgs = LogOptions &
     maxPages?: number | undefined;
   }>;
 
-export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = deps.telemetry.startCommandTracking("dapi", logger);
+export const runRequest = async (
+  args: RequestArgs,
+  deps: CommandDeps,
+  logger: Logger,
+): Promise<CommandOutcome> => {
   const isPreview = args.preview === true;
 
   const result = await request(
@@ -198,7 +201,7 @@ export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<
     ? result
     : ok(await printOutcome(result.value, args.slurp === true));
 
-  emitPassthroughOutput(formatRequestOutput(printed, args.include === true), logger, tracker);
+  return emitPassthroughOutput(formatRequestOutput(printed, args.include === true), logger);
 };
 
 export const printPages = async (

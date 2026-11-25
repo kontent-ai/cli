@@ -15,8 +15,9 @@ import {
   type RequestBodyError,
   type RequestBodyReader,
 } from "../../../adapters/requestBody/requestBody.js";
-import { createLoggerFromArgs, type Logger, type LogOptions } from "../../../log.js";
+import type { Logger, LogOptions } from "../../../log.js";
 import type { CommandDeps } from "../../../types/yargs.js";
+import type { CommandOutcome } from "../../shared/commandOutcome.js";
 import { emitPassthroughOutput } from "../../shared/passthroughOutput.js";
 import { type EnvIdError, resolveEnvId } from "../../shared/resolveEnvId.js";
 import { formatRequestOutput } from "./formatOutput.js";
@@ -152,10 +153,11 @@ type RequestArgs = LogOptions &
     include?: boolean | undefined;
   }>;
 
-export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-  const tracker = deps.telemetry.startCommandTracking("mapi", logger);
-
+export const runRequest = async (
+  args: RequestArgs,
+  deps: CommandDeps,
+  logger: Logger,
+): Promise<CommandOutcome> => {
   const result = await request(
     {
       logger,
@@ -174,5 +176,5 @@ export const runRequest = async (args: RequestArgs, deps: CommandDeps): Promise<
     },
   );
 
-  emitPassthroughOutput(formatRequestOutput(result, args.include === true), logger, tracker);
+  return emitPassthroughOutput(formatRequestOutput(result, args.include === true), logger);
 };

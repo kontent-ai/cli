@@ -1,6 +1,7 @@
 import type { Argv } from "yargs";
 import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
+import { runCommand } from "../../shared/runCommand.js";
 
 export const requestCommand = {
   command: "$0 <endpoint>",
@@ -114,8 +115,9 @@ export const register: RegisterCommand = (sub, deps) =>
     command: requestCommand.command,
     describe: requestCommand.describe,
     builder: (b) => requestCommand.builder(b),
-    handler: async (args) => {
-      const { runRequest } = await import("./runRequest.js");
-      await runRequest(args, deps);
-    },
+    handler: async (args) =>
+      runCommand({ trackAs: "dapi", args, deps }, async (logger) => {
+        const { runRequest } = await import("./runRequest.js");
+        return runRequest(args, deps, logger);
+      }),
   });

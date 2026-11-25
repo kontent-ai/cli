@@ -9,8 +9,8 @@ export type LogLevel = (typeof ALL_LOG_LEVELS)[number];
 export type MessageLevel = Exclude<LogLevel, "none">;
 
 export type LogOptions = Readonly<{
-  logLevel?: LogLevel;
-  verbose?: boolean;
+  logLevel?: LogLevel | undefined;
+  verbose?: boolean | undefined;
 }>;
 
 export type Logger = Readonly<{
