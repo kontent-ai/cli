@@ -8,7 +8,6 @@ import {
 import type { Logger } from "../../src/cli/log.js";
 import { err, isErr, ok, type Result } from "../../src/core/lib/result.js";
 import type { OptOutVariables } from "../../src/core/telemetry/consent.js";
-import { fakeTokenStorage } from "../helpers/authFakes.js";
 
 const KEY = "amplitude-key";
 const NO_OPT_OUTS: OptOutVariables = { doNotTrack: undefined, kontentDoNotTrack: undefined };
@@ -53,7 +52,7 @@ const effectsWith = (
   const sink = fakeSink();
   const effects = {
     clock: { now: () => 0 },
-    identity: { tokens: fakeTokenStorage(null), config, newDeviceId: () => "device-id-value" },
+    identity: { config, newDeviceId: () => "device-id-value" },
     optOutVariables: NO_OPT_OUTS,
     isCiRun: false,
     isDebug: false,
