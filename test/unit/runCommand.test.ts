@@ -54,7 +54,7 @@ afterEach(() => {
   process.exitCode = undefined;
 });
 
-// chalk colors the "Error:" prefix wherever it detects color support, CI included.
+// styleStderr colors the "Error:" prefix when stderr is a color terminal or FORCE_COLOR is set.
 const stderrText = (): string =>
   stripVTControlCharacters(stderrWrite.mock.calls.map(([chunk]) => String(chunk)).join(""));
 
