@@ -18,7 +18,7 @@ const fakeEffects = (config: Result<CliConfig, ConfigReadError>) => {
     error: () => {},
     isVerbose: false,
   };
-  return { effects: { logger, config: { read: vi.fn(() => Promise.resolve(config)) } }, infos };
+  return { effects: { logger, config: { read: vi.fn(async () => config) } }, infos };
 };
 
 describe("resolveEnvId", () => {

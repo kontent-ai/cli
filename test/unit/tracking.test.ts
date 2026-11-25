@@ -24,9 +24,9 @@ const fakeLogger = (): Logger => ({
   isVerbose: false,
 });
 
-const fakeSink = (flush: () => Promise<void> = () => Promise.resolve()) =>
+const fakeSink = (flush: () => Promise<void> = async () => undefined) =>
   ({
-    track: vi.fn(() => Promise.resolve({ kind: "accepted", code: 200 } as const)),
+    track: vi.fn(async () => ({ kind: "accepted", code: 200 }) as const),
     flush: vi.fn(flush),
   }) satisfies TelemetrySink;
 
@@ -34,13 +34,13 @@ const fakeSink = (flush: () => Promise<void> = () => Promise.resolve()) =>
 const fakeConfigStore = (initial: Result<CliConfig, ConfigReadError>) => {
   let stored = initial;
   return {
-    read: vi.fn(() => Promise.resolve(stored)),
-    write: vi.fn((patch: Partial<CliConfig>): Promise<Result<void, string>> => {
+    read: vi.fn(async () => stored),
+    write: vi.fn(async (patch: Partial<CliConfig>): Promise<Result<void, string>> => {
       if (isErr(stored)) {
-        return Promise.resolve(err(stored.error.message));
+        return await Promise.resolve(err(stored.error.message));
       }
       stored = ok({ ...stored.value, ...patch });
-      return Promise.resolve(ok(undefined));
+      return await Promise.resolve(ok(undefined));
     }),
   };
 };

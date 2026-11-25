@@ -220,8 +220,8 @@ describe("cli config store", () => {
     const written = await cliConfigStore.write({ telemetryEnabled: false });
 
     assertOk(written);
-    const stored = JSON.parse(await readFile(cliConfigStore.path(), "utf8"));
-    expect(Object.keys(stored)).toEqual([
+    const stored: unknown = JSON.parse(await readFile(cliConfigStore.path(), "utf8"));
+    expect(Object.keys(stored as object)).toEqual([
       "zeta",
       "envId",
       "userId",
