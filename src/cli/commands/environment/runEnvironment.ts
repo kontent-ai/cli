@@ -1,4 +1,5 @@
 import { match, P } from "ts-pattern";
+import { isSessionRejected } from "../../../core/auth/session.js";
 import type { AuthError } from "../../../core/auth/types.js";
 import { mapiBaseUrl } from "../../../core/kontentUrl/kontentUrl.js";
 import { isGuid } from "../../../core/lib/guid.js";
@@ -11,8 +12,13 @@ import {
   cliConfigStore,
 } from "../../adapters/config/cliConfig.js";
 import { createEnvironments, type Environments } from "../../adapters/mapi/environments.js";
-import { createLoggerFromArgs, type LogOptions } from "../../log.js";
+import type { Logger } from "../../log.js";
 import type { CommandDeps } from "../../types/yargs.js";
+import {
+  type CommandOutcome,
+  createFailureOutcome,
+  createLoginAwareFailureOutcome,
+} from "../shared/commandOutcome.js";
 import { noEnvironmentAccessMessage } from "../shared/environmentAccess.js";
 import { formatAuthError } from "../shared/formatAuthError.js";
 import { sessionExpiredMessage } from "../shared/sessionExpired.js";
@@ -68,10 +74,10 @@ export const selectEnvironment = async (
 };
 
 export const runUse = async (
-  args: LogOptions & Readonly<{ envId: string }>,
+  args: Readonly<{ envId: string }>,
   deps: CommandDeps,
-): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
+  logger: Logger,
+): Promise<CommandOutcome> => {
   const envId = args.envId.trim();
 
   const result = await selectEnvironment(
@@ -83,9 +89,9 @@ export const runUse = async (
     envId,
   );
   if (isErr(result)) {
-    logger.error(formatSelectError(result.error, envId));
-    process.exitCode = 1;
-    return;
+    const failure = formatUseFailure(result.error, envId);
+    logger.error(failure.message);
+    return failure.outcome;
   }
 
   logger.info(
@@ -103,40 +109,49 @@ export const runUse = async (
       )
       .exhaustive(),
   );
+  return { status: "success" };
 };
 
-export const runCurrent = async (args: LogOptions): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
+export const formatUseFailure = (
+  error: SelectEnvironmentError,
+  envId: string,
+): Readonly<{ message: string; outcome: CommandOutcome }> => {
+  const isLoginRequired =
+    error.kind === "environment-info-failed" &&
+    isSessionRejected({ status: error.status, isLoginToken: true });
+  return {
+    message: isLoginRequired ? sessionExpiredMessage : formatSelectError(error, envId),
+    outcome: createLoginAwareFailureOutcome({ isLoginRequired, errorCode: error.kind }),
+  };
+};
 
+export const runCurrent = async (logger: Logger): Promise<CommandOutcome> => {
   const current = await currentEnvironment({ config: cliConfigStore });
   if (isErr(current)) {
     logger.error(current.error.message);
-    process.exitCode = 1;
-    return;
+    return createFailureOutcome("config-unreadable");
   }
   const envId = current.value;
   if (isNone(envId)) {
     logger.error("No default environment is set. Run `kontent environment use <envId>`.");
-    process.exitCode = 1;
-    return;
+    return createFailureOutcome("no-default-environment");
   }
   process.stdout.write(`${envId.value}\n`);
+  return { status: "success" };
 };
 
-export const runClear = async (args: LogOptions): Promise<void> => {
-  const logger = createLoggerFromArgs(args);
-
+export const runClear = async (logger: Logger): Promise<CommandOutcome> => {
   const result = await clearEnvironment({ config: cliConfigStore });
   if (isErr(result)) {
     logger.error(`Failed to update the config: ${result.error}`);
-    process.exitCode = 1;
-    return;
+    return createFailureOutcome("config-write-failed");
   }
 
   logger.info(
     "standard",
     result.value === "cleared" ? "Default environment cleared." : "No default environment was set.",
   );
+  return { status: "success" };
 };
 
 const storeEnvId = async (
@@ -151,7 +166,6 @@ const storeEnvId = async (
 const formatSelectError = (error: SelectEnvironmentError, envId: string): string =>
   match(error)
     .with({ kind: "invalid-env-id" }, (e) => e.message)
-    .with({ kind: "environment-info-failed", status: 401 }, () => sessionExpiredMessage)
     .with({ kind: "environment-info-failed", status: P.union(403, 404) }, () =>
       noEnvironmentAccessMessage(envId),
     )

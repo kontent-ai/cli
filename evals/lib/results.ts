@@ -21,7 +21,7 @@ export type RunSummaryHeader = Readonly<{
   maxTurns: number;
   cliVersion: string;
   // The npm spec the CLI was installed from; absent when the run used the local build.
-  cliPackage?: string;
+  cliPackage?: string | undefined;
   gitSha: string;
   envId: string;
   preambleHash: string;
@@ -60,7 +60,7 @@ export type TaskResultInput = Readonly<{
   assertions: ReadonlyArray<Assertion>;
   // Set for ERROR verdicts: the agent-run or check failure that produced them,
   // so it survives on disk instead of only ever appearing in a thrown Error.
-  errorMessage?: string;
+  errorMessage?: string | undefined;
 }>;
 
 // Creates evals/results/<date>-<time>-<model>/tasks, date and time both UTC

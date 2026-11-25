@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { type LoginEffects, login } from "../../src/cli/commands/login/runLogin.js";
+import {
+  type LoginEffects,
+  login,
+  loginFailureOutcome,
+} from "../../src/cli/commands/login/runLogin.js";
 import { createLogger } from "../../src/cli/log.js";
 import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
 import { err, ok, type Result } from "../../src/core/lib/result.js";
@@ -70,5 +74,15 @@ describe("login with a valid session", () => {
 
     expect(effects.deviceSignIn.signIn).not.toHaveBeenCalled();
     expect(result).toEqual(ok({ isAlreadyAuthenticated: true, identifier: "new@example.com" }));
+  });
+});
+
+describe("loginFailureOutcome", () => {
+  it.each([
+    [{ kind: "access-denied" }, "cancelled"],
+    [{ kind: "expired-token" }, "failure"],
+    [{ kind: "storage-write-failed", cause: new Error("locked") }, "failure"],
+  ] as const)("ends %o as %s", (error, reason) => {
+    expect(loginFailureOutcome(error)).toEqual({ status: "error", reason, errorCode: error.kind });
   });
 });

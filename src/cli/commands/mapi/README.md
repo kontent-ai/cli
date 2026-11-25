@@ -63,5 +63,6 @@ still prints the payload.
   front of the API (`text/html` from a gateway or a WAF) rather than anything the
   API itself returns; to capture such a body, repeat the request with `curl`.
 - `-i` prepends the status line and the response headers to stdout.
-- A 4xx or 5xx sets the exit code to 1 and prints `HTTP <status>` on stderr. The
-  response body still goes to stdout, so a failing request stays scriptable.
+- A 4xx or 5xx prints `HTTP <status>` on stderr and sets the exit code to 1, or to 4
+  for a 401 on the `kontent login` token (run `kontent login` again). The response
+  body still goes to stdout, so a failing request stays scriptable.

@@ -14,9 +14,12 @@ import {
   registerTelemetrySignalFlush,
 } from "./cli/adapters/telemetry/tracking.js";
 import { commandsToRegister } from "./cli/commands/registry.js";
+import { summarizeUnexpectedError } from "./cli/commands/shared/runCommand.js";
+import { usageHint } from "./cli/commands/shared/usageHint.js";
 import { addLogLevelOptions, styleStderr } from "./cli/log.js";
 import type { CommandDeps } from "./cli/types/yargs.js";
 import { resolveKontentTarget } from "./core/kontentUrl/kontentUrl.js";
+import { EXIT_CODES } from "./core/lib/exitCodes.js";
 import { isErr } from "./core/lib/result.js";
 
 // A reader that stops early (`... | head`) exits and takes the read end of the
@@ -24,7 +27,8 @@ import { isErr } from "./core/lib/result.js";
 // process.stdout emits 'error' - and an 'error' event with no listener is thrown
 // by EventEmitter, so the CLI dies with a stack trace instead of the payload.
 // Attaching any listener is the fix; the code check only keeps real failures
-// loud. process.exitCode stays the command's to set.
+// loud. The listener leaves process.exitCode alone: runCommand sets it from the
+// command's outcome, the parse catch below on a usage error or a crash outside a command.
 const ignoreClosedPipe = (stream: NodeJS.WriteStream): void => {
   stream.on("error", (error: NodeJS.ErrnoException) => {
     // Same closed pipe, one step later: once the stream is torn down the write is
@@ -52,7 +56,10 @@ const initialYargs = emptyYargs
   .wrap(emptyYargs.terminalWidth())
   .scriptName("kontent")
   .locale("en")
-  .epilogue("Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai")
+  .epilogue(
+    "Exit codes: 0 ok, 1 failure, 2 usage error, 4 login required, 130 cancelled\n" +
+      "Docs: https://kontent.ai/learn  |  Contact: devrel@kontent.ai",
+  )
   .demandCommand(1, styleStderr("red", "You need to provide a command to run."))
   .strict()
   .config("configFile", "Path to a JSON file with CLI parameters.")
@@ -90,8 +97,29 @@ const { telemetry } = await createTelemetry({
 const deps: CommandDeps = { telemetry, kontentTarget: kontentTarget.value };
 registerTelemetrySignalFlush(telemetry);
 
-await commandsToRegister
+const isReported = (error: unknown): boolean => error instanceof Error && "wasReported" in error;
+
+const cli = commandsToRegister
   .reduce((current, register) => register(current, deps), withLogLevel)
-  .parseAsync();
+  // Replaces the full help yargs prints on a usage error. It has to throw: yargs runs the
+  // command once the handler returns. A throw from inside a .check() comes back in here,
+  // so the error is marked as reported rather than printed twice.
+  .fail((message: string | null, error: unknown) => {
+    if (message === null || isReported(error)) {
+      throw error;
+    }
+    console.error(`${styleStderr("red", "Error:")} ${message}\n${usageHint(cli)}`);
+    throw Object.assign(new Error(message), { wasReported: true });
+  });
+
+// parseAsync throws synchronously on a usage error rather than rejecting, hence the .then.
+await Promise.resolve()
+  .then(async () => cli.parseAsync())
+  .catch((error: unknown) => {
+    if (!isReported(error)) {
+      console.error(`${styleStderr("red", "Error:")} ${summarizeUnexpectedError(error)}`);
+    }
+    process.exitCode = isReported(error) ? EXIT_CODES.usage : EXIT_CODES.failure;
+  });
 
 await telemetry.flush();

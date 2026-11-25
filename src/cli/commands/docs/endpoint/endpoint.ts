@@ -1,6 +1,7 @@
 import type { Argv } from "yargs";
 import type { LogOptions } from "../../../log.js";
 import type { RegisterCommand } from "../../../types/yargs.js";
+import { runCommand } from "../../shared/runCommand.js";
 import { withDocsOptions } from "../cliOptions.js";
 
 export const endpointCommand = {
@@ -30,8 +31,9 @@ export const register: RegisterCommand = (sub, deps) =>
     command: endpointCommand.command,
     describe: endpointCommand.describe,
     builder: (b) => endpointCommand.builder(b),
-    handler: async (args) => {
-      const { runEndpoint } = await import("../runDocs.js");
-      await runEndpoint(args, deps);
-    },
+    handler: async (args) =>
+      runCommand({ trackAs: "docs endpoint", args, deps }, async (logger) => {
+        const { runEndpoint } = await import("../runDocs.js");
+        return runEndpoint(args, logger);
+      }),
   });
