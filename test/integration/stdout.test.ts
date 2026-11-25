@@ -47,7 +47,7 @@ describe("a reader that closes the pipe early", () => {
   // CPU-bound, so a loaded machine stretches it well past the 5s default.
   it("does not turn into an EPIPE crash", async () => {
     const homeDir = await mkdtemp(join(tmpdir(), "kontent-stdout-"));
-    onTestFinished(() => rm(homeDir, { recursive: true, force: true }));
+    onTestFinished(async () => rm(homeDir, { recursive: true, force: true }));
 
     const result = await runWithClosedStdout(["telemetry", "status"], homeDir);
 
