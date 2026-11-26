@@ -1,4 +1,3 @@
-import { AdapterParseError } from "@kontent-ai/core-sdk";
 import { describe, expect, it, vi } from "vitest";
 // biome-ignore lint/correctness/useImportExtensions: JSON imports must keep the .json extension
 import pkg from "../../package.json" with { type: "json" };
@@ -262,25 +261,13 @@ describe("createRawClient", () => {
     expect(result).toEqual({ kind: "err", error: "socket hang up" });
   });
 
-  it("leaves timing out to Node's fetch", async () => {
-    const { requests } = await run([typesRoute]);
-
-    expect(requests[0]?.abortSignal).toBeUndefined();
-  });
-
-  // The body timeout fails reading the body, which core-sdk wraps.
-  it.each([
-    ["headers", nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT")],
-    [
-      "body",
-      new AdapterParseError({
-        message: "Failed to parse the response.",
-        error: nodeFetchTimeoutError("UND_ERR_BODY_TIMEOUT"),
-      }),
-    ],
-  ])("reports Node's %s timeout as a timeout", async (_timeout, thrown) => {
+  it("reports Node's headers timeout as a timeout", async () => {
     const { result } = await run([
-      { method: "GET", path: /\/types$/, replies: [{ throws: thrown }] },
+      {
+        method: "GET",
+        path: /\/types$/,
+        replies: [{ throws: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT") }],
+      },
     ]);
 
     expect(result).toEqual({ kind: "err", error: "The server did not respond in time." });

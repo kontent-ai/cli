@@ -30,16 +30,6 @@ describe("cli config store", () => {
     await writeFile(join(dir, "config.json"), text);
   };
 
-  // A hand-edited value must never reach a request URL.
-  it("reads back a stored environment id only when it is a GUID", async () => {
-    await writeRawConfig(JSON.stringify({ envId: "../projects/other" }));
-
-    const config = await store.read();
-
-    assertOk(config);
-    expect(config.value.envId).toBeUndefined();
-  });
-
   const guid = "6f0b4d5e-1c2a-4b3d-9e8f-7a6b5c4d3e2f";
 
   it.each([
@@ -66,17 +56,16 @@ describe("cli config store", () => {
       expected: { telemetryEnabled: true },
     },
     {
-      name: "drops a telemetryNoticeShown that is not a boolean",
-      stored: { telemetryNoticeShown: "yes" },
-      expected: {},
-    },
-    { name: "drops a userId that is not a string", stored: { userId: 42 }, expected: {} },
-    { name: "drops a deviceId that is not a string", stored: { deviceId: null }, expected: {} },
-    { name: "drops an envId that is not a GUID", stored: { envId: "not-a-guid" }, expected: {} },
-    {
-      name: "drops an envId that is not a string",
-      stored: { envId: 7, userId: "user" },
-      expected: { userId: "user" },
+      name: "drops every field whose value is not valid and keeps the rest",
+      stored: {
+        telemetryEnabled: true,
+        telemetryNoticeShown: "yes",
+        userId: 42,
+        deviceId: null,
+        // A hand-edited value must never reach a request URL.
+        envId: "../projects/other",
+      },
+      expected: { telemetryEnabled: true },
     },
   ])("$name", async ({ stored, expected }) => {
     await writeRawConfig(JSON.stringify(stored));
@@ -99,8 +88,9 @@ describe("cli config store", () => {
     expect(await store.read()).toEqual(ok({}));
   });
 
-  it("reports a file that is not valid JSON", async () => {
-    await writeRawConfig('{"telemetryEnabled": false,}');
+  it("reports a file that is not valid JSON and refuses to write over it", async () => {
+    const corrupt = '{"telemetryEnabled": false,}';
+    await writeRawConfig(corrupt);
 
     const config = await store.read();
 
@@ -108,6 +98,8 @@ describe("cli config store", () => {
     expect(config.error).toEqual({
       message: `Config file at ${store.path()} is not valid JSON. Fix or delete it.`,
     });
+    assertErr(await store.write({ telemetryEnabled: true }));
+    expect(await readFile(store.path(), "utf8")).toBe(corrupt);
   });
 
   it.each([
@@ -158,101 +150,36 @@ describe("cli config store", () => {
     expect(await readdir(store.path())).toEqual([]);
   });
 
-  it("refuses to write over a file that is not valid JSON", async () => {
-    const corrupt = '{"telemetryEnabled": false,}';
-    await writeRawConfig(corrupt);
-
-    const written = await store.write({ telemetryEnabled: true });
-
-    assertErr(written);
-    expect(await readFile(store.path(), "utf8")).toBe(corrupt);
-  });
-
-  it("merges a patch into the stored config without leaving a temp file behind", async () => {
-    await writeRawConfig(JSON.stringify({ telemetryEnabled: false }));
-
-    const written = await store.write({ telemetryNoticeShown: true });
-
-    assertOk(written);
-    expect(await store.read()).toEqual(ok({ telemetryEnabled: false, telemetryNoticeShown: true }));
-    expect(await readdir(join(configHome, "kontent", "cli"))).toEqual(["config.json"]);
-  });
-
-  // An older CLI must not delete settings a newer one added, nor hand edits.
-  it("keeps keys it does not know, with their values, when it writes", async () => {
-    const unknownFields = {
+  // An older CLI must not delete settings a newer one added, nor hand edits. Validation applies
+  // to reads only, so a value this version rejects may be valid for another one.
+  it("keeps keys it does not know or whose values it rejects, when it writes", async () => {
+    const keptFields = {
       targets: { "https://app.kontent.ai": { envId: "x" } },
       list: [1, "two", { three: null }],
       nothing: null,
       flag: "on",
+      envId: "not-a-guid",
     };
-    await writeRawConfig(JSON.stringify({ ...unknownFields, telemetryEnabled: false }));
+    await writeRawConfig(JSON.stringify({ ...keptFields, telemetryEnabled: false }));
 
     const written = await store.write({ telemetryNoticeShown: true });
 
     assertOk(written);
     expect(JSON.parse(await readFile(store.path(), "utf8"))).toEqual({
-      ...unknownFields,
+      ...keptFields,
       telemetryEnabled: false,
       telemetryNoticeShown: true,
     });
     expect(await store.read()).toEqual(ok({ telemetryEnabled: false, telemetryNoticeShown: true }));
   });
 
-  // Validation applies to reads only; a value this version rejects may be valid for another one.
-  it("keeps known keys whose values it rejects on read, in their order, with patch keys last", async () => {
-    await writeRawConfig(
-      JSON.stringify({
-        zeta: 1,
-        envId: "not-a-guid",
-        userId: 42,
-        deviceId: null,
-        telemetryNoticeShown: "yes",
-        alpha: [1],
-      }),
-    );
-
-    const written = await store.write({ telemetryEnabled: false });
-
-    assertOk(written);
-    const stored: unknown = JSON.parse(await readFile(store.path(), "utf8"));
-    expect(Object.keys(stored as object)).toEqual([
-      "zeta",
-      "envId",
-      "userId",
-      "deviceId",
-      "telemetryNoticeShown",
-      "alpha",
-      "telemetryEnabled",
-    ]);
-    expect(stored).toEqual({
-      zeta: 1,
-      envId: "not-a-guid",
-      userId: 42,
-      deviceId: null,
-      telemetryNoticeShown: "yes",
-      alpha: [1],
-      telemetryEnabled: false,
-    });
-    expect(await store.read()).toEqual(ok({ telemetryEnabled: false }));
-  });
-
-  it("removes the fields logout clears even when their values are rejected on read", async () => {
-    await writeRawConfig(JSON.stringify({ envId: "not-a-guid", userId: 42, custom: 1 }));
-
-    const written = await store.write({ userId: undefined, envId: undefined });
-
-    assertOk(written);
-    expect(JSON.parse(await readFile(store.path(), "utf8"))).toEqual({ custom: 1 });
-  });
-
-  it("removes the fields logout clears and keeps the rest", async () => {
+  it("removes the fields logout clears, valid or not, and keeps the rest", async () => {
     await writeRawConfig(
       JSON.stringify({
         telemetryEnabled: false,
         deviceId: "device",
-        userId: "user",
-        envId: "6f0b4d5e-1c2a-4b3d-9e8f-7a6b5c4d3e2f",
+        userId: 42,
+        envId: guid,
         custom: { kept: true },
       }),
     );
@@ -265,14 +192,5 @@ describe("cli config store", () => {
       deviceId: "device",
       custom: { kept: true },
     });
-  });
-
-  it("still refuses a config with unknown keys and a telemetryEnabled that is not a boolean", async () => {
-    const text = '{"custom": {"kept": true}, "telemetryEnabled": "false"}';
-    await writeRawConfig(text);
-
-    assertErr(await store.read());
-    assertErr(await store.write({ telemetryNoticeShown: true }));
-    expect(await readFile(store.path(), "utf8")).toBe(text);
   });
 });

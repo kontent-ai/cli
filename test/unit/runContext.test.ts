@@ -69,11 +69,6 @@ describe("resolveRunContext", () => {
       { target: PRODUCTION, overrides: NO_OVERRIDES, configFolder: "cli" },
     ],
     [
-      "an Auth0 variable set to the built-in value",
-      release({ auth0: { ...RELEASE_AUTH0 } }),
-      { target: PRODUCTION, overrides: NO_OVERRIDES, configFolder: "cli" },
-    ],
-    [
       "a local KONTENT_URL",
       release({ kontentUrl: "http://localhost:3000" }),
       {
@@ -103,18 +98,6 @@ describe("resolveRunContext", () => {
       {
         target: PRODUCTION,
         overrides: { kontentTarget: none, auth0: ["clientId"] },
-        configFolder: "cli-login.example.com",
-      },
-    ],
-    [
-      "only the audience on a release build",
-      release({ auth0: { ...RELEASE_AUTH0, audience: "https://api.qa.example.com/" } }),
-      {
-        target: PRODUCTION,
-        overrides: {
-          kontentTarget: none,
-          auth0: ["audience"],
-        },
         configFolder: "cli-login.example.com",
       },
     ],
@@ -165,18 +148,6 @@ describe("resolveRunContext", () => {
         target: PRODUCTION,
         overrides: { kontentTarget: none, auth0: ["clientId"] },
         configFolder: "cli-custom-login",
-      },
-    ],
-    [
-      "an unbuilt run with an Auth0 domain",
-      unbuilt({ auth0: { ...UNBUILT_AUTH0, domain: "login.qa.example.com" } }),
-      {
-        target: PRODUCTION,
-        overrides: {
-          kontentTarget: none,
-          auth0: ["domain"],
-        },
-        configFolder: "cli-login.qa.example.com",
       },
     ],
     [

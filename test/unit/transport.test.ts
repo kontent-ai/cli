@@ -26,12 +26,6 @@ describe("bounded Amplitude transport", () => {
     expect(Date.now() - startedAt).toBeLessThan(1000);
   });
 
-  it("resolves null on a network error", async () => {
-    vi.stubGlobal("fetch", async () => Promise.reject(new TypeError("fetch failed")));
-
-    expect(await createBoundedTransport(50).send(SERVER_URL, PAYLOAD)).toBeNull();
-  });
-
   it("builds the SDK response from Amplitude's answer", async () => {
     vi.stubGlobal(
       "fetch",

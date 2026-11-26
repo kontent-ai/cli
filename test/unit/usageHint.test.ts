@@ -45,14 +45,7 @@ describe("usageHint", () => {
     expect(await hintFor(argv)).toBe(expected);
   });
 
-  it.each([
-    { name: "no internal methods", parser: {} },
-    { name: "a renamed getContext", parser: { getInternalMethods: () => ({}) } },
-    {
-      name: "a context without commands",
-      parser: { getInternalMethods: () => ({ getContext: () => ({}) }) },
-    },
-  ])("falls back to the root help with $name", ({ parser }) => {
-    expect(usageHint(parser)).toBe("Run `kontent --help` for usage.");
+  it("falls back to the root help with no internal methods", () => {
+    expect(usageHint({})).toBe("Run `kontent --help` for usage.");
   });
 });

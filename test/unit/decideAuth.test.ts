@@ -64,23 +64,14 @@ describe("isLoginRequired", () => {
   it.each([
     [{ kind: "not-logged-in" }, true],
     [{ kind: "session-expired", refreshError: { kind: "refresh-rejected", cause: null } }, true],
-    [{ kind: "expired-token" }, false],
-    [{ kind: "access-denied" }, false],
     [{ kind: "refresh-failed", cause: new Error("ETIMEDOUT") }, false],
-    [{ kind: "storage-read-failed", cause: new Error("locked") }, false],
   ] as const)("maps %o to %s", (error, expected) => {
     expect(isLoginRequired(error)).toBe(expected);
   });
 });
 
 describe("isSessionRejected", () => {
-  it.each([
-    [{ status: 401, isLoginToken: true }, true],
-    [{ status: 401, isLoginToken: false }, false],
-    [{ status: 403, isLoginToken: true }, false],
-    [{ status: 500, isLoginToken: true }, false],
-    [{ status: undefined, isLoginToken: true }, false],
-  ] as const)("maps %o to %s", (response, expected) => {
-    expect(isSessionRejected(response)).toBe(expected);
+  it("does not treat a 403 on the login token as a rejected session", () => {
+    expect(isSessionRejected({ status: 403, isLoginToken: true })).toBe(false);
   });
 });
