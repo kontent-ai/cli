@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { resolveDapiEndpoint } from "../../src/core/dapi/endpoint.js";
 import { resolveMapiEndpoint } from "../../src/core/mapi/endpoint.js";
 import { validateEndpoint } from "../../src/core/passthrough/endpoint.js";
+import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const params = { baseUrl: "https://manage.kontent.ai/v2", envId: ENV_ID } as const;
@@ -76,40 +78,112 @@ describe("resolveMapiEndpoint", () => {
 });
 
 describe("validateEndpoint", () => {
-  const validate = (endpoint: string, envId = ENV_ID) =>
-    validateEndpoint(endpoint, { envId, apiName: "Management API" });
-
   it.each([
     ["", "empty"],
     ["   ", "empty"],
     ["https://evil.example.com/types", "absolute-url"],
     ["//evil.example.com/types", "absolute-url"],
     ["file:///etc/passwd", "absolute-url"],
-    ["../../admin", "traversal"],
-    ["types/../../admin", "traversal"],
-    ["types/%2e%2e/admin", "traversal"],
-    ["types\\..\\..\\secret", "traversal"],
-    ["..\\..\\admin", "traversal"],
-    ["types/..\\admin", "traversal"],
   ])("rejects %j as %s", (endpoint, kind) => {
-    const result = validate(endpoint);
+    const result = validateEndpoint(endpoint, { envId: ENV_ID, apiName: "Management API" });
 
-    expect(result.kind).toBe("err");
-    if (result.kind !== "err") {
-      return;
-    }
+    assertErr(result);
     expect(result.error.kind).toBe(kind);
   });
+});
 
-  // The id is substituted after the path is checked, so it needs its own guard:
-  // "projects/../types" normalizes to "/v2/types", out of the environment scope.
-  it("rejects a traversal in the environment id", () => {
-    const result = validate("types", "..");
+// The scope is checked on the built URL, after the parser has dropped tabs and line breaks
+// and resolved dot segments, percent-encoded dots and backslashes.
+describe("endpoint scope", () => {
+  const resolveFor = (api: "mapi" | "dapi", endpoint: string, envId: string) =>
+    api === "mapi"
+      ? resolveMapiEndpoint(endpoint, { baseUrl: "https://manage.kontent.ai/v2", envId })
+      : resolveDapiEndpoint(endpoint, { baseUrl: "https://deliver.kontent.ai", envId });
 
-    expect(result.kind).toBe("err");
-    if (result.kind !== "err") {
-      return;
-    }
-    expect(result.error.kind).toBe("traversal");
+  it.each([
+    { api: "mapi", endpoint: "types", pathname: `/v2/projects/${ENV_ID}/types` },
+    { api: "mapi", endpoint: "items/../types", pathname: `/v2/projects/${ENV_ID}/types` },
+    {
+      api: "mapi",
+      endpoint: "%252e%252e/other-env",
+      pathname: `/v2/projects/${ENV_ID}/%252e%252e/other-env`,
+    },
+    { api: "mapi", endpoint: "types?x=../..", pathname: `/v2/projects/${ENV_ID}/types` },
+    {
+      api: "mapi",
+      endpoint: "projects/{environment_id}/types",
+      pathname: `/v2/projects/${ENV_ID}/types`,
+    },
+    { api: "mapi", endpoint: "projects/other-env/types", pathname: "/v2/projects/other-env/types" },
+    {
+      api: "mapi",
+      endpoint: "ht\ntps://evil.example/x",
+      pathname: `/v2/projects/${ENV_ID}/https://evil.example/x`,
+    },
+    { api: "mapi", endpoint: "types", envId: "a b/c", pathname: "/v2/projects/a%20b%2Fc/types" },
+    { api: "dapi", endpoint: "items/../types", pathname: `/${ENV_ID}/types` },
+  ] as const)("keeps $api $endpoint at $pathname", ({ api, endpoint, pathname, ...rest }) => {
+    const result = resolveFor(api, endpoint, "envId" in rest ? rest.envId : ENV_ID);
+
+    assertOk(result);
+    expect(result.value.origin).toBe(
+      api === "mapi" ? "https://manage.kontent.ai" : "https://deliver.kontent.ai",
+    );
+    expect(result.value.pathname).toBe(pathname);
+  });
+
+  it.each([
+    { api: "mapi", endpoint: "../other-env/types", leaves: "environment" },
+    { api: "mapi", endpoint: ".\n./other-env/types", leaves: "environment" },
+    { api: "mapi", endpoint: ".\t./other-env/types", leaves: "environment" },
+    { api: "mapi", endpoint: "types\\..\\..\\other-env", leaves: "environment" },
+    { api: "mapi", endpoint: "%2e%2e/other-env/types", leaves: "environment" },
+    { api: "mapi", endpoint: ".%2e/other-env/types", leaves: "environment" },
+    { api: "mapi", endpoint: "projects/../other-api", leaves: "projects path" },
+    { api: "dapi", endpoint: "items/.\n./.\n./other-env/items", leaves: "environment" },
+  ] as const)("refuses $api $endpoint as leaving the $leaves", ({ api, endpoint, leaves }) => {
+    const result = resolveFor(api, endpoint, ENV_ID);
+
+    assertErr(result);
+    expect(result.error).toEqual({
+      kind: "traversal",
+      message: `The endpoint ${JSON.stringify(endpoint)} leaves the ${leaves}.`,
+    });
+  });
+
+  it.each([
+    { api: "mapi", envId: ".." },
+    { api: "mapi", envId: "." },
+    { api: "dapi", envId: ".." },
+    { api: "dapi", envId: "." },
+  ] as const)("refuses $api with the environment id $envId, naming the id", ({ api, envId }) => {
+    const result = resolveFor(api, "types", envId);
+
+    assertErr(result);
+    expect(result.error).toEqual({
+      kind: "traversal",
+      message: `The environment id "${envId}" must not be "." or "..".`,
+    });
+  });
+
+  it("prints a line break in the endpoint as \\n", () => {
+    const result = resolveFor("mapi", ".\n./other-env/types", ENV_ID);
+
+    assertErr(result);
+    expect(result.error.message).toBe(
+      'The endpoint ".\\n./other-env/types" leaves the environment.',
+    );
+  });
+
+  it.each([
+    ["mapi", "https://evil.example/x"],
+    ["mapi", "//evil.example/x"],
+    ["dapi", "https://evil.example/x"],
+    ["dapi", "//evil.example/x"],
+  ] as const)("refuses %s %j as an absolute URL", (api, endpoint) => {
+    const result = resolveFor(api, endpoint, ENV_ID);
+
+    assertErr(result);
+    expect(result.error.kind).toBe("absolute-url");
   });
 });
