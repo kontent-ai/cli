@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -63,13 +63,16 @@ export type TaskResultInput = Readonly<{
   errorMessage?: string | undefined;
 }>;
 
-// Creates evals/results/<date>-<time>-<model>/tasks, date and time both UTC
-// from the same instant, so a run's directory name doubles as its start time.
+// Creates evals/results/<date>-<time>-<suffix>-<model>/tasks, date and time both UTC
+// from the same instant, so a run's directory name doubles as its start time. The
+// random suffix keeps concurrent runs started in the same second apart: they would
+// otherwise overwrite each other's results and append to the same graded invocation logs.
 export const createRunDirectory = async (root: string, model: string): Promise<string> => {
   const now = new Date();
   const date = now.toISOString().slice(0, 10);
-  const time = now.toISOString().slice(11, 16).replace(":", "");
-  const runDir = `${root}/${date}-${time}-${model}`;
+  const time = now.toISOString().slice(11, 19).replaceAll(":", "");
+  const suffix = randomBytes(2).toString("hex");
+  const runDir = `${root}/${date}-${time}-${suffix}-${model}`;
   await mkdir(`${runDir}/tasks`, { recursive: true });
   return runDir;
 };

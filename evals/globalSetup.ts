@@ -48,8 +48,9 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
   }
 
   const cliPackage = readCliPackage();
-  const cliEntry =
+  const cli =
     cliPackage === undefined ? await buildLocalCli() : await installCliPackage(cliPackage);
+  const cliEntry = cli.entry;
   const cliBinDir = await createCliShim(cliEntry);
   process.stderr.write(`Target: ${mapiUrlFromEnv()} | CLI: ${cliPackage ?? "local build"}\n`);
   const model = readModel();
@@ -86,6 +87,7 @@ export const setup = async ({ provide }: TestProject): Promise<() => Promise<voi
 
   return async () => {
     process.stderr.write(`Environment: ${environment.envId}. Run dir: ${runDir}\n`);
+    await rm(cli.dir, { recursive: true, force: true });
     if (process.env.EVALS_KEEP_ENV === "1") {
       process.stderr.write("EVALS_KEEP_ENV=1: leaving the environment in place.\n");
       return;
@@ -115,21 +117,28 @@ const readCliPackage = (): string | undefined => {
   return spec === undefined || spec === "" ? undefined : spec;
 };
 
-const buildLocalCli = async (): Promise<string> => {
-  process.stderr.write("Building the CLI...\n");
-  await execFileAsync("pnpm", ["build"], { cwd: repoRoot });
-  return join(repoRoot, "dist", "index.mjs");
+// The CLI under test and the dir holding it, which teardown deletes.
+type CliUnderTest = Readonly<{ entry: string; dir: string }>;
+
+// A per-run outDir rather than dist/, so concurrent runs never wipe each other's
+// build mid-task (tsdown cleans its outDir). It stays inside the repo because the
+// bundle imports its dependencies at runtime and resolves them from node_modules.
+const buildLocalCli = async (): Promise<CliUnderTest> => {
+  const buildRoot = join(repoRoot, "node_modules", ".cache");
+  await mkdir(buildRoot, { recursive: true });
+  const outDir = await mkdtemp(join(buildRoot, "kontent-evals-build-"));
+  process.stderr.write(`Building the CLI into ${outDir}...\n`);
+  await execFileAsync("pnpm", ["build", "--out-dir", outDir], { cwd: repoRoot });
+  return { entry: join(outDir, "index.mjs"), dir: outDir };
 };
 
-// Fixed and wiped at the start of each run, not in teardown: Vitest exits on
-// Ctrl+C without running teardown, so a per-run dir would leak a full install
-// every time. Outside the repo so that a dependency the package forgot to
-// declare cannot resolve from the repo's own node_modules.
-const cliInstallDir = join(tmpdir(), "kontent-evals-cli");
-
-const installCliPackage = async (spec: string): Promise<string> => {
+// A per-run dir so concurrent runs never delete or race each other's install.
+// Vitest exits on Ctrl+C without running teardown, so an interrupted run leaves
+// its install behind in the OS temp dir. Outside the repo so that a dependency the
+// package forgot to declare cannot resolve from the repo's own node_modules.
+const installCliPackage = async (spec: string): Promise<CliUnderTest> => {
+  const cliInstallDir = await mkdtemp(join(tmpdir(), "kontent-evals-cli-"));
   process.stderr.write(`Installing ${spec} into ${cliInstallDir}...\n`);
-  await rm(cliInstallDir, { recursive: true, force: true });
   await execFileAsync("npm", [
     "install",
     "--prefix",
@@ -138,7 +147,8 @@ const installCliPackage = async (spec: string): Promise<string> => {
     "--no-fund",
     spec,
   ]);
-  return realpath(join(cliInstallDir, "node_modules", ".bin", "kontent"));
+  const entry = await realpath(join(cliInstallDir, "node_modules", ".bin", "kontent"));
+  return { entry, dir: cliInstallDir };
 };
 
 const readModel = (): string => {
