@@ -49,7 +49,8 @@ deletes the cloned environment unless you keep it (see below).
 - `EVALS_ALLOW_API_KEY=1` - run even with `ANTHROPIC_API_KEY` set.
 - `EVALS_CLI_PACKAGE` - npm package to evaluate instead of the local build, e.g.
   `@kontent-ai/cli@next` or `@kontent-ai/cli@0.10.0-beta.1`. Runs
-  `npm install` into `$TMPDIR/kontent-evals-cli`, wiped at the start of each run.
+  `npm install` into a per-run `$TMPDIR/kontent-evals-cli-*` dir, deleted at the end of the run
+  (an interrupted run leaves it behind).
 - `EVALS_ENV_FILE` - env file loaded instead of `.env`; the shell's values win over it. `.env` is
   not read at all, so a key missing from the file fails the run. The run also fails if the file
   is missing. `pnpm evals:run:release` sets it to `.env.evals.release`, meant for evaluating a
@@ -58,8 +59,8 @@ deletes the cloned environment unless you keep it (see below).
 
 ## Output
 
-Each run writes to `evals/results/<YYYY-MM-DD>-<HHMM>-<model>/` (git-ignored; date and time are UTC,
-taken at the start of the run):
+Each run writes to `evals/results/<YYYY-MM-DD>-<HHMMSS>-<suffix>-<model>/` (git-ignored; date and time are UTC,
+taken at the start of the run; the random suffix keeps concurrent runs apart):
 
 - `run.json` - header (model, tools, permission rules, max turns, CLI version, CLI package when set, git sha, environment
   id, preamble hash, timing) and one row per task (verdict, turns, tool call, failed, denied, help,

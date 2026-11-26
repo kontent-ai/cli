@@ -91,6 +91,8 @@ const buildOptions = (
   // Isolates the run from this repo's CLAUDE.md and the operator's own
   // Claude Code settings/hooks, neither of which the agent under eval should see.
   settingSources: [],
+  // settingSources does not cover MCP; this keeps out the operator's claude.ai connectors.
+  strictMcpConfig: true,
   maxTurns: params.maxTurns,
   abortController,
   persistSession: false,
