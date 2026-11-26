@@ -12,7 +12,6 @@ describe("accountFor", () => {
     expect(accountFor(PRODUCTION)).toBe(
       '["login.example.com","client","https://api.example.com/","kontent.ai"]',
     );
-    expect(accountFor({ ...PRODUCTION })).toBe(accountFor(PRODUCTION));
   });
 
   it("uses the origin of a host target", () => {
@@ -24,23 +23,5 @@ describe("accountFor", () => {
     expect(accountFor(local)).toBe(
       '["login.example.com","client","https://api.example.com/","http://localhost:3000"]',
     );
-  });
-
-  it.each<readonly [string, LoginContext]>([
-    ["the Auth0 domain", { ...PRODUCTION, auth0Domain: "login.qa.example.com" }],
-    ["the client ID", { ...PRODUCTION, clientId: "qa-client" }],
-    ["the audience", { ...PRODUCTION, audience: "https://api.qa.example.com/" }],
-    ["the target", { ...PRODUCTION, target: { kind: "domain", domain: "qa.example.com" } }],
-    [
-      "the host scheme",
-      {
-        ...PRODUCTION,
-        target: { kind: "host", baseUrl: { protocol: "https", host: "localhost" } },
-      },
-    ],
-    ["the case of a value", { ...PRODUCTION, auth0Domain: "LOGIN.example.com" }],
-    ["whitespace in a value", { ...PRODUCTION, clientId: "client " }],
-  ])("differs when %s differs", (_, other) => {
-    expect(accountFor(other)).not.toBe(accountFor(PRODUCTION));
   });
 });

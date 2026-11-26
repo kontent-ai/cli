@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createKeyringStorage } from "../../src/cli/adapters/auth/storage.js";
+import { createKeyringStorage, createLegacyTokens } from "../../src/cli/adapters/auth/storage.js";
+import type { Logger } from "../../src/cli/log.js";
 import { loginContextFor } from "../../src/core/auth/loginContext.js";
-import type { AuthError, TokenSet } from "../../src/core/auth/types.js";
-import type { Result } from "../../src/core/lib/result.js";
+import type { TokenSet } from "../../src/core/auth/types.js";
 import { assertErr } from "../helpers/assertResult.js";
 
 // The native keyring has no seam, so the module is replaced: `loadError` fails the
@@ -35,12 +35,6 @@ const CONTEXT = loginContextFor(
   { kind: "domain", domain: "kontent.ai" },
 );
 
-const operations: ReadonlyArray<readonly [string, () => Promise<Result<unknown, AuthError>>]> = [
-  ["read", async () => createKeyringStorage(CONTEXT).read()],
-  ["write", async () => createKeyringStorage(CONTEXT).write(TOKENS)],
-  ["clear", async () => createKeyringStorage(CONTEXT).clear()],
-];
-
 // Verbatim from @napi-rs/keyring 1.3.0's index.js.
 const loaderErrors = [
   new Error(
@@ -49,42 +43,78 @@ const loaderErrors = [
   new Error("Failed to load native binding"),
 ];
 
+const LOCKED_STORE = new Error("Couldn't access platform storage: collection is locked");
+
 // As keyring-core words NoStorageAccess and NoDefaultStore.
 const storeErrors = [
-  new Error("Couldn't access platform storage: collection is locked"),
+  LOCKED_STORE,
   new Error("No default store has been set, so cannot search or create entries"),
 ];
 
 describe("createKeyringStorage", () => {
-  describe.each(operations)("%s", (_operation, run) => {
-    it.each(loaderErrors)("reports a missing native module for %s", async (loadError) => {
-      keyring.loadError = loadError;
+  const read = async () => createKeyringStorage(CONTEXT).read();
 
-      const result = await run();
+  it.each(loaderErrors)("reports a missing native module for %s", async (loadError) => {
+    keyring.loadError = loadError;
 
-      assertErr(result);
-      expect(result.error).toMatchObject({
-        cause: loadError,
-        unavailable: "native-module-missing",
-      });
+    const result = await read();
+
+    assertErr(result);
+    expect(result.error).toMatchObject({
+      cause: loadError,
+      unavailable: "native-module-missing",
     });
+  });
 
-    it.each(storeErrors)("reports an inaccessible store for %s", async (entryError) => {
-      keyring.entryError = entryError;
+  it.each(storeErrors)("reports an inaccessible store for %s", async (entryError) => {
+    keyring.entryError = entryError;
 
-      const result = await run();
+    const result = await read();
 
-      assertErr(result);
-      expect(result.error).toMatchObject({ cause: entryError, unavailable: "store-inaccessible" });
+    assertErr(result);
+    expect(result.error).toMatchObject({ cause: entryError, unavailable: "store-inaccessible" });
+  });
+
+  it("leaves any other failure unclassified", async () => {
+    keyring.entryError = new Error("Platform failure: errSecDuplicateItem");
+
+    const result = await read();
+
+    assertErr(result);
+    expect(result.error).not.toHaveProperty("unavailable");
+  });
+
+  it.each([
+    ["write", "storage-write-failed", async () => createKeyringStorage(CONTEXT).write(TOKENS)],
+    ["clear", "storage-clear-failed", async () => createKeyringStorage(CONTEXT).clear()],
+  ] as const)("classifies a %s failure the same way", async (_operation, kind, run) => {
+    keyring.entryError = LOCKED_STORE;
+
+    const result = await run();
+
+    assertErr(result);
+    expect(result.error).toMatchObject({
+      kind,
+      cause: LOCKED_STORE,
+      unavailable: "store-inaccessible",
     });
+  });
+});
 
-    it("leaves any other failure unclassified", async () => {
-      keyring.entryError = new Error("Platform failure: errSecDuplicateItem");
+describe("createLegacyTokens", () => {
+  it("resolves and says why at verbose when the entry cannot be removed", async () => {
+    keyring.entryError = new Error("keychain locked");
+    const logger = {
+      info: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+      isVerbose: true,
+    } satisfies Logger;
 
-      const result = await run();
-
-      assertErr(result);
-      expect(result.error).not.toHaveProperty("unavailable");
-    });
+    await expect(createLegacyTokens(logger).remove()).resolves.toBeUndefined();
+    expect(logger.warning).toHaveBeenCalledWith(
+      "verbose",
+      "Could not remove the old keyring entry: keychain locked",
+    );
   });
 });

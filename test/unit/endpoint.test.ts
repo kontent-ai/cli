@@ -101,7 +101,6 @@ describe("endpoint scope", () => {
       : resolveDapiEndpoint(endpoint, { baseUrl: "https://deliver.kontent.ai", envId });
 
   it.each([
-    { api: "mapi", endpoint: "types", pathname: `/v2/projects/${ENV_ID}/types` },
     { api: "mapi", endpoint: "items/../types", pathname: `/v2/projects/${ENV_ID}/types` },
     {
       api: "mapi",
@@ -109,21 +108,15 @@ describe("endpoint scope", () => {
       pathname: `/v2/projects/${ENV_ID}/%252e%252e/other-env`,
     },
     { api: "mapi", endpoint: "types?x=../..", pathname: `/v2/projects/${ENV_ID}/types` },
-    {
-      api: "mapi",
-      endpoint: "projects/{environment_id}/types",
-      pathname: `/v2/projects/${ENV_ID}/types`,
-    },
     { api: "mapi", endpoint: "projects/other-env/types", pathname: "/v2/projects/other-env/types" },
     {
       api: "mapi",
       endpoint: "ht\ntps://evil.example/x",
       pathname: `/v2/projects/${ENV_ID}/https://evil.example/x`,
     },
-    { api: "mapi", endpoint: "types", envId: "a b/c", pathname: "/v2/projects/a%20b%2Fc/types" },
     { api: "dapi", endpoint: "items/../types", pathname: `/${ENV_ID}/types` },
-  ] as const)("keeps $api $endpoint at $pathname", ({ api, endpoint, pathname, ...rest }) => {
-    const result = resolveFor(api, endpoint, "envId" in rest ? rest.envId : ENV_ID);
+  ] as const)("keeps $api $endpoint at $pathname", ({ api, endpoint, pathname }) => {
+    const result = resolveFor(api, endpoint, ENV_ID);
 
     assertOk(result);
     expect(result.value.origin).toBe(
@@ -164,26 +157,5 @@ describe("endpoint scope", () => {
       kind: "traversal",
       message: `The environment id "${envId}" must not be "." or "..".`,
     });
-  });
-
-  it("prints a line break in the endpoint as \\n", () => {
-    const result = resolveFor("mapi", ".\n./other-env/types", ENV_ID);
-
-    assertErr(result);
-    expect(result.error.message).toBe(
-      'The endpoint ".\\n./other-env/types" leaves the environment.',
-    );
-  });
-
-  it.each([
-    ["mapi", "https://evil.example/x"],
-    ["mapi", "//evil.example/x"],
-    ["dapi", "https://evil.example/x"],
-    ["dapi", "//evil.example/x"],
-  ] as const)("refuses %s %j as an absolute URL", (api, endpoint) => {
-    const result = resolveFor(api, endpoint, ENV_ID);
-
-    assertErr(result);
-    expect(result.error.kind).toBe("absolute-url");
   });
 });

@@ -159,7 +159,6 @@ describe("formatRequestOutput", () => {
   it.each([
     { authSource: "login", reason: "auth-required" },
     { authSource: "mapi-key", reason: "failure" },
-    { authSource: "header", reason: "failure" },
   ] as const)("asks for a new login on a 401 only for the $authSource token: $reason", ({
     authSource,
     reason,

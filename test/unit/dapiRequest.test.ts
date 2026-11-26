@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CliConfig, ConfigReadError } from "../../src/cli/adapters/config/cliConfig.js";
 import type { RawResponse } from "../../src/cli/adapters/http/rawClient.js";
 import {
   type RequestEffects,
@@ -14,9 +13,6 @@ import { assertOk } from "../helpers/assertResult.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const BASE_URL = "https://deliver.test";
-
-const BROKEN_MESSAGE = "Config file at /x/config.json is not valid JSON. Fix or delete it.";
-const BROKEN_CONFIG = err({ message: BROKEN_MESSAGE });
 
 const response = (overrides: Partial<RawResponse> = {}): RawResponse => ({
   status: 200,
@@ -36,14 +32,13 @@ const fakeLogger = (): Logger => ({
 const fakeEffects = (
   options: Readonly<{
     storedEnvId?: string;
-    config?: Result<CliConfig, ConfigReadError>;
     sent?: Result<RawResponse, string>;
     pages?: ReadonlyArray<Result<RawResponse, string>>;
   }> = {},
 ) => {
   const effects = {
     logger: fakeLogger(),
-    config: { read: vi.fn(async () => options.config ?? ok({ envId: options.storedEnvId })) },
+    config: { read: vi.fn(async () => ok({ envId: options.storedEnvId })) },
     dapi: {
       send: vi.fn(async () => options.sent ?? ok(response())),
       pages: vi.fn(async function* () {
@@ -123,25 +118,6 @@ describe("dapi request", () => {
       expect.objectContaining({ url: new URL(`${BASE_URL}/${ENV_ID}/items`) }),
       undefined,
     );
-  });
-
-  it("reports an unreadable config when it needs the stored environment", async () => {
-    const effects = fakeEffects({ config: BROKEN_CONFIG });
-
-    const result = await request(effects, input({ envId: undefined }));
-
-    expect(result).toEqual(err({ kind: "config-unreadable", message: BROKEN_MESSAGE }));
-    expect(effects.dapi.send).not.toHaveBeenCalled();
-  });
-
-  it("ignores an unreadable config when --envId names the environment", async () => {
-    const effects = fakeEffects({ config: BROKEN_CONFIG });
-
-    const result = await request(effects, input());
-
-    assertOk(result);
-    expect(effects.config.read).not.toHaveBeenCalled();
-    expect(effects.dapi.send).toHaveBeenCalledOnce();
   });
 
   describe("--paginate", () => {

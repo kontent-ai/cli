@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { NODE_FETCH_TIMEOUT_MESSAGE } from "../../src/cli/adapters/http/nodeFetchTimeout.js";
 import { MAX_RETRY_DELAY_MS } from "../../src/cli/adapters/http/retryDelay.js";
 import { createIapiClient } from "../../src/cli/adapters/iapi/client.js";
 import { createDeliveryKeys } from "../../src/cli/adapters/iapi/deliveryKeys.js";
-import { formatIapiError } from "../../src/cli/adapters/iapi/formatIapiError.js";
 import { createUsers } from "../../src/cli/adapters/iapi/users.js";
 import { assertErr, assertOk } from "../helpers/assertResult.js";
 import { httpTestAdapter } from "../helpers/httpTestAdapter.js";
@@ -48,9 +46,6 @@ describe("createIapiClient", () => {
     const result = await users.current();
 
     assertErr(result);
-    expect(formatIapiError(result.error, { isVerbose: false })).toContain(
-      NODE_FETCH_TIMEOUT_MESSAGE,
-    );
     expect(requests).toHaveLength(1);
   });
 

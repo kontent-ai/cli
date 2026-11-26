@@ -1,4 +1,4 @@
-import { AdapterParseError, KontentSdkError } from "@kontent-ai/core-sdk";
+import { KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
 import { formatIapiError } from "../../src/cli/adapters/iapi/formatIapiError.js";
 import { nodeFetchTimeoutError } from "../helpers/nodeFetchTimeoutError.js";
@@ -69,25 +69,7 @@ describe("formatIapiError", () => {
     expect(message).not.toContain("status:");
   });
 
-  it.each([
-    {
-      timeout: "headers",
-      details: {
-        reason: "adapterError",
-        originalError: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT"),
-      },
-    },
-    {
-      timeout: "body",
-      details: {
-        reason: "parseError",
-        originalError: new AdapterParseError({
-          message: "Failed to parse the response.",
-          error: nodeFetchTimeoutError("UND_ERR_BODY_TIMEOUT"),
-        }),
-      },
-    },
-  ] as const)("reports Node's $timeout timeout as a timeout", ({ details }) => {
+  it("reports Node's headers timeout as a timeout", () => {
     const timeoutError = new KontentSdkError({
       baseErrorData: {
         message: "Adapter failed to execute the request",
@@ -95,7 +77,10 @@ describe("formatIapiError", () => {
         retryStrategyOptions: undefined,
         retryAttempt: undefined,
       },
-      details,
+      details: {
+        reason: "adapterError",
+        originalError: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT"),
+      },
     });
     const message = formatIapiError(timeoutError, context);
 

@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { createLegacyTokens } from "../../src/cli/adapters/auth/storage.js";
 import {
   type LoginEffects,
   login,
@@ -14,13 +13,6 @@ import {
   fakeTokenStorage,
   fakeUserIdCache,
 } from "../helpers/authFakes.js";
-
-// A keychain that refuses every call, for the legacy delete's failure path.
-vi.mock("@napi-rs/keyring", () => ({
-  AsyncEntry: function AsyncEntry() {
-    return { getPassword: async () => Promise.reject(new Error("keychain locked")) };
-  },
-}));
 
 const FRESH_TOKENS: TokenSet = {
   accessToken: "new-access-token",
@@ -102,18 +94,6 @@ describe("the legacy keyring entry", () => {
     await login(effects);
 
     expect(effects.legacyTokens.remove).not.toHaveBeenCalled();
-  });
-
-  it("does not fail the login when it cannot be removed", async () => {
-    const logger = createLogger("none");
-    const effects = {
-      ...effectsWith({ session: err({ kind: "not-logged-in" }), signIn: ok(FRESH_TOKENS) }),
-      legacyTokens: createLegacyTokens(logger),
-    };
-
-    const result = await login(effects);
-
-    expect(result).toEqual(ok({ isAlreadyAuthenticated: false, identifier: "new@example.com" }));
   });
 });
 

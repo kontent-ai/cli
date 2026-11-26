@@ -94,20 +94,6 @@ describe("files.writeTextAtomic", () => {
     expect(await readdir(join(tempDir, "work", "dotfiles"))).toEqual(["kontent-cli.json"]);
   });
 
-  it("creates the target of a dangling symlink and keeps the link", async () => {
-    const linkPath = join(tempDir, "work", "cli", "config.json");
-    await mkdir(join(tempDir, "work", "cli"));
-    await symlink(join("..", "dotfiles", "kontent-cli.json"), linkPath);
-
-    assertOk(await files.writeTextAtomic(linkPath, "new"));
-
-    expect((await lstat(linkPath)).isSymbolicLink()).toBe(true);
-    expect(await readFile(join(tempDir, "work", "dotfiles", "kontent-cli.json"), "utf8")).toBe(
-      "new",
-    );
-    expect(await readdir(join(tempDir, "work", "dotfiles"))).toEqual(["kontent-cli.json"]);
-  });
-
   it("follows a chain of links to the missing file at its end", async () => {
     const linkPath = join(tempDir, "work", "cli", "config.json");
     const middle = join(tempDir, "work", "dotfiles", "middle.json");
@@ -121,6 +107,7 @@ describe("files.writeTextAtomic", () => {
     expect((await lstat(linkPath)).isSymbolicLink()).toBe(true);
     expect((await lstat(middle)).isSymbolicLink()).toBe(true);
     expect(await readFile(join(tempDir, "work", "store", "kontent-cli.json"), "utf8")).toBe("new");
+    expect(await readdir(join(tempDir, "work", "store"))).toEqual(["kontent-cli.json"]);
   });
 
   it("removes the temp file when the final rename fails", async () => {

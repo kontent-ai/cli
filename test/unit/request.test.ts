@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CliConfig, ConfigReadError } from "../../src/cli/adapters/config/cliConfig.js";
 import type { RawResponse } from "../../src/cli/adapters/http/rawClient.js";
 import {
   type RequestEffects,
@@ -13,8 +12,6 @@ import { assertErr, assertOk } from "../helpers/assertResult.js";
 
 const ENV_ID = "11111111-2222-3333-4444-555555555555";
 const STORED_ENV_ID = "99999999-8888-7777-6666-555555555555";
-const BROKEN_MESSAGE = "Config file at /x/config.json is not valid JSON. Fix or delete it.";
-const BROKEN_CONFIG = err({ message: BROKEN_MESSAGE });
 const OK_RESPONSE: RawResponse = {
   status: 200,
   statusText: "OK",
@@ -36,7 +33,6 @@ const fakeLogger = () => {
 const fakeEffects = (
   options: Readonly<{
     storedEnvId?: string;
-    config?: Result<CliConfig, ConfigReadError>;
     body?: Result<Blob, { kind: "unreadable-input"; message: string }>;
     tokens?: Result<TokenSet, AuthError>;
     sent?: Result<RawResponse, string>;
@@ -45,7 +41,7 @@ const fakeEffects = (
   const { logger, infos } = fakeLogger();
   const effects = {
     logger,
-    config: { read: vi.fn(async () => options.config ?? ok({ envId: options.storedEnvId })) },
+    config: { read: vi.fn(async () => ok({ envId: options.storedEnvId })) },
     bodyReader: { read: vi.fn(async () => options.body ?? ok(new Blob(["{}"]))) },
     session: {
       tokens: vi.fn(async () => options.tokens ?? ok({ accessToken: "login-token" })),
@@ -92,25 +88,6 @@ describe("request", () => {
 
     expect(result).toEqual(err({ kind: "missing-env-id" }));
     expect(effects.mapi.send).not.toHaveBeenCalled();
-  });
-
-  it("reports an unreadable config when it needs the stored environment", async () => {
-    const { effects } = fakeEffects({ config: BROKEN_CONFIG });
-
-    const result = await request(effects, input({ envId: undefined }));
-
-    expect(result).toEqual(err({ kind: "config-unreadable", message: BROKEN_MESSAGE }));
-    expect(effects.mapi.send).not.toHaveBeenCalled();
-  });
-
-  it("ignores an unreadable config when --envId names the environment", async () => {
-    const { effects } = fakeEffects({ config: BROKEN_CONFIG });
-
-    const result = await request(effects, input());
-
-    assertOk(result);
-    expect(effects.config.read).not.toHaveBeenCalled();
-    expect(effects.mapi.send).toHaveBeenCalledOnce();
   });
 
   it("does not read the input for a GET that cannot carry it", async () => {

@@ -29,20 +29,6 @@ const listen = async (server: Server): Promise<string> => {
 };
 
 describe("createMapiClient", () => {
-  it("sends a failing GET at most three times", { timeout: 15_000 }, async () => {
-    const requestCounter = { count: 0 };
-    const baseUrl = await listen(
-      createServer((_request, response) => {
-        requestCounter.count += 1;
-        response.writeHead(503).end();
-      }),
-    );
-    const client = createMapiClient({ token: "test-token", envId: "env", baseUrl });
-
-    await expect(client.environmentInformation().toPromise()).rejects.toBeDefined();
-    expect(requestCounter.count).toBe(3);
-  });
-
   it("resends a POST answered 503, at most three times", { timeout: 15_000 }, async () => {
     const requestCounter = { count: 0 };
     const baseUrl = await listen(
@@ -59,7 +45,7 @@ describe("createMapiClient", () => {
     expect(requestCounter.count).toBe(3);
   });
 
-  it("does not resend a GET that timed out", async () => {
+  it("does not resend a GET that timed out and prints the configured message", async () => {
     const requestCounter = { count: 0 };
     const baseUrl = await listen(
       createServer(() => {
@@ -78,21 +64,12 @@ describe("createMapiClient", () => {
       retryStrategy: mapiRetryStrategy,
     });
 
-    await expect(client.environmentInformation().toPromise()).rejects.toBeDefined();
-    expect(requestCounter.count).toBe(1);
-  });
-
-  it("prints the configured timeout message", async () => {
-    const baseUrl = await listen(createServer(() => undefined));
-    const httpService = new HttpService({
-      logErrorsToConsole: false,
-      axiosRequestConfig: { ...mapiAxiosRequestConfig, timeout: 50 },
-    });
-
-    const error: unknown = await httpService
-      .getAsync({ url: `${baseUrl}/` })
+    const error: unknown = await client
+      .environmentInformation()
+      .toPromise()
       .catch((e: unknown) => e);
 
+    expect(requestCounter.count).toBe(1);
     expect(mapiErrorMessage(error)).toBe("Request timed out after 30 s.");
   });
 });

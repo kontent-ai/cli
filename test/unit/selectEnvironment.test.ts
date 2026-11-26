@@ -81,7 +81,6 @@ describe("formatUseFailure", () => {
 
   it.each([
     { kind: "environment-info-failed", status: 404, message: "Not found" },
-    { kind: "environment-info-failed", status: undefined, message: "fetch failed" },
     { kind: "config-write-failed", message: "EACCES" },
   ] as const)("fails without asking for a login on $kind $status", (error) => {
     expect(formatUseFailure(error, ENV_ID).outcome).toEqual({

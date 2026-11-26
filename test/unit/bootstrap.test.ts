@@ -148,23 +148,27 @@ describe("bootstrap", () => {
     expect(effects.templates.download).not.toHaveBeenCalled();
   });
 
-  it("fails when the env template cannot be read", async () => {
-    const { effects } = fakeEffects({ select: some("seed-123"), readError: "EACCES" });
+  it.each([
+    {
+      name: "the env template cannot be read",
+      scenario: { readError: "EACCES" },
+      error: { kind: "env-template-read-failed", message: "EACCES" },
+      writeCount: 0,
+    },
+    {
+      name: ".env.local cannot be written",
+      scenario: { writeError: "disk full" },
+      error: { kind: "env-file-write-failed", message: "disk full" },
+      writeCount: 1,
+    },
+  ] as const)("fails when $name", async ({ scenario, error, writeCount }) => {
+    const { effects } = fakeEffects({ select: some("seed-123"), ...scenario });
 
     const result = await bootstrap(effects, params);
 
     assertErr(result);
-    expect(result.error).toEqual({ kind: "env-template-read-failed", message: "EACCES" });
-    expect(effects.files.writeText).not.toHaveBeenCalled();
-  });
-
-  it("fails when .env.local cannot be written", async () => {
-    const { effects } = fakeEffects({ select: some("seed-123"), writeError: "disk full" });
-
-    const result = await bootstrap(effects, params);
-
-    assertErr(result);
-    expect(result.error).toEqual({ kind: "env-file-write-failed", message: "disk full" });
+    expect(result.error).toEqual(error);
+    expect(effects.files.writeText).toHaveBeenCalledTimes(writeCount);
   });
 
   it("fails fast when the target directory is not empty, before any API call", async () => {
@@ -229,8 +233,6 @@ describe("formatBootstrapFailure", () => {
   it.each([
     { kind: "project-info-failed", sdkError: httpError(403) },
     { kind: "unsupported-sample", sampleValue: "Nope" },
-    { kind: "env-template-read-failed", message: "EACCES" },
-    { kind: "env-file-write-failed", message: "disk full" },
   ] as const)("reports $kind as an error and a failure", (error) => {
     const failure = formatBootstrapFailure(error, ENV_ID, false);
 
@@ -239,40 +241,30 @@ describe("formatBootstrapFailure", () => {
   });
 });
 
-describe("runBootstrap under an override", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("refuses before any prompt", async () => {
-    const intro = vi.spyOn(prompts, "intro").mockImplementation(() => {});
-    const logger = {
-      info: vi.fn(),
-      warning: vi.fn(),
-      error: vi.fn(),
-      isVerbose: false,
-    } satisfies Logger;
-    const deps = commandDeps({
-      overrides: { kontentTarget: none, auth0: ["clientId"] },
-    });
-
-    const outcome = await runBootstrap({ envId: ENV_ID, path: TARGET }, deps, logger);
-
-    expect(outcome).toEqual({ status: "error", reason: "failure", errorCode: "override-active" });
-    expect(logger.error).toHaveBeenCalledWith(
-      "`kontent project sample bootstrap` works only against production Kontent.ai.",
-    );
-    expect(intro).not.toHaveBeenCalled();
-  });
-});
-
-describe("runBootstrap in CI", () => {
+describe("runBootstrap", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   // CI can attach a terminal, but nobody is there to answer the prompts.
-  it("refuses even with a terminal, before any prompt or sign-in", async () => {
+  it.each([
+    {
+      name: "under an override",
+      deps: { overrides: { kontentTarget: none, auth0: ["clientId"] } },
+      errorCode: "override-active",
+      message: "`kontent project sample bootstrap` works only against production Kontent.ai.",
+    },
+    {
+      name: "in CI even with a terminal",
+      deps: { isCiRun: true },
+      errorCode: "not-interactive",
+      message: "`kontent project sample bootstrap` needs an interactive terminal.",
+    },
+  ] as const)("refuses $name, before any prompt or sign-in", async ({
+    deps,
+    errorCode,
+    message,
+  }) => {
     const wasTty = process.stdin.isTTY;
     process.stdin.isTTY = true;
     onTestFinished(() => {
@@ -286,16 +278,10 @@ describe("runBootstrap in CI", () => {
       isVerbose: false,
     } satisfies Logger;
 
-    const outcome = await runBootstrap(
-      { envId: ENV_ID, path: TARGET },
-      commandDeps({ isCiRun: true }),
-      logger,
-    );
+    const outcome = await runBootstrap({ envId: ENV_ID, path: TARGET }, commandDeps(deps), logger);
 
-    expect(outcome).toEqual({ status: "error", reason: "failure", errorCode: "not-interactive" });
-    expect(logger.error).toHaveBeenCalledWith(
-      "`kontent project sample bootstrap` needs an interactive terminal.",
-    );
+    expect(outcome).toEqual({ status: "error", reason: "failure", errorCode });
+    expect(logger.error).toHaveBeenCalledWith(message);
     expect(intro).not.toHaveBeenCalled();
   });
 });

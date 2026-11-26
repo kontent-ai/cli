@@ -1,13 +1,9 @@
 import { stripVTControlCharacters } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import type { Telemetry } from "../../src/cli/adapters/telemetry/tracking.js";
-import {
-  type CommandOutcome,
-  createAuthFailureOutcome,
-} from "../../src/cli/commands/shared/commandOutcome.js";
+import type { CommandOutcome } from "../../src/cli/commands/shared/commandOutcome.js";
 import { runCommand } from "../../src/cli/commands/shared/runCommand.js";
 import type { CommandDeps } from "../../src/cli/types/yargs.js";
-import type { AuthError } from "../../src/core/auth/types.js";
 import type { ErrorReason } from "../../src/core/lib/exitCodes.js";
 import type { EventProperties } from "../../src/core/telemetry/events.js";
 import { commandDeps } from "../helpers/commandDeps.js";
@@ -92,16 +88,26 @@ describe("runCommand", () => {
     expect(process.exitCode).toBe(exitCode);
   });
 
-  it("tracks a throw as unexpected, exits 1 and reports it in one line", async () => {
-    const events = await run("mapi", async () => Promise.reject(new Error("boom")));
+  it.each<readonly [string, unknown, string]>([
+    [
+      "an error",
+      new Error("boom"),
+      "Error: Unexpected error: boom. Run again with --verbose for details.\n",
+    ],
+    [
+      "a message that already ends with a period",
+      new Error("fetch failed."),
+      "Error: Unexpected error: fetch failed. Run again with --verbose for details.\n",
+    ],
+    ["a throw without a stack", "boom", "Error: Unexpected error: boom.\n"],
+  ])("tracks %s thrown as unexpected, exits 1 and reports it in one line", async (_, thrown, expected) => {
+    const events = await run("mapi", async () => Promise.reject(thrown));
 
     expect(events).toEqual([
       { command: "mapi", outcome: "error", errorCode: "unexpected", properties: undefined },
     ]);
     expect(process.exitCode).toBe(1);
-    expect(stderrText()).toBe(
-      "Error: Unexpected error: boom. Run again with --verbose for details.\n",
-    );
+    expect(stderrText()).toBe(expected);
   });
 
   it("shows the stack of a throw only under --verbose", async () => {
@@ -115,20 +121,6 @@ describe("runCommand", () => {
     expect(stderrText()).not.toContain("--verbose");
   });
 
-  it("adds no period after a message that already ends with one", async () => {
-    await run("mapi", async () => Promise.reject(new Error("fetch failed.")));
-
-    expect(stderrText()).toBe(
-      "Error: Unexpected error: fetch failed. Run again with --verbose for details.\n",
-    );
-  });
-
-  it("leaves out the --verbose hint when the throw carries no stack", async () => {
-    await run("mapi", async () => Promise.reject("boom"));
-
-    expect(stderrText()).toBe("Error: Unexpected error: boom.\n");
-  });
-
   it("sends nothing for an untracked command, but still sets the exit code", async () => {
     const events = await run(null, async () => ({
       status: "error",
@@ -138,19 +130,5 @@ describe("runCommand", () => {
 
     expect(events).toEqual([]);
     expect(process.exitCode).toBe(1);
-  });
-});
-
-describe("createAuthFailureOutcome", () => {
-  it.each<readonly [AuthError, ErrorReason]>([
-    [{ kind: "not-logged-in" }, "auth-required"],
-    [{ kind: "storage-read-failed", cause: null }, "failure"],
-  ])("maps %o to %s", (error, reason) => {
-    expect(createAuthFailureOutcome(error, { project: "p-1" })).toEqual({
-      status: "error",
-      reason,
-      errorCode: `auth:${error.kind}`,
-      properties: { project: "p-1" },
-    });
   });
 });

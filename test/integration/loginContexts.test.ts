@@ -62,22 +62,12 @@ describe("logins of different contexts", () => {
     await createKeyringStorage(QA).write(TOKENS);
   });
 
-  it("live side by side", () => {
-    expect([...keychain.keys()]).toEqual([contextKey(PRODUCTION), contextKey(QA)]);
-  });
+  it("logging out of one keeps the other and removes the legacy entry", async () => {
+    keychain.set(LEGACY_KEY, JSON.stringify(TOKENS));
 
-  it("logging out of one keeps the other", async () => {
     const result = await logoutOf(QA);
 
     expect(result).toEqual(ok(undefined));
-    expect([...keychain.keys()]).toEqual([contextKey(PRODUCTION)]);
-  });
-
-  it("logging out removes only the legacy entry besides its own", async () => {
-    keychain.set(LEGACY_KEY, JSON.stringify(TOKENS));
-
-    await logoutOf(QA);
-
     expect([...keychain.keys()]).toEqual([contextKey(PRODUCTION)]);
   });
 });

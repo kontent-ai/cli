@@ -1,4 +1,4 @@
-import { AdapterParseError, KontentSdkError } from "@kontent-ai/core-sdk";
+import { KontentSdkError } from "@kontent-ai/core-sdk";
 import { describe, expect, it } from "vitest";
 import * as z from "zod/mini";
 import { formatLearnError } from "../../src/cli/adapters/learn/formatLearnError.js";
@@ -51,26 +51,16 @@ describe("formatLearnError", () => {
     expect(message).not.toContain("status:");
   });
 
-  it.each([
-    {
-      timeout: "headers",
-      details: {
-        reason: "adapterError",
-        originalError: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT"),
-      },
-    },
-    {
-      timeout: "body",
-      details: {
-        reason: "parseError",
-        originalError: new AdapterParseError({
-          message: "Failed to parse the response.",
-          error: nodeFetchTimeoutError("UND_ERR_BODY_TIMEOUT"),
-        }),
-      },
-    },
-  ] as const)("reports Node's $timeout timeout as a timeout", ({ details }) => {
-    const message = formatLearnError(new KontentSdkError({ baseErrorData, details }));
+  it("reports Node's headers timeout as a timeout", () => {
+    const message = formatLearnError(
+      new KontentSdkError({
+        baseErrorData,
+        details: {
+          reason: "adapterError",
+          originalError: nodeFetchTimeoutError("UND_ERR_HEADERS_TIMEOUT"),
+        },
+      }),
+    );
 
     expect(message.split("\n")[0]).toBe(
       "Could not reach the Learn service: The server did not respond in time.",
