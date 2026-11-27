@@ -158,6 +158,37 @@ describe("snapshot", () => {
     expect(effects.files.removeFile).not.toHaveBeenCalled();
   });
 
+  it("leaves json_parameters out, and a second run writes nothing", async () => {
+    const picker = { id: "e1", codename: "picker", type: "custom", source_url: "https://p.test" };
+    const pages = {
+      ...DEFAULT_PAGES,
+      types: [
+        listing("types", [
+          { ...ARTICLE, elements: [{ ...picker, json_parameters: '{"apiKey":"secret"}' }] },
+        ]),
+      ],
+    };
+    const trimmedArticle = snapshotFileText({ ...ARTICLE, elements: [picker] });
+    const first = fakeEffects({ pages });
+
+    const firstResult = await snapshot(first.effects, input());
+
+    assertOk(firstResult);
+    expect(firstResult.value.omittedJsonParameters).toBe(1);
+    expect(first.fs.read("types/article.json")).toBe(trimmedArticle);
+
+    const second = fakeEffects({
+      pages,
+      files: { ...FULL_SNAPSHOT, "types/article.json": trimmedArticle },
+    });
+
+    const secondResult = await snapshot(second.effects, input());
+
+    assertOk(secondResult);
+    expect(secondResult.value).toMatchObject({ written: 0, deleted: 0, omittedJsonParameters: 1 });
+    expect(second.effects.files.writeText).not.toHaveBeenCalled();
+  });
+
   it("writes a changed file and removes the file of a deleted entity", async () => {
     const { effects, fs } = fakeEffects({
       files: {

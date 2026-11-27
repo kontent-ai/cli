@@ -18,7 +18,17 @@ export const formatSnapshotOutput = (
     ? formatErrorOutput(result.error, path)
     : {
         stdout: result.value.manifest,
-        stderr: [{ level: "info", text: formatSummary(result.value, path) }],
+        stderr: [
+          { level: "info", text: formatSummary(result.value, path) },
+          ...(result.value.omittedJsonParameters === 0
+            ? []
+            : [
+                {
+                  level: "info" as const,
+                  text: formatOmittedJsonParameters(result.value.omittedJsonParameters),
+                },
+              ]),
+        ],
         isFailure: false,
         telemetry: { outcome: "succeed", properties: { "auth-source": result.value.authSource } },
       };
@@ -27,6 +37,9 @@ const formatSummary = (outcome: SnapshotOutcome, path: string): string =>
   outcome.written === 0 && outcome.deleted === 0
     ? `The snapshot of environment ${outcome.env.envId} in ${path} is up to date.`
     : `Saved the snapshot of environment ${outcome.env.envId} to ${path}: ${outcome.written} written, ${outcome.deleted} deleted, ${outcome.unchanged} unchanged.`;
+
+const formatOmittedJsonParameters = (count: number): string =>
+  `Left out the json_parameters of ${count} custom ${count === 1 ? "element" : "elements"}: they can hold API keys, and a snapshot never contains them.`;
 
 const formatErrorOutput = (error: SnapshotError, path: string): PassthroughOutput =>
   match(error)

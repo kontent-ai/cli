@@ -38,7 +38,37 @@ describe("buildSnapshotFiles", () => {
         { path: ["types", "article.json"], text: snapshotFileText(article) },
         { path: ["languages", `${LANGUAGE_ID}.json`], text: snapshotFileText(language) },
       ],
+      omittedJsonParameters: 0,
     });
+  });
+
+  it("leaves the custom elements' json_parameters out of types and snippets, and counts them", () => {
+    const picker = { id: "e1", codename: "picker", type: "custom", source_url: "https://p.test" };
+    const withParameters = { ...picker, json_parameters: '{"apiKey":"secret"}' };
+
+    const result = buildSnapshotFiles(ENV_ID, [
+      {
+        kind: kind("types"),
+        entities: [{ id: "a1", codename: "article", elements: [withParameters] }],
+      },
+      {
+        kind: kind("snippets"),
+        entities: [{ id: "s1", codename: "seo", elements: [withParameters] }],
+      },
+    ]);
+
+    assertOk(result);
+    expect(result.value.omittedJsonParameters).toBe(2);
+    expect(result.value.files).toEqual([
+      {
+        path: ["types", "article.json"],
+        text: snapshotFileText({ id: "a1", codename: "article", elements: [picker] }),
+      },
+      {
+        path: ["snippets", "seo.json"],
+        text: snapshotFileText({ id: "s1", codename: "seo", elements: [picker] }),
+      },
+    ]);
   });
 
   it("names every kind holding an entity it can't name, once", () => {

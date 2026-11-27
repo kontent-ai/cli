@@ -63,6 +63,7 @@ export type SnapshotOutcome = Readonly<{
   written: number;
   deleted: number;
   unchanged: number;
+  omittedJsonParameters: number;
 }>;
 
 export type SnapshotError =
@@ -161,6 +162,7 @@ export const snapshot = async (
     written,
     deleted: plan.deletes.length,
     unchanged: next.value.files.length + 1 - written,
+    omittedJsonParameters: next.value.omittedJsonParameters,
   });
 };
 

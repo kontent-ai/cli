@@ -142,7 +142,7 @@ kontent model snapshot [--path <dir>] [--envId <id>] [--mapiKey <key>]
 - **Path:** `--path`, where to write the snapshot. Default: `./model-snapshot`.
 - **Environment:** `--envId`, or the default set by `kontent environment use`.
 - **Credentials:** `--mapiKey`, then the `KONTENT_MAPI_KEY` environment variable, then the `kontent login` session. The first one found wins. A signed-in user needs no key.
-- **Output:** stdout gets the contents of `manifest.json`. Progress and errors go to stderr.
+- **Output:** stdout gets the contents of `manifest.json`. Progress and errors go to stderr. When `json_parameters` were left out, stderr says how many.
 
 The command name isn't final yet (see open decision 3).
 
@@ -154,7 +154,7 @@ The snapshot leaves out the custom elements' `json_parameters`, where some integ
 
 ## Open decisions
 
-Decision 2 is made. The proof-of-concept CLI doesn't apply it yet and still writes the field. Decision 6 decides what else to trim, and it's made before release.
+Decision 2 is made. Decision 6 decides what else to trim, and it's made before release.
 
 1. **File names.** Use the codename when it's safe and the id otherwise, with languages always by id (as above), or use ids everywhere. Ids are always safe, but you can't tell which file is which by its name.
 2. **`json_parameters`. Decided:** the CLI leaves it out. The field is optional in the documented object, no generator reads it, and a key committed to git can't be taken back. It can come back behind an option in a minor version if a reader needs it.

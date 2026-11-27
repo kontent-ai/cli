@@ -1,5 +1,6 @@
-import type { JsonArray, JsonObject, JsonValue } from "@kontent-ai/core-sdk";
+import type { JsonObject, JsonValue } from "@kontent-ai/core-sdk";
 import { match } from "ts-pattern";
+import { isJsonArray, isJsonObject } from "../lib/json.js";
 import { err, ok, type Result } from "../lib/result.js";
 import type { ResponseShape } from "./kinds.js";
 
@@ -24,10 +25,5 @@ export const extractEntities = (
     )
     .exhaustive();
 
-const isJsonObject = (value: JsonValue): value is JsonObject =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 const toEntityList = (value: JsonValue): Result<ReadonlyArray<JsonObject>, EntitiesError> =>
   isJsonArray(value) && value.every(isJsonObject) ? ok(value) : err({ kind: "unexpected-shape" });
-
-const isJsonArray = (value: JsonValue): value is JsonArray => Array.isArray(value);
